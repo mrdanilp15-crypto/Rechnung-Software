@@ -1,0 +1,19 @@
+{
+  "app": { "title": "Invoicing Software" },
+  "nav": { "dashboard": "Dashboard", "customers": "Customers", "products": "Products", "invoices": "Invoices", "quotes": "Quotes", "deliveryNotes": "Delivery Notes", "orderConfirmations": "Order Confirmations", "finance": "Finance", "settings": "Settings", "logout": "Log out" },
+  "auth": {
+    "login": "Log in", "register": "Register", "email": "Email", "password": "Password",
+    "companyName": "Company name", "name": "Name", "totpToken": "2FA code", "loginError": "Login failed",
+    "noAccount": "No account yet?", "haveAccount": "Already registered?"
+  },
+  "customers": { "title": "Customers", "new": "New customer", "search": "Search customers...", "name": "Name", "email": "Email", "city": "City", "type": "Type", "private": "Private", "business": "Business", "save": "Save" },
+  "products": { "title": "Products & Services", "new": "New product", "name": "Name", "unitPrice": "Unit price", "vatRate": "VAT rate", "unit": "Unit", "search": "Search products..." },
+  "invoices": {
+    "title": "Invoices", "new": "New invoice", "number": "Number", "customer": "Customer", "status": "Status",
+    "total": "Total", "dueDate": "Due date", "draft": "Draft", "sent": "Sent", "paid": "Paid",
+    "overdue": "Overdue", "cancelled": "Cancelled", "send": "Send", "markPaid": "Mark as paid",
+    "cancel": "Cancel", "downloadPdf": "Download PDF", "addItem": "Add item"
+  },
+  "settings": { "title": "Settings", "company": "Company details", "smallBusiness": "Small business regulation (§19 VAT Act)", "darkMode": "Dark mode", "language": "Language", "twoFactor": "Two-factor authentication" },
+  "common": { "save": "Save", "cancel": "Cancel", "delete": "Delete", "edit": "Edit", "loading": "Loading...", "error": "An error occurred", "actions": "Actions", "close": "Close" }
+}

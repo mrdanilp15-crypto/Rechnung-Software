@@ -1,0 +1,20 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+*.log
+coverage/
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+# Prisma löst ein relatives "file:"-DATABASE_URL relativ zu schema.prisma auf, nicht zum
+# Arbeitsverzeichnis - die SQLite-Datei landet also unter backend/prisma/data/, nicht
+# backend/data/ (siehe backend/src/modules/backup/runBackup.ts).
+backend/prisma/data/
+backend/data/
+backend/uploads/
+backend/backups/
+.DS_Store
+Thumbs.db
+*.tsbuildinfo
+.scratch/

@@ -1,0 +1,19 @@
+{
+  "app": { "title": "Rechnungssoftware" },
+  "nav": { "dashboard": "Übersicht", "customers": "Kunden", "products": "Produkte", "invoices": "Rechnungen", "quotes": "Angebote", "deliveryNotes": "Lieferscheine", "orderConfirmations": "Auftragsbestätigungen", "finance": "Finanzen", "settings": "Einstellungen", "logout": "Abmelden" },
+  "auth": {
+    "login": "Anmelden", "register": "Registrieren", "email": "E-Mail", "password": "Passwort",
+    "companyName": "Firmenname", "name": "Name", "totpToken": "2FA-Code", "loginError": "Anmeldung fehlgeschlagen",
+    "noAccount": "Noch kein Konto?", "haveAccount": "Bereits registriert?"
+  },
+  "customers": { "title": "Kunden", "new": "Neuer Kunde", "search": "Kunden durchsuchen...", "name": "Name", "email": "E-Mail", "city": "Ort", "type": "Typ", "private": "Privat", "business": "Gewerblich", "save": "Speichern" },
+  "products": { "title": "Produkte & Leistungen", "new": "Neues Produkt", "name": "Bezeichnung", "unitPrice": "Einzelpreis", "vatRate": "USt.-Satz", "unit": "Einheit", "search": "Produkte durchsuchen..." },
+  "invoices": {
+    "title": "Rechnungen", "new": "Neue Rechnung", "number": "Nummer", "customer": "Kunde", "status": "Status",
+    "total": "Gesamtbetrag", "dueDate": "Fällig am", "draft": "Entwurf", "sent": "Versendet", "paid": "Bezahlt",
+    "overdue": "Überfällig", "cancelled": "Storniert", "send": "Versenden", "markPaid": "Als bezahlt markieren",
+    "cancel": "Stornieren", "downloadPdf": "PDF herunterladen", "addItem": "Position hinzufügen"
+  },
+  "settings": { "title": "Einstellungen", "company": "Firmendaten", "smallBusiness": "Kleinunternehmerregelung (§19 UStG)", "darkMode": "Dunkelmodus", "language": "Sprache", "twoFactor": "Zwei-Faktor-Authentifizierung" },
+  "common": { "save": "Speichern", "cancel": "Abbrechen", "delete": "Löschen", "edit": "Bearbeiten", "loading": "Lädt...", "error": "Ein Fehler ist aufgetreten", "actions": "Aktionen", "close": "Schließen" }
+}

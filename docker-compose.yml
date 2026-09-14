@@ -1,0 +1,44 @@
+# Produktionsnahes Setup mit PostgreSQL.
+# Vor dem ersten Start: in backend/prisma/schema.prisma den Datenquellen-Provider auf
+# "postgresql" umstellen (siehe docs/INSTALL.md, Abschnitt 4) und backend/.env mit
+# DATABASE_URL="postgresql://rechnung:rechnung@db:5432/rechnung" befüllen.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rechnung
+      POSTGRES_PASSWORD: rechnung
+      POSTGRES_DB: rechnung
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: "postgresql://rechnung:rechnung@db:5432/rechnung"
+    depends_on:
+      - db
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_backups:/app/backups
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  db_data:
+  backend_uploads:
+  backend_backups:

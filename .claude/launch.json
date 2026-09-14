@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "backend\\dev.cmd",
+      "runtimeArgs": [],
+      "port": 4000
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "frontend\\dev.cmd",
+      "runtimeArgs": [],
+      "port": 5173
+    }
+  ]
+}

@@ -1,0 +1,468 @@
+// Datenmodell der Rechnungs- und Verwaltungssoftware
+// Geldbeträge werden konsequent als Ganzzahl in Cent gespeichert (keine Fließkomma-Rundungsfehler).
+// Standard-Datenbank: SQLite (portabel, dateibasiert). Für Mehrbenutzerbetrieb/Produktion: DATABASE_URL auf
+// PostgreSQL umstellen (provider "postgresql") - das Schema ist zu beiden Providern kompatibel.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite" // Produktion: "postgresql" + DATABASE_URL setzen
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Mandantenfähigkeit ----------
+
+model Company {
+  id            String   @id @default(uuid())
+  name          String
+  legalForm     String?
+  street        String?
+  postalCode    String?
+  city          String?
+  country       String   @default("DE")
+  taxId         String? // Steuernummer
+  vatId         String? // USt-IdNr.
+  isSmallBusiness Boolean @default(false) // Kleinunternehmerregelung §19 UStG
+  defaultVatRateBps Int   @default(1900) // 19.00% in Basispunkten (bps = 1/100 Prozent)
+  iban          String?
+  bic           String?
+  bankName      String?
+  logoPath      String?
+  stampPath     String? // Firmenstempel, wird automatisch auf PDFs eingefügt (siehe modules/pdf)
+  signaturePath String? // Unterschrift (z.B. eingescannt), wird automatisch auf PDFs eingefügt
+  primaryColor  String   @default("#2563eb")
+  invoiceFooterText String?
+  defaultLocale String   @default("de")
+
+  // Eigene SMTP-Zugangsdaten je Firma für den E-Mail-Versand direkt aus der Software.
+  // Jede Firma bringt ihr eigenes Postfach mit (Gmail, Web.de, Office365, Transaktions-
+  // dienst, ...) - kein zentraler, gemeinsamer Mailserver. Passwort wird AES-256-GCM-
+  // verschlüsselt abgelegt (siehe utils/crypto.ts), nie im Klartext zurückgegeben.
+  // Ist kein SMTP hinterlegt, bleibt der PDF-Download die reguläre Versandart.
+  smtpHost            String?
+  smtpPort            Int?     @default(587)
+  smtpSecure           Boolean  @default(false) // true = implizites TLS (Port 465), false = STARTTLS
+  smtpUser             String?
+  smtpPasswordEncrypted String?
+  smtpFromEmail        String?
+  smtpFromName         String?
+
+  // Umsatzgrenze für die Kleinunternehmerregelung (§19 UStG), Stand 2026: 22.000 € im
+  // laufenden Kalenderjahr. Konfigurierbar, falls sich der gesetzliche Wert ändert.
+  smallBusinessThresholdCents Int @default(2200000)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  users               User[]
+  customers           Customer[]
+  products            Product[]
+  invoices            Invoice[]
+  quotes              Quote[]
+  deliveryNotes       DeliveryNote[]
+  orderConfirmations  OrderConfirmation[]
+  numberSequences     NumberSequence[]
+  auditLogs           AuditLog[]
+  webhooks            Webhook[]
+  settings            Setting[]
+  expenses            Expense[]
+}
+
+// ---------- Benutzer & Zugriff ----------
+
+// Hinweis: SQLite unterstützt keine nativen Enum-Typen in Prisma - daher werden Rollen-
+// und Statuswerte als String mit anwendungsseitig geprüften Werten abgebildet (Validierung
+// über Zod, siehe z.B. modules/users/router.ts). Bei Umstieg auf PostgreSQL könnten diese
+// Felder optional wieder auf echte Prisma-Enums umgestellt werden.
+// Erlaubte Werte für User.role: "ADMIN" | "MITARBEITER" | "BUCHHALTUNG"
+
+model User {
+  id                String   @id @default(uuid())
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId         String
+  email             String   @unique
+  passwordHash      String
+  name              String
+  role              String   @default("MITARBEITER")
+  isActive          Boolean  @default(true)
+  locale            String   @default("de")
+  totpSecret        String? // verschlüsselt gespeichert (AES-256-GCM), siehe SECURITY.md
+  totpEnabled       Boolean  @default(false)
+  failedLoginCount  Int      @default(0)
+  lockedUntil       DateTime?
+  lastLoginAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  refreshTokens     RefreshToken[]
+  auditLogs         AuditLog[]
+
+  @@index([companyId])
+}
+
+model RefreshToken {
+  id          String   @id @default(uuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  tokenHash   String   @unique // nur SHA-256-Hash wird gespeichert, nie der Klartext-Token
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  replacedBy  String?
+  createdByIp String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ---------- Audit-Log (unveränderlich, jede Änderung wird protokolliert) ----------
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  company    Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId  String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId     String?
+  action     String // z.B. "invoice.create", "customer.update", "auth.login"
+  entityType String
+  entityId   String?
+  ipAddress  String?
+  metadata   String? // JSON-String mit Vorher/Nachher-Diff (ohne sensible Klartextdaten)
+  createdAt  DateTime @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([entityType, entityId])
+}
+
+// ---------- Kunden ----------
+
+model Customer {
+  id            String   @id @default(uuid())
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId     String
+  customerNumber String
+  type          String   @default("PRIVAT") // PRIVAT | GEWERBLICH
+  name          String
+  contactName   String?
+  email         String?
+  phone         String?
+  street        String?
+  postalCode    String?
+  city          String?
+  country       String   @default("DE")
+  vatId         String?
+  notes         String?
+  isArchived    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  invoices           Invoice[]
+  quotes             Quote[]
+  deliveryNotes      DeliveryNote[]
+  orderConfirmations OrderConfirmation[]
+
+  @@unique([companyId, customerNumber])
+  @@index([companyId])
+}
+
+// ---------- Produkt-/Leistungsverzeichnis ----------
+
+model Product {
+  id            String   @id @default(uuid())
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId     String
+  sku           String?
+  name          String
+  description   String?
+  unit          String   @default("Stk.")
+  unitPriceCents Int
+  vatRateBps    Int      @default(1900)
+  isArchived    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  invoiceItems  InvoiceItem[]
+  quoteItems    QuoteItem[]
+
+  @@index([companyId])
+}
+
+// ---------- Fortlaufende Belegnummern (pro Firma & Beleg-Typ) ----------
+
+model NumberSequence {
+  id         String  @id @default(uuid())
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId  String
+  docType    String // INVOICE | QUOTE | DELIVERY_NOTE | ORDER_CONFIRMATION
+  year       Int
+  lastNumber Int     @default(0)
+  prefix     String  @default("")
+
+  @@unique([companyId, docType, year])
+}
+
+// ---------- Rechnungen ----------
+
+// Erlaubte Werte für Invoice.status: "DRAFT" | "SENT" | "PAID" | "OVERDUE" | "CANCELLED"
+// (siehe Hinweis zu Enums/SQLite oben bei Role)
+
+model Invoice {
+  id              String        @id @default(uuid())
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId       String
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  customerId      String
+  invoiceNumber   String
+  status          String        @default("DRAFT")
+  issueDate       DateTime      @default(now())
+  dueDate         DateTime?
+  deliveryDate    DateTime?
+  isSmallBusiness Boolean       @default(false) // Kleinunternehmerregelung, eingefroren zum Erstellzeitpunkt
+  currency        String        @default("EUR")
+  subtotalCents   Int           @default(0)
+  vatTotalCents   Int           @default(0)
+  totalCents      Int           @default(0)
+  paidAt          DateTime?
+  notes           String?
+  footerText      String?
+  sourceQuoteId   String?
+  pdfPath         String?
+
+  // E-Mail-Versand (siehe modules/email/mailer.ts). "Zustell-Status" bildet ehrlich nur ab,
+  // ob die Übergabe an den SMTP-Server der Firma erfolgreich war - keine Lesebestätigung.
+  // Erlaubte Werte für emailStatus: "NOT_SENT" | "SENT" | "FAILED"
+  emailStatus     String        @default("NOT_SENT")
+  emailSentAt     DateTime?
+  lastEmailError  String?
+
+  // Mahnwesen: einfache Erinnerungsstufe + Zeitpunkt der letzten Erinnerung.
+  reminderCount   Int           @default(0)
+  lastReminderAt  DateTime?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  items           InvoiceItem[]
+
+  @@unique([companyId, invoiceNumber])
+  @@index([companyId, status])
+}
+
+model InvoiceItem {
+  id             String   @id @default(uuid())
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceId      String
+  product        Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productId      String?
+  position       Int
+  description    String
+  quantity       Float
+  unit           String   @default("Stk.")
+  unitPriceCents Int
+  vatRateBps     Int
+  lineTotalCents Int
+
+  @@index([invoiceId])
+}
+
+// ---------- Angebote ----------
+
+// Erlaubte Werte für Quote.status: "DRAFT" | "SENT" | "ACCEPTED" | "DECLINED" | "EXPIRED"
+
+model Quote {
+  id            String      @id @default(uuid())
+  company       Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId     String
+  customer      Customer    @relation(fields: [customerId], references: [id])
+  customerId    String
+  quoteNumber   String
+  status        String      @default("DRAFT")
+  issueDate     DateTime    @default(now())
+  validUntil    DateTime?
+  subtotalCents Int         @default(0)
+  vatTotalCents Int         @default(0)
+  totalCents    Int         @default(0)
+  notes         String?
+  pdfPath       String?
+  emailStatus   String      @default("NOT_SENT")
+  emailSentAt   DateTime?
+  lastEmailError String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  items         QuoteItem[]
+
+  @@unique([companyId, quoteNumber])
+  @@index([companyId, status])
+}
+
+model QuoteItem {
+  id             String  @id @default(uuid())
+  quote          Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  quoteId        String
+  product        Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productId      String?
+  position       Int
+  description    String
+  quantity       Float
+  unit           String  @default("Stk.")
+  unitPriceCents Int
+  vatRateBps     Int
+  lineTotalCents Int
+
+  @@index([quoteId])
+}
+
+// ---------- Lieferscheine ----------
+
+model DeliveryNote {
+  id           String   @id @default(uuid())
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId    String
+  customer     Customer @relation(fields: [customerId], references: [id])
+  customerId   String
+  noteNumber   String
+  deliveryDate DateTime @default(now())
+  notes        String?
+  pdfPath      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  items        DeliveryNoteItem[]
+
+  @@unique([companyId, noteNumber])
+  @@index([companyId])
+}
+
+model DeliveryNoteItem {
+  id             String       @id @default(uuid())
+  deliveryNote   DeliveryNote @relation(fields: [deliveryNoteId], references: [id], onDelete: Cascade)
+  deliveryNoteId String
+  position       Int
+  description    String
+  quantity       Float
+  unit           String       @default("Stk.")
+
+  @@index([deliveryNoteId])
+}
+
+// ---------- Auftragsbestätigungen ----------
+
+model OrderConfirmation {
+  id            String   @id @default(uuid())
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId     String
+  customer      Customer @relation(fields: [customerId], references: [id])
+  customerId    String
+  confirmationNumber String
+  issueDate     DateTime @default(now())
+  expectedDeliveryDate DateTime?
+  subtotalCents Int      @default(0)
+  vatTotalCents Int      @default(0)
+  totalCents    Int      @default(0)
+  notes         String?
+  pdfPath       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items         OrderConfirmationItem[]
+
+  @@unique([companyId, confirmationNumber])
+  @@index([companyId])
+}
+
+model OrderConfirmationItem {
+  id                  String            @id @default(uuid())
+  orderConfirmation   OrderConfirmation @relation(fields: [orderConfirmationId], references: [id], onDelete: Cascade)
+  orderConfirmationId String
+  position            Int
+  description         String
+  quantity            Float
+  unit                String            @default("Stk.")
+  unitPriceCents      Int
+  vatRateBps          Int
+  lineTotalCents      Int
+
+  @@index([orderConfirmationId])
+}
+
+// ---------- Einstellungen (Key-Value je Firma, für Plugins & Konfiguration) ----------
+
+model Setting {
+  id        String  @id @default(uuid())
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+  key       String
+  value     String // JSON-String
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, key])
+}
+
+// ---------- Webhooks (Erweiterbarkeit) ----------
+
+model Webhook {
+  id         String   @id @default(uuid())
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId  String
+  url        String
+  secret     String // HMAC-Signatur der Payload, siehe docs/API.md
+  eventTypes String // kommagetrennte Liste, z.B. "invoice.created,invoice.paid"
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  deliveries WebhookDelivery[]
+
+  @@index([companyId])
+}
+
+model WebhookDelivery {
+  id           String   @id @default(uuid())
+  webhook      Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  webhookId    String
+  eventType    String
+  payload      String
+  responseCode Int?
+  success      Boolean  @default(false)
+  attemptedAt  DateTime @default(now())
+
+  @@index([webhookId])
+}
+
+// ---------- Ausgaben & Einnahmen-Überschuss-Rechnung (EÜR) ----------
+
+model Expense {
+  id            String   @id @default(uuid())
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId     String
+  date          DateTime @default(now())
+  vendor        String // Händler/Lieferant
+  category      String   @default("Sonstiges") // z.B. "Material", "Software", "Fahrtkosten"
+  amountCents   Int // Bruttobetrag der Ausgabe
+  vatRateBps    Int      @default(1900)
+  description   String?
+  receiptPath   String? // hochgeladener Beleg (Foto/Scan), siehe modules/expenses
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([companyId, date])
+}
+
+// ---------- Bankabgleich per Kontoauszugs-Import (CSV) ----------
+// Kein Live-Zugriff auf das Bankkonto (das würde einen kostenpflichtigen PSD2-Aggregator
+// wie FinAPI erfordern) - stattdessen wird ein vom Nutzer exportierter CSV-Kontoauszug
+// importiert und automatisch mit offenen Rechnungen abgeglichen (Betrag + Verwendungszweck).
+
+model BankTransaction {
+  id           String   @id @default(uuid())
+  companyId    String
+  bookingDate  DateTime
+  amountCents  Int // positiv = Zahlungseingang
+  purpose      String? // Verwendungszweck
+  counterparty String?
+  matchedInvoiceId String?
+  importedAt   DateTime @default(now())
+
+  @@index([companyId, bookingDate])
+}
