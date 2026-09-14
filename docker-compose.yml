@@ -1,6 +1,12 @@
-# Produktions-Setup mit PostgreSQL - gedacht zum direkten Einsatz als Portainer-Stack
-# (Repository-URL dieses Repos eintragen, "Deploy the stack" klicken, fertig) oder lokal
-# per `docker compose up -d`.
+# Produktions-Setup mit PostgreSQL - gedacht zum direkten Einsatz als Portainer-Stack:
+# einfach den Inhalt dieser Datei im "Web editor" einfügen und deployen. backend/frontend
+# nutzen fertige, von GitHub Actions gebaute Images (ghcr.io) statt lokal aus Quellcode zu
+# bauen - Portainer braucht deshalb KEINEN Zugriff auf den eigentlichen Quellcode (kein
+# "unable to prepare context"-Fehler, da kein Build-Kontext nötig ist). Die Images werden
+# bei jedem Push auf "main" automatisch aktualisiert (siehe .github/workflows/docker-image.yml).
+# Wichtig: die GHCR-Pakete müssen einmalig auf "Public" gestellt werden (GitHub → Packages
+# → jeweiliges Paket → Package settings → Change visibility), sonst kann Portainer sie ohne
+# Registry-Login nicht pullen.
 #
 # Alles läuft ohne weitere Konfiguration: Datenbank-Migrationen werden beim Start des
 # Backend-Containers automatisch angewendet (siehe backend/docker-entrypoint.sh), fehlende
@@ -36,7 +42,7 @@ services:
     # (z.B. mit pgAdmin) bei Bedarf "ports: - \"5432:5432\"" ergänzen.
 
   backend:
-    build: ./backend
+    image: ghcr.io/mrdanilp15-crypto/rechnung-software-backend:latest
     restart: unless-stopped
     depends_on:
       db:
@@ -87,7 +93,7 @@ services:
     # (/api/docs) von außen bei Bedarf "ports: - \"4000:4000\"" ergänzen.
 
   frontend:
-    build: ./frontend
+    image: ghcr.io/mrdanilp15-crypto/rechnung-software-frontend:latest
     restart: unless-stopped
     depends_on:
       backend:
