@@ -10,8 +10,7 @@
                                                           │ Prisma ORM
                                                           ▼
                                             ┌──────────────────────────┐
-                                            │ SQLite (Standard) oder    │
-                                            │ PostgreSQL (Produktion)   │
+                                            │      PostgreSQL           │
                                             └──────────────────────────┘
 ```
 
@@ -24,7 +23,7 @@ Backend-Änderungen.
 | Bereich | Wahl | Begründung |
 |---|---|---|
 | Backend-Laufzeit | Node.js + Express + TypeScript | Großes Ökosystem, einfache Erweiterbarkeit, ein Sprachstack für Backend/Frontend |
-| ORM/Datenbank | Prisma, SQLite (Standard) / PostgreSQL (Produktion) | SQLite = portable Ein-Datei-Lösung für den lokalen/Kleinbetrieb; identisches Prisma-Schema funktioniert mit PostgreSQL für Mehrbenutzer-/Serverbetrieb - Umstieg erfordert nur `DATABASE_URL` + `provider` in `schema.prisma` |
+| ORM/Datenbank | Prisma + PostgreSQL | Mehrbenutzer-/Serverbetrieb erfordert echte Nebenläufigkeit (mehrere gleichzeitige Schreibzugriffe), die eine dateibasierte Datenbank wie SQLite nicht robust leisten kann; läuft per Docker Compose ohne separate Installation |
 | Geldbeträge | Ganzzahl (Cent) statt Fließkomma | Vermeidet Rundungsfehler; siehe `modules/tax/calculator.ts` |
 | PDF-Erzeugung | `pdfkit` | Reines Node.js, keine Chromium-/Ghostscript-Abhängigkeit, läuft identisch auf Windows/Linux/Mac |
 | Frontend | React + Vite + TypeScript + Tailwind CSS | Schnelle Entwicklung, gute Typsicherheit, Utility-CSS für konsistentes Dark/Light-Theming |

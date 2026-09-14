@@ -17,11 +17,26 @@ Rechten, Audit-Log, Plugin-System und REST-API mit OpenAPI-Dokumentation.
 | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Benutzerhandbuch |
 | [docs/STATUS.md](docs/STATUS.md) | Umsetzungsstatus je Anforderung, Roadmap |
 
-## Schnellstart (lokale Entwicklung)
+## Schnellstart: Deployment (Docker / Portainer)
 
-Voraussetzung: [Node.js](https://nodejs.org) ≥ 20 LTS ist installiert (auf diesem Rechner
-aktuell **nicht** vorhanden - siehe [docs/INSTALL.md](docs/INSTALL.md) für die Installation
-unter Windows).
+Kein manuelles Setup nötig - Datenbank-Migrationen, Sicherheits-Secrets und
+automatische Backups sind bereits eingerichtet:
+
+```bash
+docker compose up -d --build
+```
+
+Läuft danach unter `http://localhost:8080` (Port über `FRONTEND_PORT` änderbar). Als
+Portainer-Stack: Repository-URL dieses Repos eintragen, "Deploy the stack" klicken.
+Danach auf `/register` die erste Firma/den ersten Admin-Account anlegen.
+Details und empfohlene Anpassungen für einen öffentlichen Server:
+[docs/INSTALL.md](docs/INSTALL.md), Abschnitt 1.
+
+## Schnellstart (lokale Entwicklung ohne Docker)
+
+Voraussetzung: [Node.js](https://nodejs.org) ≥ 20 LTS sowie eine lokal erreichbare
+PostgreSQL-Instanz (am einfachsten via `docker compose up -d db`, siehe
+[docs/INSTALL.md](docs/INSTALL.md), Abschnitt 2).
 
 ```bash
 # Backend
@@ -29,7 +44,7 @@ cd backend
 cp .env.example .env      # unter Windows: copy .env.example .env
 npm install
 npm run prisma:generate
-npm run prisma:migrate -- --name init
+npm run prisma:migrate
 npm run seed               # optional: Demo-Firma/Kunden/Produkte
 npm run dev                 # läuft auf http://localhost:4000
 
@@ -66,7 +81,8 @@ docker-compose.yml  Produktionsnahes Setup mit PostgreSQL
 - Argon2id-Passwort-Hashing, JWT-Access-/Refresh-Tokens mit Rotation, optionale 2FA (TOTP)
 - Audit-Log für alle schreibenden Aktionen
 - CSV/JSON-Export und -Import
-- Automatisierte Backups (ZIP, optional S3-kompatibler Cloud-Upload)
+- Automatisierte Backups (ZIP mit Datenbank-Dump + Uploads, laufen im Hintergrund ohne
+  externen Cron; optional S3-kompatibler Cloud-Upload)
 - Plugin-/Hook-System und signierte Webhooks
 - REST-API mit OpenAPI/Swagger-Dokumentation
 - React-Frontend mit Dunkelmodus, Mehrsprachigkeit (DE/EN), Fuzzy-Suche
@@ -83,6 +99,8 @@ vollständig, teilweise oder als Architektur-Hook (Erweiterungspunkt für späte
 Lizenziert unter der [MIT-Lizenz](LICENSE) - freie Nutzung, Veränderung und Weitergabe,
 auch kommerziell, ohne Gewährleistung (siehe Lizenztext).
 
-Diese Software wird als Ausgangsbasis für den Eigenbetrieb bereitgestellt. Vor produktivem
-Einsatz: `.env`-Secrets generieren (siehe `.env.example`), TLS-Terminierung via Reverse-Proxy
-einrichten, Backups testen und die Hinweise in [docs/SECURITY.md](docs/SECURITY.md) prüfen.
+Diese Software wird als Ausgangsbasis für den Eigenbetrieb bereitgestellt. Vor einem
+öffentlich erreichbaren Produktivbetrieb: eigene Secrets/Passwörter statt der
+Standardwerte setzen (siehe `.env.example` und [docs/INSTALL.md](docs/INSTALL.md),
+Abschnitt 1d), TLS-Terminierung via Reverse-Proxy einrichten, ein Backup einmal testen
+und die Hinweise in [docs/SECURITY.md](docs/SECURITY.md) prüfen.

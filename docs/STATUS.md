@@ -26,7 +26,7 @@ implementiert.
 |---|---|
 | Modulare Architektur (Node/Express) | ✅ |
 | Frontend React/Vue/Svelte | ✅ React |
-| Datenbank PostgreSQL oder SQLite | ✅ Beide über dasselbe Prisma-Schema |
+| Datenbank | ✅ PostgreSQL (Docker Compose/Portainer richtet sie automatisch mit ein) |
 | API-First-Design | ✅ |
 | Versionierbare Datenmodelle | 🟡 Prisma-Migrationen versionieren das Schema; ein explizites API-Versionsschema (`/api/v2/...`) ist noch nicht angelegt |
 | Plugin-System | 🟡 Funktionierendes In-Prozess-Hook-System mit Referenz-Plugin; kein Sandboxing/Marktplatz |
@@ -61,11 +61,11 @@ implementiert.
 
 | Anforderung | Status |
 |---|---|
-| Automatische tägliche Backups | 🟡 Backup-Skript vorhanden; Terminplanung erfolgt über Windows Task Scheduler/Cron (siehe INSTALL.md) - kein eingebauter Scheduler-Prozess |
-| Export als ZIP-Archiv | ✅ |
+| Automatische tägliche Backups | ✅ Läuft eingebaut im Backend-Prozess (Intervall über `BACKUP_INTERVAL_HOURS`), kein externer Cron nötig |
+| Export als ZIP-Archiv | ✅ Inkl. vollständigem PostgreSQL-Dump (`pg_dump`) + Uploads |
 | Importfunktion für neue Benutzer | 🟡 CSV-Kundenimport vorhanden; kein vollständiger "Alle Daten importieren"-Assistent |
-| Cloud-Option (S3-kompatibel) | ✅ Optional über `.env` |
-| Lokale Offline-Version möglich | ✅ SQLite-Standard läuft komplett offline |
+| Cloud-Option (S3-kompatibel) | ✅ Optional über Umgebungsvariablen |
+| Lokale Offline-Version möglich | 🟡 Läuft komplett offline (kein Internetzugriff nötig), benötigt aber eine PostgreSQL-Instanz statt einer einzelnen Datei |
 
 ## 6. Benutzerverwaltung
 

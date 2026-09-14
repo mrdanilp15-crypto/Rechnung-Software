@@ -22,6 +22,11 @@ const envSchema = z.object({
 
   BACKUP_DIR: z.string().default("./backups"),
   BACKUP_RETENTION_DAYS: z.coerce.number().default(30),
+  // Bewusst kein z.coerce.boolean(): das nutzt JS Boolean(x), das jeden nicht-leeren
+  // String (auch "false") als true behandelt. Env-Werte aus Docker/Portainer kommen
+  // aber immer als String an, "false" muss also wirklich false ergeben.
+  BACKUP_AUTO_ENABLED: z.string().default("true").transform((v) => v.toLowerCase() !== "false" && v !== "0"),
+  BACKUP_INTERVAL_HOURS: z.coerce.number().default(24),
 
   S3_ENDPOINT: z.string().optional().default(""),
   S3_BUCKET: z.string().optional().default(""),

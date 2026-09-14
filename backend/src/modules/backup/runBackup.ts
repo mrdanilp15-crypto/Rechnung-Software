@@ -1,17 +1,18 @@
 import fs from "fs";
 import path from "path";
+import { execFile } from "child_process";
+import { promisify } from "util";
 import { zip } from "zip-a-folder";
 import { env } from "../../config/env";
 import { logger } from "../../utils/logger";
 
+const execFileAsync = promisify(execFile);
+
 /**
- * Erstellt ein ZIP-Archiv mit der SQLite-Datenbankdatei und allen Uploads (Logos, PDFs).
- * Für PostgreSQL-Betrieb bitte zusätzlich `pg_dump` in die Backup-Pipeline einbinden
- * (siehe docs/INSTALL.md, Abschnitt "Backups unter PostgreSQL").
- *
- * Aufruf manuell: `npm run backup`
- * Automatisiert: per Cron (Linux/Mac) oder Windows Task Scheduler täglich einplanen,
- * siehe docs/INSTALL.md.
+ * Erstellt ein ZIP-Archiv mit einem Datenbank-Dump (pg_dump bei PostgreSQL, Datei-Kopie
+ * bei SQLite) und allen Uploads (Logos, Stempel, Unterschrift). Läuft automatisiert alle
+ * BACKUP_INTERVAL_HOURS Stunden (siehe index.ts) und zusätzlich manuell per "Backup jetzt
+ * erstellen" in den Einstellungen / `npm run backup` / POST /api/backups/run.
  */
 export async function runBackup(): Promise<string> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -20,11 +21,15 @@ export async function runBackup(): Promise<string> {
   const stagingDir = path.join(env.BACKUP_DIR, `staging-${timestamp}`);
   fs.mkdirSync(stagingDir, { recursive: true });
 
-  const dbFile = resolveSqliteFilePath(env.DATABASE_URL);
-  if (dbFile && fs.existsSync(dbFile)) {
-    fs.copyFileSync(dbFile, path.join(stagingDir, path.basename(dbFile)));
+  if (env.DATABASE_URL.startsWith("postgres")) {
+    await dumpPostgres(stagingDir);
   } else {
-    logger.warn({ dbFile }, "Keine lokale SQLite-Datei gefunden - übersprungen (evtl. PostgreSQL im Einsatz)");
+    const dbFile = resolveSqliteFilePath(env.DATABASE_URL);
+    if (dbFile && fs.existsSync(dbFile)) {
+      fs.copyFileSync(dbFile, path.join(stagingDir, path.basename(dbFile)));
+    } else {
+      logger.warn({ dbFile }, "Keine lokale SQLite-Datei gefunden - übersprungen");
+    }
   }
 
   if (fs.existsSync(env.UPLOAD_DIR)) {
@@ -40,6 +45,21 @@ export async function runBackup(): Promise<string> {
 
   logger.info({ zipPath }, "Backup erstellt");
   return zipPath;
+}
+
+/**
+ * Erzeugt einen reinen SQL-Dump per pg_dump (im Backend-Image via `apk add
+ * postgresql-client` installiert, siehe Dockerfile). --no-owner/--no-privileges, damit
+ * ein Restore auch in eine Datenbank mit einem anderen Benutzernamen funktioniert.
+ */
+async function dumpPostgres(stagingDir: string) {
+  const outFile = path.join(stagingDir, "database.sql");
+  try {
+    await execFileAsync("pg_dump", [env.DATABASE_URL, "--format=plain", "--no-owner", "--no-privileges", "-f", outFile]);
+  } catch (err) {
+    logger.error({ err }, "pg_dump fehlgeschlagen - Backup enthält keinen Datenbank-Dump");
+    throw err;
+  }
 }
 
 /**

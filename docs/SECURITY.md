@@ -57,7 +57,7 @@ werden nie verändert oder gelöscht (kein UPDATE/DELETE-Endpunkt für `AuditLog
 
 - **AES-256-GCM** für hochsensible Einzelfelder (aktuell: TOTP-Secrets) via
   `utils/crypto.ts`. GCM liefert Authentizität (Auth-Tag) zusätzlich zur Vertraulichkeit.
-- Die Datenbank selbst (SQLite-Datei bzw. PostgreSQL) liegt **nicht** automatisch
+- Die Datenbank selbst (PostgreSQL-Datenverzeichnis) liegt **nicht** automatisch
   verschlüsselt auf der Festplatte. Für Volltextverschlüsselung: Windows BitLocker
   bzw. LUKS auf dem Server-Volume aktivieren, oder PostgreSQL mit
   `pgcrypto`/Transparent Data Encryption des Hosting-Anbieters betreiben.

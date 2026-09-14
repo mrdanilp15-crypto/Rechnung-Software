@@ -1,14 +1,16 @@
 // Datenmodell der Rechnungs- und Verwaltungssoftware
 // Geldbeträge werden konsequent als Ganzzahl in Cent gespeichert (keine Fließkomma-Rundungsfehler).
-// Standard-Datenbank: SQLite (portabel, dateibasiert). Für Mehrbenutzerbetrieb/Produktion: DATABASE_URL auf
-// PostgreSQL umstellen (provider "postgresql") - das Schema ist zu beiden Providern kompatibel.
+// Datenbank: PostgreSQL (Mehrbenutzerbetrieb/Produktion - siehe docker-compose.yml).
+// Für rein lokale Kurztests ohne Docker kann provider/DATABASE_URL wieder auf
+// SQLite gestellt werden, dafür dann aber eine neue Migration erzeugen
+// (siehe docs/INSTALL.md) - Migrations-SQL ist provider-spezifisch, nicht portabel.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite" // Produktion: "postgresql" + DATABASE_URL setzen
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
