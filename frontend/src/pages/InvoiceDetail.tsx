@@ -196,9 +196,12 @@ export default function InvoiceDetail() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 text-sm space-y-1">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 text-sm grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1">
         <p><strong>{t("invoices.customer")}:</strong> {invoice.customer.name}</p>
+        <p><strong>E-Mail:</strong> {invoice.customer.email || <span className="text-slate-400">keine hinterlegt</span>}</p>
         <p><strong>{t("invoices.status")}:</strong> {invoice.status}</p>
+        <p><strong>Rechnungsdatum:</strong> {new Date(invoice.issueDate).toLocaleDateString("de-DE")}</p>
+        <p><strong>{t("invoices.dueDate")}:</strong> {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString("de-DE") : "-"}</p>
         <p>
           <strong>E-Mail-Status:</strong>{" "}
           <span className={invoice.emailStatus === "FAILED" ? "text-red-600" : invoice.emailStatus === "SENT" ? "text-green-600" : "text-slate-500"}>
@@ -206,7 +209,7 @@ export default function InvoiceDetail() {
           </span>
           {invoice.emailStatus === "FAILED" && invoice.lastEmailError && <span className="text-slate-500"> ({invoice.lastEmailError})</span>}
         </p>
-        {invoice.reminderCount > 0 && <p><strong>Zahlungserinnerungen:</strong> {invoice.reminderCount}</p>}
+        <p><strong>Zahlungserinnerungen:</strong> {invoice.reminderCount > 0 ? invoice.reminderCount : "keine"}</p>
       </div>
 
       <table className="w-full text-sm bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">

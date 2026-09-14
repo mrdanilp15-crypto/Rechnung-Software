@@ -8,7 +8,9 @@ interface Invoice {
   invoiceNumber: string;
   status: string;
   totalCents: number;
+  issueDate: string;
   dueDate?: string;
+  emailStatus: "NOT_SENT" | "SENT" | "FAILED";
   customer: { name: string };
 }
 
@@ -19,6 +21,9 @@ const statusColors: Record<string, string> = {
   OVERDUE: "bg-red-100 text-red-700",
   CANCELLED: "bg-slate-100 text-slate-400 line-through",
 };
+
+const ROW_COLUMNS = "130px 1fr 100px 100px 110px 100px 70px";
+const formatDate = (iso?: string) => (iso ? new Intl.DateTimeFormat("de-DE").format(new Date(iso)) : "-");
 
 export default function Invoices() {
   const { t } = useTranslation();
@@ -46,18 +51,32 @@ export default function Invoices() {
         <p>{t("common.loading")}</p>
       ) : (
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+          <div className="grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+            <span>Nummer</span>
+            <span>Kunde</span>
+            <span className="text-right">Datum</span>
+            <span className="text-right">Fällig am</span>
+            <span className="text-right">Betrag</span>
+            <span className="text-right">Status</span>
+            <span className="text-right">E-Mail</span>
+          </div>
           {invoices.map((inv) => (
             <Link
               key={inv.id}
               to={`/invoices/${inv.id}`}
               className="grid items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700"
-              style={{ gridTemplateColumns: "140px 1fr 120px 110px" }}
+              style={{ gridTemplateColumns: ROW_COLUMNS }}
             >
               <span className="font-medium truncate">{inv.invoiceNumber}</span>
               <span className="truncate">{inv.customer.name}</span>
+              <span className="text-right text-slate-500">{formatDate(inv.issueDate)}</span>
+              <span className={`text-right ${inv.status === "OVERDUE" ? "text-red-600 font-medium" : "text-slate-500"}`}>{formatDate(inv.dueDate)}</span>
               <span className="text-right">{format(inv.totalCents)}</span>
               <span className={`px-2 py-0.5 rounded-full text-xs justify-self-end ${statusColors[inv.status] ?? ""}`}>
                 {t(`invoices.${inv.status.toLowerCase()}`)}
+              </span>
+              <span className="text-right text-xs text-slate-400" title="E-Mail-Status">
+                {inv.emailStatus === "SENT" ? "✓ gesendet" : inv.emailStatus === "FAILED" ? "✕ Fehler" : "-"}
               </span>
             </Link>
           ))}

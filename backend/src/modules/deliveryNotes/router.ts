@@ -30,7 +30,7 @@ const createSchema = z.object({
 deliveryNotesRouter.get("/", async (req, res) => {
   const notes = await prisma.deliveryNote.findMany({
     where: { companyId: req.auth!.companyId },
-    include: { customer: true },
+    include: { customer: true, _count: { select: { items: true } } },
     orderBy: { deliveryDate: "desc" },
   });
   res.json(notes);

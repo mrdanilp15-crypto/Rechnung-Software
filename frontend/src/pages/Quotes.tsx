@@ -9,8 +9,21 @@ interface Quote {
   quoteNumber: string;
   status: string;
   totalCents: number;
+  issueDate: string;
+  validUntil?: string;
   customer: { name: string };
 }
+
+const statusLabel: Record<string, string> = {
+  DRAFT: "Entwurf",
+  SENT: "Versendet",
+  ACCEPTED: "Angenommen",
+  DECLINED: "Abgelehnt",
+  EXPIRED: "Abgelaufen",
+};
+
+const ROW_COLUMNS = "120px 1fr 100px 100px 100px 90px 300px";
+const formatDate = (iso?: string) => (iso ? new Intl.DateTimeFormat("de-DE").format(new Date(iso)) : "-");
 
 export default function Quotes() {
   const { t } = useTranslation();
@@ -48,13 +61,24 @@ export default function Quotes() {
         </Link>
       </div>
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+          <span>Nummer</span>
+          <span>Kunde</span>
+          <span className="text-right">Datum</span>
+          <span className="text-right">Gültig bis</span>
+          <span className="text-right">Betrag</span>
+          <span className="text-right">Status</span>
+          <span></span>
+        </div>
         {quotes.map((q) => (
-          <div key={q.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "120px 1fr 100px 90px auto" }}>
+          <div key={q.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
             <span className="font-medium truncate">{q.quoteNumber}</span>
             <span className="truncate">{q.customer.name}</span>
+            <span className="text-right text-slate-500">{formatDate(q.issueDate)}</span>
+            <span className="text-right text-slate-500">{formatDate(q.validUntil)}</span>
             <span className="text-right">{format(q.totalCents)}</span>
-            <span className="text-slate-500 text-right">{q.status}</span>
-            <div className="flex gap-3 justify-end">
+            <span className="text-slate-500 text-right">{statusLabel[q.status] ?? q.status}</span>
+            <div className="flex gap-3 justify-end flex-wrap">
               <PdfLink url={`/quotes/${q.id}/pdf`} filename={`${q.quoteNumber}.pdf`} className="text-brand hover:underline">PDF</PdfLink>
               {q.status === "DRAFT" && (
                 <>

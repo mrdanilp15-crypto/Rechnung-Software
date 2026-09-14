@@ -8,8 +8,13 @@ interface OrderConfirmation {
   id: string;
   confirmationNumber: string;
   totalCents: number;
+  issueDate: string;
+  expectedDeliveryDate?: string;
   customer: { name: string };
 }
+
+const ROW_COLUMNS = "160px 1fr 100px 110px 120px 150px";
+const formatDate = (iso?: string) => (iso ? new Intl.DateTimeFormat("de-DE").format(new Date(iso)) : "-");
 
 export default function OrderConfirmations() {
   const { t } = useTranslation();
@@ -37,10 +42,20 @@ export default function OrderConfirmations() {
         </Link>
       </div>
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+          <span>Nummer</span>
+          <span>Kunde</span>
+          <span className="text-right">Datum</span>
+          <span className="text-right">Lieferung ca.</span>
+          <span className="text-right">Betrag</span>
+          <span></span>
+        </div>
         {list.map((c) => (
-          <div key={c.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "160px 1fr 120px auto" }}>
+          <div key={c.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
             <span className="font-medium truncate">{c.confirmationNumber}</span>
             <span className="truncate">{c.customer.name}</span>
+            <span className="text-right text-slate-500">{formatDate(c.issueDate)}</span>
+            <span className="text-right text-slate-500">{formatDate(c.expectedDeliveryDate)}</span>
             <span className="text-right">{format(c.totalCents)}</span>
             <div className="flex gap-3 justify-end">
               <PdfLink url={`/order-confirmations/${c.id}/pdf`} filename={`${c.confirmationNumber}.pdf`} className="text-brand hover:underline">PDF</PdfLink>
