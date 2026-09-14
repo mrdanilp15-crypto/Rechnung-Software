@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
-import { LineItem, PricedItemsEditor, TotalsSummary, emptyLineItem } from "../components/PricedItemsEditor";
+import { LineItem, PricedItemsEditor, TotalsSummary, createEmptyLineItem } from "../components/PricedItemsEditor";
+import { SaveButton } from "../components/SaveButton";
+import { useSaveStatus } from "../hooks/useSaveStatus";
 
 interface Customer {
   id: string;
@@ -23,8 +25,9 @@ export default function OrderConfirmationNew() {
   const [products, setProducts] = useState<Product[]>([]);
   const [customerId, setCustomerId] = useState("");
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState("");
-  const [items, setItems] = useState<LineItem[]>([{ ...emptyLineItem }]);
+  const [items, setItems] = useState<LineItem[]>([createEmptyLineItem()]);
   const [error, setError] = useState<string | null>(null);
+  const { status, run } = useSaveStatus();
 
   useEffect(() => {
     api.get("/customers").then((res) => setCustomers(res.data));
@@ -35,7 +38,7 @@ export default function OrderConfirmationNew() {
     setError(null);
     if (!customerId) return setError("Bitte einen Kunden auswählen.");
     try {
-      await api.post("/order-confirmations", { customerId, expectedDeliveryDate: expectedDeliveryDate || undefined, items });
+      await run(() => api.post("/order-confirmations", { customerId, expectedDeliveryDate: expectedDeliveryDate || undefined, items }));
       navigate("/order-confirmations");
     } catch (err: any) {
       setError(err.response?.data?.error || t("common.error"));
@@ -66,9 +69,7 @@ export default function OrderConfirmationNew() {
       <PricedItemsEditor items={items} onChange={setItems} products={products} />
       <TotalsSummary items={items} />
 
-      <button onClick={handleSubmit} className="bg-brand hover:bg-brand-dark text-white px-6 py-2 rounded">
-        {t("common.save")}
-      </button>
+      <SaveButton status={status} type="button" onClick={handleSubmit} className="bg-brand hover:bg-brand-dark text-white px-6 py-2 rounded" />
     </div>
   );
 }

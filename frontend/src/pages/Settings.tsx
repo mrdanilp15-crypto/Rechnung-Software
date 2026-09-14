@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 import { CompanyAssetUpload } from "../components/CompanyAssetUpload";
+import { SaveButton } from "../components/SaveButton";
+import { useSaveStatus } from "../hooks/useSaveStatus";
 import Users from "./Users";
 
 interface Company {
@@ -48,9 +50,13 @@ export default function Settings() {
   const [revenue, setRevenue] = useState<RevenueStatus | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [totpToken, setTotpToken] = useState("");
-  const [saved, setSaved] = useState(false);
   const [smtp, setSmtp] = useState({ smtpHost: "", smtpPort: 587, smtpSecure: false, smtpUser: "", smtpPassword: "", smtpFromEmail: "", smtpFromName: "" });
   const [smtpMessage, setSmtpMessage] = useState<string | null>(null);
+  const companySave = useSaveStatus();
+  const smtpSave = useSaveStatus();
+  const twoFaSave = useSaveStatus();
+  const backupSave = useSaveStatus();
+  const importSave = useSaveStatus();
 
   function load() {
     api.get("/companies/me").then((res) => setCompany(res.data));
@@ -61,10 +67,8 @@ export default function Settings() {
   async function handleSave(e: FormEvent) {
     e.preventDefault();
     if (!company) return;
-    await api.patch("/companies/me", company);
-    setSaved(true);
+    await companySave.run(() => api.patch("/companies/me", company));
     load();
-    setTimeout(() => setSaved(false), 2000);
   }
 
   async function setup2fa() {
@@ -73,23 +77,20 @@ export default function Settings() {
   }
 
   async function confirm2fa() {
-    await api.post("/auth/2fa/confirm", { token: totpToken });
+    await twoFaSave.run(() => api.post("/auth/2fa/confirm", { token: totpToken }));
     setQrDataUrl(null);
     setTotpToken("");
-    alert("2FA aktiviert.");
   }
 
   async function runBackupNow() {
-    await api.post("/backups/run");
-    alert("Backup wurde erstellt.");
+    await backupSave.run(() => api.post("/backups/run"));
   }
 
   async function saveSmtp(e: FormEvent) {
     e.preventDefault();
     setSmtpMessage(null);
     try {
-      await api.put("/companies/me/smtp", smtp);
-      setSmtpMessage("Gespeichert.");
+      await smtpSave.run(() => api.put("/companies/me/smtp", smtp));
       setSmtp((s) => ({ ...s, smtpPassword: "" }));
       load();
     } catch (err: any) {
@@ -111,6 +112,15 @@ export default function Settings() {
     if (!confirm("SMTP-Zugangsdaten wirklich entfernen? E-Mail-Versand ist danach nicht mehr möglich (PDF-Download bleibt).")) return;
     await api.delete("/companies/me/smtp");
     load();
+  }
+
+  async function handleImportCustomers(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const data = await importSave.run(() =>
+      api.post("/import/customers", formData, { headers: { "Content-Type": "multipart/form-data" } }).then((r) => r.data)
+    );
+    alert(`${data.imported} Kunden importiert. ${data.errors.length} Fehler.`);
   }
 
   if (!company) return <p>{t("common.loading")}</p>;
@@ -176,10 +186,9 @@ export default function Settings() {
               />
             </div>
           )}
-          <button type="submit" className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
+          <SaveButton status={companySave.status} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
             {t("common.save")}
-          </button>
-          {saved && <span className="text-green-600 text-sm ml-3">✓ Gespeichert</span>}
+          </SaveButton>
         </form>
       )}
 
@@ -213,20 +222,38 @@ export default function Settings() {
             )}
           </p>
           <form onSubmit={saveSmtp} className="grid grid-cols-2 gap-3">
-            <input required placeholder="SMTP-Server (z.B. smtp.gmail.com)" value={smtp.smtpHost} onChange={(e) => setSmtp((s) => ({ ...s, smtpHost: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <input required type="number" placeholder="Port (587 oder 465)" value={smtp.smtpPort} onChange={(e) => setSmtp((s) => ({ ...s, smtpPort: Number(e.target.value) }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <input required placeholder="Benutzername / E-Mail" value={smtp.smtpUser} onChange={(e) => setSmtp((s) => ({ ...s, smtpUser: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <input type="password" placeholder={company.smtpConfigured ? "Passwort (leer = unverändert)" : "Passwort / App-Passwort"} value={smtp.smtpPassword} onChange={(e) => setSmtp((s) => ({ ...s, smtpPassword: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <input placeholder="Absender-E-Mail (optional, sonst Benutzername)" value={smtp.smtpFromEmail} onChange={(e) => setSmtp((s) => ({ ...s, smtpFromEmail: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <input placeholder="Absendername (optional, sonst Firmenname)" value={smtp.smtpFromName} onChange={(e) => setSmtp((s) => ({ ...s, smtpFromName: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            <div>
+              <label className="block text-sm mb-1">SMTP-Server</label>
+              <input required placeholder="z.B. smtp.gmail.com" value={smtp.smtpHost} onChange={(e) => setSmtp((s) => ({ ...s, smtpHost: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Port</label>
+              <input required type="number" placeholder="587 oder 465" value={smtp.smtpPort} onChange={(e) => setSmtp((s) => ({ ...s, smtpPort: Number(e.target.value) }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Benutzername / E-Mail</label>
+              <input required value={smtp.smtpUser} onChange={(e) => setSmtp((s) => ({ ...s, smtpUser: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Passwort {company.smtpConfigured && "(leer lassen = unverändert)"}</label>
+              <input type="password" placeholder={company.smtpConfigured ? "" : "Passwort / App-Passwort"} value={smtp.smtpPassword} onChange={(e) => setSmtp((s) => ({ ...s, smtpPassword: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Absender-E-Mail (optional)</label>
+              <input placeholder="sonst Benutzername" value={smtp.smtpFromEmail} onChange={(e) => setSmtp((s) => ({ ...s, smtpFromEmail: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Absendername (optional)</label>
+              <input placeholder="sonst Firmenname" value={smtp.smtpFromName} onChange={(e) => setSmtp((s) => ({ ...s, smtpFromName: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </div>
             <label className="flex items-center gap-2 text-sm col-span-2">
               <input type="checkbox" checked={smtp.smtpSecure} onChange={(e) => setSmtp((s) => ({ ...s, smtpSecure: e.target.checked }))} />
               Direktes TLS verwenden (Port 465). Bei Port 587 unmarkiert lassen (STARTTLS).
             </label>
             <div className="col-span-2 flex gap-2">
-              <button type="submit" className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
+              <SaveButton status={smtpSave.status} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
                 Speichern
-              </button>
+              </SaveButton>
               {company.smtpConfigured && (
                 <>
                   <button type="button" onClick={testSmtp} className="bg-slate-200 dark:bg-slate-700 px-4 py-2 rounded text-sm">
@@ -253,10 +280,13 @@ export default function Settings() {
           ) : (
             <div className="space-y-3">
               <img src={qrDataUrl} alt="TOTP QR-Code" className="w-40 h-40" />
-              <input value={totpToken} onChange={(e) => setTotpToken(e.target.value)} placeholder="6-stelliger Code" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <button onClick={confirm2fa} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm block">
+              <div>
+                <label className="block text-sm mb-1">6-stelliger Code aus der Authenticator-App</label>
+                <input value={totpToken} onChange={(e) => setTotpToken(e.target.value)} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              </div>
+              <SaveButton status={twoFaSave.status} onClick={confirm2fa} type="button" savingLabel="Wird geprüft..." savedLabel="✓ Aktiviert" className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
                 Bestätigen
-              </button>
+              </SaveButton>
             </div>
           )}
         </div>
@@ -266,9 +296,9 @@ export default function Settings() {
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
             <h2 className="font-medium">Backups</h2>
-            <button onClick={runBackupNow} className="bg-slate-200 dark:bg-slate-700 px-4 py-2 rounded text-sm">
+            <SaveButton status={backupSave.status} onClick={runBackupNow} type="button" savingLabel="Backup wird erstellt..." savedLabel="✓ Backup erstellt" className="bg-slate-200 dark:bg-slate-700 px-4 py-2 rounded text-sm">
               Backup jetzt erstellen
-            </button>
+            </SaveButton>
           </div>
 
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
@@ -277,19 +307,16 @@ export default function Settings() {
             <input
               type="file"
               accept=".csv"
-              onChange={async (e) => {
+              disabled={importSave.status === "saving"}
+              onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-                const formData = new FormData();
-                formData.append("file", file);
-                const { data } = await api.post("/import/customers", formData, {
-                  headers: { "Content-Type": "multipart/form-data" },
-                });
-                alert(`${data.imported} Kunden importiert. ${data.errors.length} Fehler.`);
+                handleImportCustomers(file);
                 e.target.value = "";
               }}
-              className="text-sm"
+              className="text-sm disabled:opacity-60"
             />
+            {importSave.status === "saving" && <p className="text-sm text-slate-500">Wird importiert...</p>}
           </div>
         </div>
       )}

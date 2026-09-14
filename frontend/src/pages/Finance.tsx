@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
+import { SaveButton } from "../components/SaveButton";
+import { useSaveStatus } from "../hooks/useSaveStatus";
 
 interface Expense {
   id: string;
@@ -41,6 +43,7 @@ export default function Finance() {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [form, setForm] = useState(emptyExpense);
   const [bankMessage, setBankMessage] = useState<string | null>(null);
+  const expenseSave = useSaveStatus();
 
   function loadSummary() {
     api.get(`/expenses/euer/summary?year=${year}`).then((res) => setSummary(res.data));
@@ -60,13 +63,15 @@ export default function Finance() {
 
   async function handleAddExpense(e: FormEvent) {
     e.preventDefault();
-    await api.post("/expenses", {
-      date: form.date,
-      vendor: form.vendor,
-      category: form.category,
-      amountCents: Math.round(parseFloat(form.amountEur) * 100),
-      description: form.description || undefined,
-    });
+    await expenseSave.run(() =>
+      api.post("/expenses", {
+        date: form.date,
+        vendor: form.vendor,
+        category: form.category,
+        amountCents: Math.round(parseFloat(form.amountEur) * 100),
+        description: form.description || undefined,
+      })
+    );
     setForm(emptyExpense);
     setShowExpenseForm(false);
     loadExpenses();
@@ -166,17 +171,32 @@ export default function Finance() {
           </div>
           {showExpenseForm && (
             <form onSubmit={handleAddExpense} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 grid grid-cols-2 gap-4">
-              <input type="date" required value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <input required placeholder="Händler/Lieferant" value={form.vendor} onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
-                {["Material", "Software", "Fahrtkosten", "Miete", "Werbung", "Sonstiges"].map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-              <input type="number" step="0.01" required placeholder="Betrag (€, brutto)" value={form.amountEur} onChange={(e) => setForm((f) => ({ ...f, amountEur: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <input placeholder="Beschreibung (optional)" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="col-span-2 px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <div>
+                <label className="block text-sm mb-1">Datum</label>
+                <input type="date" required value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Händler/Lieferant</label>
+                <input required value={form.vendor} onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Kategorie</label>
+                <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                  {["Material", "Software", "Fahrtkosten", "Miete", "Werbung", "Sonstiges"].map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Betrag (€, brutto)</label>
+                <input type="number" step="0.01" required value={form.amountEur} onChange={(e) => setForm((f) => ({ ...f, amountEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm mb-1">Beschreibung (optional)</label>
+                <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              </div>
               <div className="col-span-2 flex gap-2">
-                <button type="submit" className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded">Speichern</button>
+                <SaveButton status={expenseSave.status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">Speichern</SaveButton>
                 <button type="button" onClick={() => setShowExpenseForm(false)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Abbrechen</button>
               </div>
             </form>

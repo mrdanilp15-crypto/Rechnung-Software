@@ -1,6 +1,9 @@
 import { useTranslation } from "react-i18next";
 
 export interface LineItem {
+  // Stabiler, nur clientseitig genutzter Schlüssel für React-Listen (siehe unten) -
+  // wird nie ans Backend gesendet (Zod-Schemas dort ignorieren unbekannte Felder).
+  _key: string;
   productId?: string;
   description: string;
   quantity: number;
@@ -9,7 +12,22 @@ export interface LineItem {
   vatRateBps: number;
 }
 
-export const emptyLineItem: LineItem = { description: "", quantity: 1, unit: "Stk.", unitPriceCents: 0, vatRateBps: 1900 };
+function newKey(): string {
+  return typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `k${Date.now()}-${Math.random()}`;
+}
+
+/** Erzeugt eine neue leere Position mit eigenem, stabilem Schlüssel. Muss als Funktion
+ * (nicht als Konstante) verwendet werden, damit jede Position einen eigenen Schlüssel
+ * bekommt - siehe Hinweis bei LineItem._key. */
+export function createEmptyLineItem(): LineItem {
+  return { _key: newKey(), description: "", quantity: 1, unit: "Stk.", unitPriceCents: 0, vatRateBps: 1900 };
+}
+
+/** Versieht vom Server geladene Positionen (z.B. beim Bearbeiten eines Entwurfs) mit
+ * einem stabilen React-Schlüssel. */
+export function withClientKeys<T extends Omit<LineItem, "_key">>(items: T[]): (T & { _key: string })[] {
+  return items.map((item) => ({ ...item, _key: newKey() }));
+}
 
 interface Product {
   id: string;
@@ -42,14 +60,18 @@ export function PricedItemsEditor({
 }) {
   const { t } = useTranslation();
 
-  function updateItem(idx: number, patch: Partial<LineItem>) {
-    onChange(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+  function updateItem(key: string, patch: Partial<LineItem>) {
+    onChange(items.map((it) => (it._key === key ? { ...it, ...patch } : it)));
   }
 
-  function applyProduct(idx: number, productId: string) {
+  function applyProduct(key: string, productId: string) {
+    if (!productId) {
+      updateItem(key, { productId: undefined });
+      return;
+    }
     const product = products.find((p) => p.id === productId);
     if (!product) return;
-    updateItem(idx, {
+    updateItem(key, {
       productId: product.id,
       description: product.name,
       unitPriceCents: product.unitPriceCents,
@@ -73,10 +95,10 @@ export function PricedItemsEditor({
           </tr>
         </thead>
         <tbody>
-          {items.map((item, idx) => (
-            <tr key={idx} className="border-t border-slate-100 dark:border-slate-700">
+          {items.map((item) => (
+            <tr key={item._key} className="border-t border-slate-100 dark:border-slate-700">
               <td className="py-2 pr-2">
-                <select onChange={(e) => applyProduct(idx, e.target.value)} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                <select value={item.productId || ""} onChange={(e) => applyProduct(item._key, e.target.value)} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
                   <option value="">--</option>
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
@@ -84,16 +106,16 @@ export function PricedItemsEditor({
                 </select>
               </td>
               <td className="py-2 pr-2">
-                <input value={item.description} onChange={(e) => updateItem(idx, { description: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <input value={item.description} onChange={(e) => updateItem(item._key, { description: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               </td>
               <td className="py-2 pr-2">
-                <input type="number" min={0} step="any" value={item.quantity} onChange={(e) => updateItem(idx, { quantity: parseFloat(e.target.value) || 0 })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <input type="number" min={0} step="any" value={item.quantity} onChange={(e) => updateItem(item._key, { quantity: parseFloat(e.target.value) || 0 })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               </td>
               <td className="py-2 pr-2">
-                <input type="number" min={0} step="0.01" value={item.unitPriceCents / 100} onChange={(e) => updateItem(idx, { unitPriceCents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <input type="number" min={0} step="0.01" value={item.unitPriceCents / 100} onChange={(e) => updateItem(item._key, { unitPriceCents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               </td>
               <td className="py-2 pr-2">
-                <select value={item.vatRateBps} onChange={(e) => updateItem(idx, { vatRateBps: Number(e.target.value) })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                <select value={item.vatRateBps} onChange={(e) => updateItem(item._key, { vatRateBps: Number(e.target.value) })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
                   <option value={1900}>19%</option>
                   <option value={700}>7%</option>
                   <option value={0}>0%</option>
@@ -101,13 +123,13 @@ export function PricedItemsEditor({
               </td>
               <td className="py-2 text-right">{formatEuro(item.quantity * item.unitPriceCents)}</td>
               <td>
-                <button type="button" onClick={() => onChange(items.filter((_, i) => i !== idx))} className="text-red-500 px-2">✕</button>
+                <button type="button" onClick={() => onChange(items.filter((it) => it._key !== item._key))} className="text-red-500 px-2">✕</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <button type="button" onClick={() => onChange([...items, { ...emptyLineItem }])} className="mt-3 text-sm text-brand hover:underline">
+      <button type="button" onClick={() => onChange([...items, createEmptyLineItem()])} className="mt-3 text-sm text-brand hover:underline">
         + {t("invoices.addItem")}
       </button>
     </div>

@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
-import { LineItem, PricedItemsEditor, TotalsSummary, emptyLineItem } from "../components/PricedItemsEditor";
+import { LineItem, PricedItemsEditor, TotalsSummary, createEmptyLineItem, withClientKeys } from "../components/PricedItemsEditor";
+import { SaveButton } from "../components/SaveButton";
+import { useSaveStatus } from "../hooks/useSaveStatus";
 
 interface Customer {
   id: string;
@@ -25,9 +27,10 @@ export default function QuoteForm() {
   const [products, setProducts] = useState<Product[]>([]);
   const [customerId, setCustomerId] = useState("");
   const [validUntil, setValidUntil] = useState("");
-  const [items, setItems] = useState<LineItem[]>([{ ...emptyLineItem }]);
+  const [items, setItems] = useState<LineItem[]>([createEmptyLineItem()]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(isEditing);
+  const { status, run } = useSaveStatus();
 
   useEffect(() => {
     api.get("/customers").then((res) => setCustomers(res.data));
@@ -44,14 +47,14 @@ export default function QuoteForm() {
       }
       setCustomerId(q.customerId);
       setValidUntil(q.validUntil ? q.validUntil.slice(0, 10) : "");
-      setItems(q.items.map((it: any) => ({
+      setItems(withClientKeys(q.items.map((it: any) => ({
         productId: it.productId ?? undefined,
         description: it.description,
         quantity: it.quantity,
         unit: it.unit,
         unitPriceCents: it.unitPriceCents,
         vatRateBps: it.vatRateBps,
-      })));
+      }))));
       setLoading(false);
     });
   }, [id]);
@@ -60,11 +63,13 @@ export default function QuoteForm() {
     setError(null);
     if (!customerId) return setError("Bitte einen Kunden auswählen.");
     try {
-      if (isEditing) {
-        await api.patch(`/quotes/${id}`, { customerId, validUntil: validUntil || undefined, items });
-      } else {
-        await api.post("/quotes", { customerId, validUntil: validUntil || undefined, items });
-      }
+      await run(async () => {
+        if (isEditing) {
+          await api.patch(`/quotes/${id}`, { customerId, validUntil: validUntil || undefined, items });
+        } else {
+          await api.post("/quotes", { customerId, validUntil: validUntil || undefined, items });
+        }
+      });
       navigate("/quotes");
     } catch (err: any) {
       setError(err.response?.data?.error || t("common.error"));
@@ -97,9 +102,7 @@ export default function QuoteForm() {
       <PricedItemsEditor items={items} onChange={setItems} products={products} />
       <TotalsSummary items={items} />
 
-      <button onClick={handleSubmit} className="bg-brand hover:bg-brand-dark text-white px-6 py-2 rounded">
-        {t("common.save")}
-      </button>
+      <SaveButton status={status} type="button" onClick={handleSubmit} className="bg-brand hover:bg-brand-dark text-white px-6 py-2 rounded" />
     </div>
   );
 }

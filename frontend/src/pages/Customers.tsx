@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Fuse from "fuse.js";
 import { api } from "../api/client";
+import { SaveButton } from "../components/SaveButton";
+import { useSaveStatus } from "../hooks/useSaveStatus";
 
 const ROW_COLUMNS = "1fr 100px 1fr 130px 120px 90px 130px";
 
@@ -45,6 +47,7 @@ export default function Customers() {
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { status, run } = useSaveStatus();
 
   function load() {
     api
@@ -86,11 +89,13 @@ export default function Customers() {
     e.preventDefault();
     setError(null);
     try {
-      if (editingId) {
-        await api.patch(`/customers/${editingId}`, form);
-      } else {
-        await api.post("/customers", form);
-      }
+      await run(async () => {
+        if (editingId) {
+          await api.patch(`/customers/${editingId}`, form);
+        } else {
+          await api.post("/customers", form);
+        }
+      });
       setForm(emptyForm);
       setEditingId(null);
       setShowForm(false);
@@ -110,13 +115,15 @@ export default function Customers() {
     }
   }
 
-  const field = (key: keyof typeof emptyForm, placeholder: string, extraClass = "") => (
-    <input
-      placeholder={placeholder}
-      value={form[key]}
-      onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-      className={`px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 ${extraClass}`}
-    />
+  const field = (key: keyof typeof emptyForm, label: string, extraClass = "") => (
+    <div className={extraClass}>
+      <label className="block text-sm mb-1">{label}</label>
+      <input
+        value={form[key]}
+        onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+        className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+      />
+    </div>
   );
 
   return (
@@ -133,41 +140,52 @@ export default function Customers() {
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <input required placeholder={t("customers.name") + " *"} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            {field("contactName", "Ansprechpartner")}
-            <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as any }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
-              <option value="PRIVAT">{t("customers.private")}</option>
-              <option value="GEWERBLICH">{t("customers.business")}</option>
-            </select>
+            <div>
+              <label className="block text-sm mb-1">{t("customers.name")} *</label>
+              <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </div>
+            {field("contactName", "Ansprechpartner (optional)")}
+            <div>
+              <label className="block text-sm mb-1">{t("customers.type")}</label>
+              <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as any }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                <option value="PRIVAT">{t("customers.private")}</option>
+                <option value="GEWERBLICH">{t("customers.business")}</option>
+              </select>
+            </div>
             {form.type === "GEWERBLICH" && field("vatId", "USt-IdNr.")}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <input type="email" placeholder={t("customers.email")} value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            <div>
+              <label className="block text-sm mb-1">{t("customers.email")}</label>
+              <input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </div>
             {field("phone", "Telefon")}
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             {field("street", "Straße & Hausnummer", "col-span-2")}
-            {field("postalCode", "PLZ")}
+            {field("postalCode", "Postleitzahl")}
           </div>
           <div className="grid grid-cols-2 gap-4">
             {field("city", t("customers.city"))}
-            {field("country", "Land (ISO, z.B. DE)")}
+            {field("country", "Land (ISO-Code, z.B. DE, AT, CH)")}
           </div>
 
-          <textarea
-            placeholder="Notizen"
-            value={form.notes}
-            onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-            className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
-            rows={3}
-          />
+          <div>
+            <label className="block text-sm mb-1">Notizen (nur intern sichtbar)</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+              rows={3}
+            />
+          </div>
 
           <div className="flex gap-2">
-            <button type="submit" className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded">
+            <SaveButton status={status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">
               {t("customers.save")}
-            </button>
+            </SaveButton>
             <button
               type="button"
               onClick={() => {

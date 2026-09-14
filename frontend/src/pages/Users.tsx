@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useAuthStore } from "../store/authStore";
+import { SaveButton } from "../components/SaveButton";
+import { useSaveStatus } from "../hooks/useSaveStatus";
 
 interface CompanyUser {
   id: string;
@@ -63,6 +65,7 @@ export default function Users() {
   const [showRoleInfo, setShowRoleInfo] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  const { status, run } = useSaveStatus();
 
   function load() {
     api.get("/users").then((res) => setUsers(res.data));
@@ -73,7 +76,7 @@ export default function Users() {
     e.preventDefault();
     setError(null);
     try {
-      await api.post("/users", form);
+      await run(() => api.post("/users", form));
       setForm(emptyForm);
       setShowForm(false);
       load();
@@ -136,16 +139,28 @@ export default function Users() {
 
       {showForm && (
         <form onSubmit={handleCreate} className="grid grid-cols-2 gap-3 border-t border-slate-100 dark:border-slate-700 pt-4">
-          <input required placeholder="Name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-          <input required type="email" placeholder="E-Mail (Login)" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-          <input required type="password" minLength={10} placeholder="Passwort (mind. 10 Zeichen)" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-          <select value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as any }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
-            <option value="MITARBEITER">Mitarbeiter</option>
-            <option value="BUCHHALTUNG">Buchhaltung</option>
-            <option value="ADMIN">Admin</option>
-          </select>
+          <div>
+            <label className="block text-sm mb-1">Name</label>
+            <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">E-Mail (Login)</label>
+            <input required type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Passwort (mind. 10 Zeichen)</label>
+            <input required type="password" minLength={10} value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Rolle</label>
+            <select value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as any }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+              <option value="MITARBEITER">Mitarbeiter</option>
+              <option value="BUCHHALTUNG">Buchhaltung</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+          </div>
           <div className="col-span-2 flex gap-2">
-            <button type="submit" className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded">Anlegen</button>
+            <SaveButton status={status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">Anlegen</SaveButton>
             <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Abbrechen</button>
           </div>
         </form>

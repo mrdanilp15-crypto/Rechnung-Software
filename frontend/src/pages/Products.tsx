@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Fuse from "fuse.js";
 import { api } from "../api/client";
+import { SaveButton } from "../components/SaveButton";
+import { useSaveStatus } from "../hooks/useSaveStatus";
 
 interface Product {
   id: string;
@@ -23,6 +25,7 @@ export default function Products() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  const { status, run } = useSaveStatus();
 
   function load() {
     api.get("/products").then((res) => setProducts(res.data));
@@ -63,11 +66,13 @@ export default function Products() {
       vatRateBps: form.vatRateBps,
     };
     try {
-      if (editingId) {
-        await api.patch(`/products/${editingId}`, payload);
-      } else {
-        await api.post("/products", payload);
-      }
+      await run(async () => {
+        if (editingId) {
+          await api.patch(`/products/${editingId}`, payload);
+        } else {
+          await api.post("/products", payload);
+        }
+      });
       setForm(emptyForm);
       setEditingId(null);
       setShowForm(false);
@@ -103,29 +108,47 @@ export default function Products() {
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 space-y-4">
           <div className="grid grid-cols-3 gap-4">
-            <input required placeholder={t("products.name") + " *"} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="col-span-2 px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <input placeholder="Artikelnummer (SKU)" value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            <div className="col-span-2">
+              <label className="block text-sm mb-1">{t("products.name")} *</label>
+              <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Artikelnummer (SKU)</label>
+              <input value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </div>
           </div>
-          <textarea
-            placeholder="Beschreibung (z.B. Details für Angebote/Rechnungen)"
-            value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
-            rows={2}
-          />
+          <div>
+            <label className="block text-sm mb-1">Beschreibung</label>
+            <textarea
+              placeholder="z.B. Details für Angebote/Rechnungen"
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+              rows={2}
+            />
+          </div>
           <div className="grid grid-cols-3 gap-4">
-            <input placeholder={t("products.unit")} value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <input type="number" step="0.01" placeholder={t("products.unitPrice")} value={form.unitPriceEur} onChange={(e) => setForm((f) => ({ ...f, unitPriceEur: e.target.value }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <select value={form.vatRateBps} onChange={(e) => setForm((f) => ({ ...f, vatRateBps: Number(e.target.value) }))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
-              <option value={1900}>19%</option>
-              <option value={700}>7%</option>
-              <option value={0}>0%</option>
-            </select>
+            <div>
+              <label className="block text-sm mb-1">{t("products.unit")}</label>
+              <input value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))} placeholder="z.B. Stk., g, Std., m" className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">{t("products.unitPrice")} (€ pro Einheit)</label>
+              <input type="number" step="0.01" value={form.unitPriceEur} onChange={(e) => setForm((f) => ({ ...f, unitPriceEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">{t("products.vatRate")}</label>
+              <select value={form.vatRateBps} onChange={(e) => setForm((f) => ({ ...f, vatRateBps: Number(e.target.value) }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                <option value={1900}>19% (Standard)</option>
+                <option value={700}>7% (ermäßigt)</option>
+                <option value={0}>0% (Kleinunternehmer/steuerfrei)</option>
+              </select>
+            </div>
           </div>
           <div className="flex gap-2">
-            <button type="submit" className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded">
+            <SaveButton status={status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">
               {t("common.save")}
-            </button>
+            </SaveButton>
             <button
               type="button"
               onClick={() => {

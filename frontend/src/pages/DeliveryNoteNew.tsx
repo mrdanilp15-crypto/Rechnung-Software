@@ -2,17 +2,21 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
+import { SaveButton } from "../components/SaveButton";
+import { useSaveStatus } from "../hooks/useSaveStatus";
 
 interface Customer {
   id: string;
   name: string;
 }
 interface SimpleItem {
+  _key: string;
   description: string;
   quantity: number;
   unit: string;
 }
-const emptyItem: SimpleItem = { description: "", quantity: 1, unit: "Stk." };
+const newKey = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `k${Date.now()}-${Math.random()}`);
+const createEmptyItem = (): SimpleItem => ({ _key: newKey(), description: "", quantity: 1, unit: "Stk." });
 
 export default function DeliveryNoteNew() {
   const { t } = useTranslation();
@@ -21,22 +25,23 @@ export default function DeliveryNoteNew() {
   const [customerId, setCustomerId] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<SimpleItem[]>([{ ...emptyItem }]);
+  const [items, setItems] = useState<SimpleItem[]>([createEmptyItem()]);
   const [error, setError] = useState<string | null>(null);
+  const { status, run } = useSaveStatus();
 
   useEffect(() => {
     api.get("/customers").then((res) => setCustomers(res.data));
   }, []);
 
-  function updateItem(idx: number, patch: Partial<SimpleItem>) {
-    setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+  function updateItem(key: string, patch: Partial<SimpleItem>) {
+    setItems((prev) => prev.map((it) => (it._key === key ? { ...it, ...patch } : it)));
   }
 
   async function handleSubmit() {
     setError(null);
     if (!customerId) return setError("Bitte einen Kunden auswählen.");
     try {
-      await api.post("/delivery-notes", { customerId, deliveryDate: deliveryDate || undefined, notes: notes || undefined, items });
+      await run(() => api.post("/delivery-notes", { customerId, deliveryDate: deliveryDate || undefined, notes: notes || undefined, items }));
       navigate("/delivery-notes");
     } catch (err: any) {
       setError(err.response?.data?.error || t("common.error"));
@@ -75,34 +80,32 @@ export default function DeliveryNoteNew() {
             </tr>
           </thead>
           <tbody>
-            {items.map((item, idx) => (
-              <tr key={idx} className="border-t border-slate-100 dark:border-slate-700">
+            {items.map((item) => (
+              <tr key={item._key} className="border-t border-slate-100 dark:border-slate-700">
                 <td className="py-2 pr-2">
-                  <input value={item.description} onChange={(e) => updateItem(idx, { description: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                  <input value={item.description} onChange={(e) => updateItem(item._key, { description: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
                 </td>
                 <td className="py-2 pr-2">
-                  <input type="number" min={0} step="any" value={item.quantity} onChange={(e) => updateItem(idx, { quantity: parseFloat(e.target.value) || 0 })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                  <input type="number" min={0} step="any" value={item.quantity} onChange={(e) => updateItem(item._key, { quantity: parseFloat(e.target.value) || 0 })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
                 </td>
                 <td className="py-2 pr-2">
-                  <input value={item.unit} onChange={(e) => updateItem(idx, { unit: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                  <input value={item.unit} onChange={(e) => updateItem(item._key, { unit: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
                 </td>
                 <td>
-                  <button type="button" onClick={() => setItems((prev) => prev.filter((_, i) => i !== idx))} className="text-red-500 px-2">✕</button>
+                  <button type="button" onClick={() => setItems((prev) => prev.filter((it) => it._key !== item._key))} className="text-red-500 px-2">✕</button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        <button type="button" onClick={() => setItems((prev) => [...prev, { ...emptyItem }])} className="mt-3 text-sm text-brand hover:underline">
+        <button type="button" onClick={() => setItems((prev) => [...prev, createEmptyItem()])} className="mt-3 text-sm text-brand hover:underline">
           + {t("invoices.addItem")}
         </button>
       </div>
 
       <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notizen" className="w-full mb-6 px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
 
-      <button onClick={handleSubmit} className="bg-brand hover:bg-brand-dark text-white px-6 py-2 rounded">
-        {t("common.save")}
-      </button>
+      <SaveButton status={status} type="button" onClick={handleSubmit} className="bg-brand hover:bg-brand-dark text-white px-6 py-2 rounded" />
     </div>
   );
 }
