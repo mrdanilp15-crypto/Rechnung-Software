@@ -168,16 +168,39 @@ invoicesRouter.delete("/:id", async (req, res) => {
   res.status(204).send();
 });
 
+// Löscht ausnahmsweise auch eine bereits versendete/bezahlte Rechnung endgültig.
+// Widerspricht der GoBD-Aufbewahrungspflicht und ist deshalb ADMIN-only - gedacht
+// für das Entfernen von Testdaten, nicht für den produktiven Betrieb.
+invoicesRouter.delete("/:id/force", requireRole("ADMIN"), async (req, res) => {
+  const existing = await prisma.invoice.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
+  if (!existing) throw new HttpError(404, "Rechnung nicht gefunden");
+  await prisma.invoice.delete({ where: { id: existing.id } });
+  await writeAuditLog({
+    req,
+    companyId: req.auth!.companyId,
+    userId: req.auth!.sub,
+    action: "invoice.force_delete",
+    entityType: "Invoice",
+    entityId: existing.id,
+    metadata: { previousStatus: existing.status },
+  });
+  res.status(204).send();
+});
+
 // Löscht mehrere Entwürfe auf einmal (Mehrfachauswahl in der Liste). Bereits
 // versendete Rechnungen werden übersprungen und in skippedIds zurückgemeldet,
-// statt die ganze Anfrage aus GoBD-Gründen abzulehnen.
+// statt die ganze Anfrage aus GoBD-Gründen abzulehnen - außer force=true wird von
+// einem Admin gesetzt (siehe DELETE /:id/force).
 invoicesRouter.post("/bulk-delete", async (req, res) => {
-  const body = z.object({ ids: z.array(z.string()).min(1) }).parse(req.body);
+  const body = z.object({ ids: z.array(z.string()).min(1), force: z.boolean().optional() }).parse(req.body);
+  if (body.force && req.auth!.role !== "ADMIN") {
+    throw new HttpError(403, "Nur Administratoren können bereits versendete Rechnungen endgültig löschen.");
+  }
   const candidates = await prisma.invoice.findMany({
     where: { id: { in: body.ids }, companyId: req.auth!.companyId },
     select: { id: true, status: true },
   });
-  const deletableIds = candidates.filter((inv) => inv.status === "DRAFT").map((inv) => inv.id);
+  const deletableIds = (body.force ? candidates : candidates.filter((inv) => inv.status === "DRAFT")).map((inv) => inv.id);
   const skippedIds = body.ids.filter((id) => !deletableIds.includes(id));
 
   if (deletableIds.length > 0) {
@@ -186,7 +209,7 @@ invoicesRouter.post("/bulk-delete", async (req, res) => {
       req,
       companyId: req.auth!.companyId,
       userId: req.auth!.sub,
-      action: "invoice.bulk_delete_draft",
+      action: body.force ? "invoice.bulk_force_delete" : "invoice.bulk_delete_draft",
       entityType: "Invoice",
       entityId: deletableIds.join(","),
       metadata: { deletedIds: deletableIds },
