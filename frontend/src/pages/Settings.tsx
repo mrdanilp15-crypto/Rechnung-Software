@@ -52,6 +52,7 @@ export default function Settings() {
   const [totpToken, setTotpToken] = useState("");
   const [smtp, setSmtp] = useState({ smtpHost: "", smtpPort: 587, smtpSecure: false, smtpUser: "", smtpPassword: "", smtpFromEmail: "", smtpFromName: "" });
   const [smtpMessage, setSmtpMessage] = useState<string | null>(null);
+  const [companyError, setCompanyError] = useState<string | null>(null);
   const companySave = useSaveStatus();
   const smtpSave = useSaveStatus();
   const twoFaSave = useSaveStatus();
@@ -67,8 +68,13 @@ export default function Settings() {
   async function handleSave(e: FormEvent) {
     e.preventDefault();
     if (!company) return;
-    await companySave.run(() => api.patch("/companies/me", company));
-    load();
+    setCompanyError(null);
+    try {
+      await companySave.run(() => api.patch("/companies/me", company));
+      load();
+    } catch (err: any) {
+      setCompanyError(err.response?.data?.error || t("common.error"));
+    }
   }
 
   async function setup2fa() {
@@ -186,6 +192,7 @@ export default function Settings() {
               />
             </div>
           )}
+          {companyError && <p className="text-red-600 text-sm">{companyError}</p>}
           <SaveButton status={companySave.status} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
             {t("common.save")}
           </SaveButton>

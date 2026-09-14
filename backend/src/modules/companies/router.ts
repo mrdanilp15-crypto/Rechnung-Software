@@ -22,22 +22,27 @@ companiesRouter.get("/me", async (req, res) => {
   res.json({ ...rest, smtpConfigured: isSmtpConfigured(company) });
 });
 
+// Nullable Felder verwenden .nullish() statt .optional(): die GET /me-Antwort liefert
+// für noch nicht ausgefüllte Felder null (Prisma-Konvention für String?-Spalten), und
+// das Frontend sendet beim Speichern das komplette geladene Objekt zurück. .optional()
+// akzeptiert nur undefined, nicht null - das ließ jeden Speichern-Versuch mit 400
+// fehlschlagen, sobald auch nur ein optionales Feld (noch) leer war.
 const updateCompanySchema = z.object({
   name: z.string().min(2).optional(),
-  legalForm: z.string().optional(),
-  street: z.string().optional(),
-  postalCode: z.string().optional(),
-  city: z.string().optional(),
+  legalForm: z.string().nullish(),
+  street: z.string().nullish(),
+  postalCode: z.string().nullish(),
+  city: z.string().nullish(),
   country: z.string().optional(),
-  taxId: z.string().optional(),
-  vatId: z.string().optional(),
+  taxId: z.string().nullish(),
+  vatId: z.string().nullish(),
   isSmallBusiness: z.boolean().optional(),
   defaultVatRateBps: z.number().int().min(0).max(10000).optional(),
-  iban: z.string().optional(),
-  bic: z.string().optional(),
-  bankName: z.string().optional(),
+  iban: z.string().nullish(),
+  bic: z.string().nullish(),
+  bankName: z.string().nullish(),
   primaryColor: z.string().optional(),
-  invoiceFooterText: z.string().optional(),
+  invoiceFooterText: z.string().nullish(),
   defaultLocale: z.enum(["de", "en"]).optional(),
   smallBusinessThresholdCents: z.number().int().min(0).optional(),
 });
