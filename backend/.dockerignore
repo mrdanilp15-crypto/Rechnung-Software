@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.local
+*.log
+prisma/data
+data
+uploads
+backups
+coverage
+.git

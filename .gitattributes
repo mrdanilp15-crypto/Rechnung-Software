@@ -1,2 +1,4 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Shell-Skripte müssen als LF committet werden, unabhängig vom OS des Entwicklers -
+# ein CRLF-Zeilenende in der Shebang-Zeile ("#!/bin/sh\r") lässt den Container beim
+# Start mit "no such file or directory" fehlschlagen.
+*.sh text eol=lf

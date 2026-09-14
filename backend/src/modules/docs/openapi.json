@@ -1,0 +1,203 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Rechnungs- und Verwaltungssoftware API",
+    "version": "0.1.0",
+    "description": "REST-API für Rechnungen, Angebote, Kunden, Produkte und Verwaltung. Alle Endpunkte außer /api/auth/register und /api/auth/login erfordern einen Bearer-Access-Token."
+  },
+  "servers": [{ "url": "/api" }],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    },
+    "schemas": {
+      "Customer": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "customerNumber": { "type": "string" },
+          "type": { "type": "string", "enum": ["PRIVAT", "GEWERBLICH"] },
+          "name": { "type": "string" },
+          "email": { "type": "string" },
+          "city": { "type": "string" },
+          "country": { "type": "string" }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "unitPriceCents": { "type": "integer" },
+          "vatRateBps": { "type": "integer" }
+        }
+      },
+      "InvoiceLineItemInput": {
+        "type": "object",
+        "required": ["description", "quantity", "unitPriceCents", "vatRateBps"],
+        "properties": {
+          "productId": { "type": "string" },
+          "description": { "type": "string" },
+          "quantity": { "type": "number" },
+          "unit": { "type": "string" },
+          "unitPriceCents": { "type": "integer" },
+          "vatRateBps": { "type": "integer", "description": "Basispunkte, 1900 = 19%" }
+        }
+      },
+      "Invoice": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "invoiceNumber": { "type": "string" },
+          "status": { "type": "string", "enum": ["DRAFT", "SENT", "PAID", "OVERDUE", "CANCELLED"] },
+          "subtotalCents": { "type": "integer" },
+          "vatTotalCents": { "type": "integer" },
+          "totalCents": { "type": "integer" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": { "error": { "type": "string" }, "details": {} }
+      }
+    }
+  },
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Neue Firma und Admin-Benutzer registrieren",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["companyName", "name", "email", "password"],
+                "properties": {
+                  "companyName": { "type": "string" },
+                  "name": { "type": "string" },
+                  "email": { "type": "string" },
+                  "password": { "type": "string" },
+                  "locale": { "type": "string", "enum": ["de", "en"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Erstellt" }, "409": { "description": "E-Mail bereits vergeben" } }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Anmelden (optional mit 2FA-Code)",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string" },
+                  "password": { "type": "string" },
+                  "totpToken": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Erfolgreich angemeldet" }, "401": { "description": "Ungültige Zugangsdaten" } }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "summary": "Access-Token mittels Refresh-Token erneuern (rotierend)",
+        "security": [],
+        "responses": { "200": { "description": "Neues Token-Paar" } }
+      }
+    },
+    "/customers": {
+      "get": {
+        "summary": "Kunden auflisten (mit optionaler Volltextsuche ?q=)",
+        "responses": { "200": { "description": "Liste", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Customer" } } } } } }
+      },
+      "post": {
+        "summary": "Neuen Kunden anlegen",
+        "responses": { "201": { "description": "Erstellt" } }
+      }
+    },
+    "/customers/{id}": {
+      "get": { "summary": "Kundendetails inkl. Beleghistorie", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } },
+      "patch": { "summary": "Kunde aktualisieren", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } },
+      "delete": { "summary": "Kunde archivieren", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "204": { "description": "Kein Inhalt" } } }
+    },
+    "/customers/{id}/gdpr-export": {
+      "get": { "summary": "DSGVO-Auskunft: alle personenbezogenen Daten als JSON", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/customers/{id}/gdpr-erase": {
+      "post": { "summary": "DSGVO-Löschung: personenbezogene Daten anonymisieren", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } }
+    },
+    "/products": {
+      "get": { "summary": "Produkte/Leistungen auflisten", "responses": { "200": { "description": "Liste" } } },
+      "post": { "summary": "Produkt/Leistung anlegen", "responses": { "201": { "description": "Erstellt" } } }
+    },
+    "/invoices": {
+      "get": { "summary": "Rechnungen auflisten (Filter: status, customerId, q)", "responses": { "200": { "description": "Liste" } } },
+      "post": {
+        "summary": "Rechnung als Entwurf anlegen (automatische Rechnungsnummer)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["customerId", "items"],
+                "properties": {
+                  "customerId": { "type": "string" },
+                  "dueDate": { "type": "string", "format": "date" },
+                  "items": { "type": "array", "items": { "$ref": "#/components/schemas/InvoiceLineItemInput" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Erstellt", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Invoice" } } } } }
+      }
+    },
+    "/invoices/{id}": {
+      "get": { "summary": "Rechnungsdetails", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } },
+      "patch": { "summary": "Entwurf bearbeiten (nur Status DRAFT)", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" }, "409": { "description": "Nicht mehr im Entwurfsstatus" } } }
+    },
+    "/invoices/{id}/send": { "post": { "summary": "Entwurf finalisieren und als versendet markieren", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } } },
+    "/invoices/{id}/mark-paid": { "post": { "summary": "Als bezahlt markieren (Rolle ADMIN/BUCHHALTUNG)", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } } },
+    "/invoices/{id}/cancel": { "post": { "summary": "Rechnung stornieren", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "OK" } } } },
+    "/invoices/{id}/pdf": { "get": { "summary": "Rechnungs-PDF generieren und herunterladen", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }, { "name": "lang", "in": "query", "schema": { "type": "string", "enum": ["de", "en"] } }], "responses": { "200": { "description": "PDF-Datei", "content": { "application/pdf": {} } } } } },
+    "/invoices/export/all": { "get": { "summary": "Alle Rechnungen exportieren", "parameters": [{ "name": "format", "in": "query", "schema": { "type": "string", "enum": ["json", "csv"] } }], "responses": { "200": { "description": "Export-Datei" } } } },
+    "/quotes": {
+      "get": { "summary": "Angebote auflisten", "responses": { "200": { "description": "Liste" } } },
+      "post": { "summary": "Angebot anlegen", "responses": { "201": { "description": "Erstellt" } } }
+    },
+    "/quotes/{id}/convert-to-invoice": { "post": { "summary": "Angenommenes Angebot in Rechnung umwandeln", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "201": { "description": "Rechnung erstellt" } } } },
+    "/delivery-notes": {
+      "get": { "summary": "Lieferscheine auflisten", "responses": { "200": { "description": "Liste" } } },
+      "post": { "summary": "Lieferschein anlegen", "responses": { "201": { "description": "Erstellt" } } }
+    },
+    "/order-confirmations": {
+      "get": { "summary": "Auftragsbestätigungen auflisten", "responses": { "200": { "description": "Liste" } } },
+      "post": { "summary": "Auftragsbestätigung anlegen", "responses": { "201": { "description": "Erstellt" } } }
+    },
+    "/webhooks": {
+      "get": { "summary": "Registrierte Webhooks auflisten (Rolle ADMIN)", "responses": { "200": { "description": "Liste" } } },
+      "post": { "summary": "Webhook registrieren; Antwort enthält einmalig das HMAC-Secret", "responses": { "201": { "description": "Erstellt" } } }
+    },
+    "/backups": {
+      "get": { "summary": "Vorhandene Backups auflisten (Rolle ADMIN)", "responses": { "200": { "description": "Liste" } } },
+      "post": { "summary": "Backup jetzt erstellen (unter /run)", "responses": { "201": { "description": "Erstellt" } } }
+    },
+    "/import/customers": {
+      "post": { "summary": "Kunden aus CSV-Datei importieren (Rolle ADMIN)", "requestBody": { "content": { "multipart/form-data": { "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary" } } } } } }, "responses": { "200": { "description": "Importergebnis" } } }
+    }
+  }
+}

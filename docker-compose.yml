@@ -1,0 +1,102 @@
+# Produktions-Setup mit PostgreSQL - gedacht zum direkten Einsatz als Portainer-Stack
+# (Repository-URL dieses Repos eintragen, "Deploy the stack" klicken, fertig) oder lokal
+# per `docker compose up -d`.
+#
+# Alles läuft ohne weitere Konfiguration: Datenbank-Migrationen werden beim Start des
+# Backend-Containers automatisch angewendet (siehe backend/docker-entrypoint.sh), fehlende
+# Sicherheits-Secrets (JWT/Verschlüsselung) werden beim allerersten Start automatisch
+# erzeugt und in einem Volume persistiert, und tägliche Backups laufen automatisch im
+# Hintergrund. Die erste Firma/der erste Admin-Account wird über die "Registrieren"-Seite
+# der App selbst angelegt - kein separates Setup-Skript nötig.
+#
+# Für einen echten Produktivbetrieb (insbesondere wenn der Server aus dem Internet
+# erreichbar ist) SOLLTEN trotzdem eigene Werte für POSTGRES_PASSWORD, JWT_ACCESS_SECRET,
+# JWT_REFRESH_SECRET und FIELD_ENCRYPTION_KEY gesetzt werden (in Portainer über die
+# Stack-Umgebungsvariablen, lokal über eine .env-Datei neben dieser docker-compose.yml -
+# siehe .env.example). Ohne das funktioniert alles genauso, nur mit Standard-/generierten
+# Werten statt selbst gewählten.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rechnung}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bitte-in-portainer-aendern-rechnung-2026}
+      POSTGRES_DB: ${POSTGRES_DB:-rechnung}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rechnung} -d ${POSTGRES_DB:-rechnung}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    # Kein Port-Mapping nach außen - die Datenbank ist nur innerhalb des Compose-Netzwerks
+    # erreichbar (vom "backend"-Service als Host "db"). Für einen Admin-Zugriff von außen
+    # (z.B. mit pgAdmin) bei Bedarf "ports: - \"5432:5432\"" ergänzen.
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-rechnung}:${POSTGRES_PASSWORD:-bitte-in-portainer-aendern-rechnung-2026}@db:5432/${POSTGRES_DB:-rechnung}?schema=public"
+      # Standardwert passt zum Default-Port unten (FRONTEND_PORT=8080). Bei einer eigenen
+      # Domain oder einem anderen FRONTEND_PORT beide Variablen entsprechend anpassen.
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:8080}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      # Leer lassen = wird beim ersten Start automatisch erzeugt und dauerhaft im
+      # "backend_data"-Volume gespeichert (siehe backend/docker-entrypoint.sh). Für
+      # produktiven Einsatz empfohlen: in Portainer eigene Werte setzen.
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-}
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:-}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-30}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-300}
+      LOGIN_RATE_LIMIT_MAX: ${LOGIN_RATE_LIMIT_MAX:-10}
+      BACKUP_DIR: /app/backups
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      BACKUP_AUTO_ENABLED: ${BACKUP_AUTO_ENABLED:-true}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_REGION: ${S3_REGION:-eu-central-1}
+      UPLOAD_DIR: /app/uploads
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-5}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - backend_data:/app/data
+      - backend_uploads:/app/uploads
+      - backend_backups:/app/backups
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:4000/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # Kein Port-Mapping nach außen nötig - der Frontend-Container leitet /api/ intern an
+    # "backend:4000" weiter (siehe frontend/nginx.conf). Für direkten API-Zugriff/Swagger-UI
+    # (/api/docs) von außen bei Bedarf "ports: - \"4000:4000\"" ergänzen.
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+
+volumes:
+  db_data:
+  backend_data:
+  backend_uploads:
+  backend_backups:
