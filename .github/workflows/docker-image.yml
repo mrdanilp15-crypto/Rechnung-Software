@@ -1,0 +1,64 @@
+name: Docker Build & Push
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+# Nötig, damit GITHUB_TOKEN Pakete in die GitHub Container Registry (ghcr.io) pushen darf.
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/mrdanilp15-crypto/rechnung-software-backend
+  FRONTEND_IMAGE: ghcr.io/mrdanilp15-crypto/rechnung-software-frontend
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Docker Buildx einrichten
+        uses: docker/setup-buildx-action@v3
+
+      - name: docker-compose.yml validieren
+        run: docker compose config -q
+
+      # Bei Pull Requests wird nur gebaut (push: false) - Images landen in der Registry
+      # erst, wenn der Code tatsächlich auf "main" gemerged wird.
+      - name: Bei GitHub Container Registry anmelden
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Backend-Image bauen${{ github.event_name == 'push' && ' & pushen' || '' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+
+      - name: Frontend-Image bauen${{ github.event_name == 'push' && ' & pushen' || '' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:latest
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max

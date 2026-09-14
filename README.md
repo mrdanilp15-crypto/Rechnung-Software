@@ -20,14 +20,16 @@ Rechten, Audit-Log, Plugin-System und REST-API mit OpenAPI-Dokumentation.
 ## Schnellstart: Deployment (Docker / Portainer)
 
 Kein manuelles Setup nötig - Datenbank-Migrationen, Sicherheits-Secrets und
-automatische Backups sind bereits eingerichtet:
+automatische Backups sind bereits eingerichtet. `docker-compose.yml` nutzt fertige,
+von GitHub Actions gebaute Images statt lokal zu bauen:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
 Läuft danach unter `http://localhost:8080` (Port über `FRONTEND_PORT` änderbar). Als
-Portainer-Stack: Repository-URL dieses Repos eintragen, "Deploy the stack" klicken.
+Portainer-Stack: Inhalt von `docker-compose.yml` im "Web editor" einfügen, "Deploy the
+stack" klicken (die GHCR-Pakete müssen dafür einmalig auf "Public" gestellt sein).
 Danach auf `/register` die erste Firma/den ersten Admin-Account anlegen.
 Details und empfohlene Anpassungen für einen öffentlichen Server:
 [docs/INSTALL.md](docs/INSTALL.md), Abschnitt 1.

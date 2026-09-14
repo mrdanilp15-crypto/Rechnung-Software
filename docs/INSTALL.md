@@ -9,31 +9,53 @@ Es gibt zwei Wege, die Software zu betreiben:
 
 ## 1. Deployment mit Docker Compose / Portainer
 
-### 1a. Als Portainer-Stack (GitHub-Repository)
+`docker-compose.yml` nutzt fertige, von GitHub Actions gebaute Images
+(`ghcr.io/mrdanilp15-crypto/rechnung-software-backend`/`-frontend`) statt lokal aus
+Quellcode zu bauen. Portainer muss dafür also **nicht** den Quellcode auschecken -
+einfach den Inhalt der Datei einfügen, fertig. Die Images werden bei jedem Push auf
+`main` automatisch aktualisiert (siehe `.github/workflows/docker-image.yml`).
 
-1. Dieses Repository auf GitHub veröffentlichen (falls noch nicht geschehen).
-2. In Portainer: **Stacks → Add stack → Repository**.
-3. Repository-URL eintragen (z.B. `https://github.com/<user>/<repo>.git`), Branch
-   `main`, Compose-Pfad `docker-compose.yml` (Standardwert, meist schon korrekt
-   vorausgewählt).
-4. Optional unter **Environment variables** eigene Werte setzen (siehe `.env.example`
+**Einmalig wichtig**: Nach dem ersten erfolgreichen GitHub-Actions-Lauf müssen die
+beiden GHCR-Pakete auf "Public" gestellt werden, sonst kann Portainer sie ohne
+Registry-Login nicht herunterladen: GitHub-Profil → **Packages** → jeweiliges Paket
+(`rechnung-software-backend`, `rechnung-software-frontend`) → **Package settings** →
+**Change visibility** → **Public**.
+
+### 1a. Als Portainer-Stack (Web Editor - empfohlen, kein Repository-Zugriff nötig)
+
+1. Dieses Repository auf GitHub veröffentlichen bzw. Änderungen dorthin pushen -
+   GitHub Actions baut daraufhin automatisch die Images (Fortschritt im
+   "Actions"-Tab des Repos einsehbar).
+2. Die beiden GHCR-Pakete wie oben beschrieben einmalig auf "Public" stellen.
+3. In Portainer: **Stacks → Add stack → Web editor**.
+4. Inhalt von `docker-compose.yml` einfügen.
+5. Optional unter **Environment variables** eigene Werte setzen (siehe `.env.example`
    im Repo-Wurzelverzeichnis für die vollständige Liste - alles ist optional, siehe
    Abschnitt 1c). Ohne jede Angabe ist die Instanz trotzdem sofort einsatzbereit.
-5. **Deploy the stack** klicken.
-6. Nach ca. 1-2 Minuten (Build der Images, erster Start, automatische Migrationen)
-   ist die Anwendung unter `http://<server>:8080` erreichbar (Port über
-   `FRONTEND_PORT` änderbar).
-7. Auf `/register` die erste Firma und den ersten Admin-Account anlegen - fertig.
+6. **Deploy the stack** klicken.
+7. Nach wenigen Sekunden (Images werden gepullt, automatische Migrationen laufen) ist
+   die Anwendung unter `http://<server>:8080` erreichbar (Port über `FRONTEND_PORT`
+   änderbar).
+8. Auf `/register` die erste Firma und den ersten Admin-Account anlegen - fertig.
+
+Alternativ **Stacks → Add stack → Repository** (Portainer klont dann das Repo selbst) -
+funktioniert genauso, ist aber nicht nötig, da die Images ohnehin fertig aus der
+Registry kommen.
 
 ### 1b. Lokal mit Docker Compose (z.B. zum Ausprobieren)
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
 Läuft dann unter `http://localhost:8080`. Zum Anpassen der Umgebungsvariablen die
 Datei `.env.example` im Projekt-Wurzelverzeichnis nach `.env` kopieren und Werte
 eintragen (wird von `docker compose` automatisch eingelesen).
+
+Zum lokalen Bauen aus dem eigenen Quellcode statt der GHCR-Images (z.B. um eine noch
+nicht gepushte Änderung zu testen): in einer lokalen Kopie von `docker-compose.yml`
+bei `backend`/`frontend` zusätzlich `build: ./backend` bzw. `build: ./frontend`
+ergänzen und `docker compose up -d --build` verwenden.
 
 ### 1c. Was passiert beim ersten Start automatisch?
 
