@@ -41,10 +41,6 @@ export default function QuoteForm() {
     if (!id) return;
     api.get(`/quotes/${id}`).then((res) => {
       const q = res.data;
-      if (q.status !== "DRAFT") {
-        setError("Nur Entwürfe können bearbeitet werden.");
-        return;
-      }
       setCustomerId(q.customerId);
       setValidUntil(q.validUntil ? q.validUntil.slice(0, 10) : "");
       setItems(withClientKeys(q.items.map((it: any) => ({

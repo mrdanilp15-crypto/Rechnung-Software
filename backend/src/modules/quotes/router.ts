@@ -89,12 +89,11 @@ quotesRouter.post("/", async (req, res) => {
   res.status(201).json(quote);
 });
 
+// Angebote sind (anders als Rechnungen) keine GoBD-pflichtigen Belege - sie dürfen
+// unabhängig vom Status jederzeit bearbeitet oder gelöscht werden.
 quotesRouter.patch("/:id", async (req, res) => {
   const existing = await prisma.quote.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!existing) throw new HttpError(404, "Angebot nicht gefunden");
-  if (existing.status !== "DRAFT") {
-    throw new HttpError(409, "Nur Entwürfe können bearbeitet werden.");
-  }
   const body = createQuoteSchema.partial().parse(req.body);
   const company = await prisma.company.findUniqueOrThrow({ where: { id: req.auth!.companyId } });
 
@@ -136,11 +135,8 @@ quotesRouter.patch("/:id", async (req, res) => {
 quotesRouter.delete("/:id", async (req, res) => {
   const existing = await prisma.quote.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!existing) throw new HttpError(404, "Angebot nicht gefunden");
-  if (existing.status !== "DRAFT") {
-    throw new HttpError(409, "Nur Entwürfe können gelöscht werden.");
-  }
   await prisma.quote.delete({ where: { id: existing.id } });
-  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "quote.delete_draft", entityType: "Quote", entityId: existing.id });
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "quote.delete", entityType: "Quote", entityId: existing.id });
   res.status(204).send();
 });
 

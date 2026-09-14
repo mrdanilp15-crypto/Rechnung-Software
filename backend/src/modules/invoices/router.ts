@@ -168,6 +168,34 @@ invoicesRouter.delete("/:id", async (req, res) => {
   res.status(204).send();
 });
 
+// Löscht mehrere Entwürfe auf einmal (Mehrfachauswahl in der Liste). Bereits
+// versendete Rechnungen werden übersprungen und in skippedIds zurückgemeldet,
+// statt die ganze Anfrage aus GoBD-Gründen abzulehnen.
+invoicesRouter.post("/bulk-delete", async (req, res) => {
+  const body = z.object({ ids: z.array(z.string()).min(1) }).parse(req.body);
+  const candidates = await prisma.invoice.findMany({
+    where: { id: { in: body.ids }, companyId: req.auth!.companyId },
+    select: { id: true, status: true },
+  });
+  const deletableIds = candidates.filter((inv) => inv.status === "DRAFT").map((inv) => inv.id);
+  const skippedIds = body.ids.filter((id) => !deletableIds.includes(id));
+
+  if (deletableIds.length > 0) {
+    await prisma.invoice.deleteMany({ where: { id: { in: deletableIds } } });
+    await writeAuditLog({
+      req,
+      companyId: req.auth!.companyId,
+      userId: req.auth!.sub,
+      action: "invoice.bulk_delete_draft",
+      entityType: "Invoice",
+      entityId: deletableIds.join(","),
+      metadata: { deletedIds: deletableIds },
+    });
+  }
+
+  res.json({ deletedCount: deletableIds.length, skippedIds });
+});
+
 invoicesRouter.post("/:id/send", async (req, res) => {
   const invoice = await prisma.invoice.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!invoice) throw new HttpError(404, "Rechnung nicht gefunden");

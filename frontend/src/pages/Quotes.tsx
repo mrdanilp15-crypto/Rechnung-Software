@@ -48,7 +48,7 @@ export default function Quotes() {
   }
 
   async function handleDelete(q: Quote) {
-    if (!confirm(`Entwurf "${q.quoteNumber}" wirklich löschen?`)) return;
+    if (!confirm(`Angebot "${q.quoteNumber}" wirklich löschen?`)) return;
     await api.delete(`/quotes/${q.id}`);
     load();
   }
@@ -85,12 +85,10 @@ export default function Quotes() {
             <span className="text-slate-500 text-right">{statusLabel[q.status] ?? q.status}</span>
             <div className="flex gap-3 justify-end flex-wrap">
               <PdfLink url={`/quotes/${q.id}/pdf`} filename={`${q.quoteNumber}.pdf`} className="text-brand hover:underline">PDF</PdfLink>
+              <Link to={`/quotes/${q.id}/edit`} className="text-brand hover:underline">{t("common.edit")}</Link>
+              <button onClick={() => handleDelete(q)} className="text-red-600 hover:underline">{t("common.delete")}</button>
               {q.status === "DRAFT" && (
-                <>
-                  <Link to={`/quotes/${q.id}/edit`} className="text-brand hover:underline">{t("common.edit")}</Link>
-                  <button onClick={() => handleDelete(q)} className="text-red-600 hover:underline">{t("common.delete")}</button>
-                  <button onClick={() => setStatus(q.id, "SENT")} className="text-brand hover:underline">Versenden</button>
-                </>
+                <button onClick={() => setStatus(q.id, "SENT")} className="text-brand hover:underline">Versenden</button>
               )}
               {q.status === "SENT" && (
                 <>
