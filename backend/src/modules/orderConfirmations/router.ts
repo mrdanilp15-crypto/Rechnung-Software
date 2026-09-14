@@ -38,7 +38,7 @@ const createSchema = z.object({
 orderConfirmationsRouter.get("/", async (req, res) => {
   const list = await prisma.orderConfirmation.findMany({
     where: { companyId: req.auth!.companyId },
-    include: { customer: true },
+    include: { customer: true, _count: { select: { deliveryNotes: true } } },
     orderBy: { issueDate: "desc" },
   });
   res.json(list);
@@ -82,6 +82,15 @@ orderConfirmationsRouter.post("/", async (req, res) => {
 
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "order_confirmation.create", entityType: "OrderConfirmation", entityId: confirmation.id });
   res.status(201).json(confirmation);
+});
+
+orderConfirmationsRouter.get("/:id", async (req, res) => {
+  const confirmation = await prisma.orderConfirmation.findFirst({
+    where: { id: req.params.id, companyId: req.auth!.companyId },
+    include: { items: true, customer: true },
+  });
+  if (!confirmation) throw new HttpError(404, "Auftragsbestätigung nicht gefunden");
+  res.json(confirmation);
 });
 
 orderConfirmationsRouter.get("/:id/pdf", async (req, res) => {

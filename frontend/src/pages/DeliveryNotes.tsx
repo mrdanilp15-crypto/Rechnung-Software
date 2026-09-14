@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
+import { InfoBox } from "../components/InfoBox";
 
 interface DeliveryNote {
   id: string;
@@ -39,6 +40,10 @@ export default function DeliveryNotes() {
           Neuer Lieferschein
         </Link>
       </div>
+      <InfoBox title="Wozu dient ein Lieferschein?">
+        <p>Begleitet die Ware bei der Übergabe/Lieferung an den Kunden. Zeigt nur, <strong>was</strong> geliefert wurde (Bezeichnung, Menge) - <strong>keine Preise</strong>, das ist Aufgabe der Rechnung.</p>
+        <p>Kann direkt aus einer bestehenden Auftragsbestätigung erzeugt werden (Positionen werden übernommen, siehe "Neuer Lieferschein") oder frei erfasst werden.</p>
+      </InfoBox>
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
         <div className="grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
           <span>Nummer</span>

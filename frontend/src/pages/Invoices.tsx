@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
+import { InfoBox } from "../components/InfoBox";
 
 interface Invoice {
   id: string;
@@ -47,6 +48,10 @@ export default function Invoices() {
           {t("invoices.new")}
         </Link>
       </div>
+      <InfoBox title="Wozu dient eine Rechnung?">
+        <p>Die eigentliche <strong>Zahlungsaufforderung</strong> an den Kunden - meist nach Lieferung/Fertigstellung erstellt. Enthält Preise, MwSt. und Zahlungsziel.</p>
+        <p>Kann direkt aus einem angenommenen Angebot erzeugt werden (siehe Angebote → "→ Rechnung") oder frei erfasst werden. Einmal versendete Rechnungen können aus rechtlichen Gründen (GoBD) nicht mehr geändert, nur noch storniert werden.</p>
+      </InfoBox>
       {loading ? (
         <p>{t("common.loading")}</p>
       ) : (

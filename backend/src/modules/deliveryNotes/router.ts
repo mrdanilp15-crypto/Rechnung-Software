@@ -22,6 +22,7 @@ const createSchema = z.object({
   customerId: z.string(),
   deliveryDate: z.coerce.date().optional(),
   notes: z.string().optional(),
+  sourceOrderConfirmationId: z.string().optional(),
   items: z.array(
     z.object({ description: z.string().min(1), quantity: z.number().positive(), unit: z.string().default("Stk.") })
   ).min(1),
@@ -42,6 +43,11 @@ deliveryNotesRouter.post("/", async (req, res) => {
   const customer = await prisma.customer.findFirst({ where: { id: body.customerId, companyId: company.id } });
   if (!customer) throw new HttpError(404, "Kunde nicht gefunden");
 
+  if (body.sourceOrderConfirmationId) {
+    const source = await prisma.orderConfirmation.findFirst({ where: { id: body.sourceOrderConfirmationId, companyId: company.id } });
+    if (!source) throw new HttpError(404, "Auftragsbestätigung nicht gefunden");
+  }
+
   const note = await prisma.$transaction(async (tx) => {
     const noteNumber = await nextDocumentNumber(company.id, "DELIVERY_NOTE", tx);
     return tx.deliveryNote.create({
@@ -51,6 +57,7 @@ deliveryNotesRouter.post("/", async (req, res) => {
         noteNumber,
         deliveryDate: body.deliveryDate ?? new Date(),
         notes: body.notes,
+        sourceOrderConfirmationId: body.sourceOrderConfirmationId,
         items: { create: body.items.map((item, idx) => ({ position: idx + 1, ...item })) },
       },
       include: { items: true, customer: true },

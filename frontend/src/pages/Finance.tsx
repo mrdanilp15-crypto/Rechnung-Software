@@ -189,7 +189,7 @@ export default function Finance() {
               </div>
               <div>
                 <label className="block text-sm mb-1">Betrag (€, brutto)</label>
-                <input type="number" step="0.01" required value={form.amountEur} onChange={(e) => setForm((f) => ({ ...f, amountEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <input type="number" step="0.01" required value={form.amountEur} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, amountEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               </div>
               <div className="col-span-2">
                 <label className="block text-sm mb-1">Beschreibung (optional)</label>

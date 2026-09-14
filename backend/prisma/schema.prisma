@@ -317,22 +317,25 @@ model QuoteItem {
 // ---------- Lieferscheine ----------
 
 model DeliveryNote {
-  id           String   @id @default(uuid())
-  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  companyId    String
-  customer     Customer @relation(fields: [customerId], references: [id])
-  customerId   String
-  noteNumber   String
-  deliveryDate DateTime @default(now())
-  notes        String?
-  pdfPath      String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                        String              @id @default(uuid())
+  company                   Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId                 String
+  customer                  Customer            @relation(fields: [customerId], references: [id])
+  customerId                String
+  noteNumber                String
+  deliveryDate              DateTime            @default(now())
+  notes                     String?
+  pdfPath                   String?
+  sourceOrderConfirmation   OrderConfirmation?  @relation(fields: [sourceOrderConfirmationId], references: [id])
+  sourceOrderConfirmationId String?
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
 
   items        DeliveryNoteItem[]
 
   @@unique([companyId, noteNumber])
   @@index([companyId])
+  @@index([sourceOrderConfirmationId])
 }
 
 model DeliveryNoteItem {
@@ -367,6 +370,7 @@ model OrderConfirmation {
   updatedAt     DateTime @updatedAt
 
   items         OrderConfirmationItem[]
+  deliveryNotes DeliveryNote[]
 
   @@unique([companyId, confirmationNumber])
   @@index([companyId])

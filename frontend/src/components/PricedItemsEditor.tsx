@@ -109,10 +109,10 @@ export function PricedItemsEditor({
                 <input value={item.description} onChange={(e) => updateItem(item._key, { description: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               </td>
               <td className="py-2 pr-2">
-                <input type="number" min={0} step="any" value={item.quantity} onChange={(e) => updateItem(item._key, { quantity: parseFloat(e.target.value) || 0 })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <input type="number" min={0} step="any" value={item.quantity} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { quantity: parseFloat(e.target.value) || 0 })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               </td>
               <td className="py-2 pr-2">
-                <input type="number" min={0} step="0.01" value={item.unitPriceCents / 100} onChange={(e) => updateItem(item._key, { unitPriceCents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <input type="number" min={0} step="0.01" value={item.unitPriceCents / 100} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { unitPriceCents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               </td>
               <td className="py-2 pr-2">
                 <select value={item.vatRateBps} onChange={(e) => updateItem(item._key, { vatRateBps: Number(e.target.value) })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">

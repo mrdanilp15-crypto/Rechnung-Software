@@ -134,7 +134,7 @@ export default function Products() {
             </div>
             <div>
               <label className="block text-sm mb-1">{t("products.unitPrice")} (€ pro Einheit)</label>
-              <input type="number" step="0.01" value={form.unitPriceEur} onChange={(e) => setForm((f) => ({ ...f, unitPriceEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <input type="number" step="0.01" value={form.unitPriceEur} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, unitPriceEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
             </div>
             <div>
               <label className="block text-sm mb-1">{t("products.vatRate")}</label>
