@@ -2,3 +2,8 @@
 # ein CRLF-Zeilenende in der Shebang-Zeile ("#!/bin/sh\r") lässt den Container beim
 # Start mit "no such file or directory" fehlschlagen.
 *.sh text eol=lf
+
+# Prisma-Migrationen müssen als reines LF ohne BOM vorliegen - eine UTF-8-BOM am
+# Dateianfang (Windows-Tools wie PowerShells ">"-Umleitung fügen sie gerne ein) lässt
+# Postgres/Prisma die Migration mittendrin mit einem nicht eindeutigen Fehler abbrechen.
+*.sql text eol=lf
