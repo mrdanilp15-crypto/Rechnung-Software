@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
+import { MobileCard, MobileField } from "../components/MobileCard";
 
 interface Material {
   id: string;
@@ -239,23 +240,10 @@ export default function Products() {
         className="w-full mb-4 px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
       />
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
-        {filtered.map((p) => (
-          <div key={p.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 140px 90px auto" }}>
-            <div className="min-w-0">
-              <div className="font-medium truncate">{p.name}</div>
-              {(p.sku || p.description) && (
-                <div className="text-xs text-slate-500 truncate">{[p.sku, p.description].filter(Boolean).join(" · ")}</div>
-              )}
-              {p.materials.length > 0 && (
-                <div className="text-xs text-slate-400 truncate">
-                  Verbraucht: {p.materials.map((m) => `${m.quantityPerUnit}${m.material.unit} ${m.material.name}`).join(", ")}
-                </div>
-              )}
-            </div>
-            <span className="text-right">{formatPrice(p.unitPriceCents)} / {p.unit}</span>
-            <span className="text-slate-500 text-right">{(p.vatRateBps / 100).toFixed(0)}% USt.</span>
-            <div className="flex gap-3 justify-end">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+        {filtered.map((p) => {
+          const actions = (
+            <div className="flex gap-3 justify-end shrink-0">
               <button onClick={() => startEdit(p)} className="text-brand hover:underline">
                 {t("common.edit")}
               </button>
@@ -263,8 +251,41 @@ export default function Products() {
                 {t("common.delete")}
               </button>
             </div>
-          </div>
-        ))}
+          );
+          return (
+            <div key={p.id}>
+              {/* Desktop */}
+              <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 140px 90px auto" }}>
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{p.name}</div>
+                  {(p.sku || p.description) && (
+                    <div className="text-xs text-slate-500 truncate">{[p.sku, p.description].filter(Boolean).join(" · ")}</div>
+                  )}
+                  {p.materials.length > 0 && (
+                    <div className="text-xs text-slate-400 truncate">
+                      Verbraucht: {p.materials.map((m) => `${m.quantityPerUnit}${m.material.unit} ${m.material.name}`).join(", ")}
+                    </div>
+                  )}
+                </div>
+                <span className="text-right">{formatPrice(p.unitPriceCents)} / {p.unit}</span>
+                <span className="text-slate-500 text-right">{(p.vatRateBps / 100).toFixed(0)}% USt.</span>
+                {actions}
+              </div>
+              {/* Mobile */}
+              <MobileCard
+                title={p.name}
+                subtitle={[p.sku, p.description].filter(Boolean).join(" · ") || undefined}
+                actions={actions}
+              >
+                <MobileField label="Preis" value={`${formatPrice(p.unitPriceCents)} / ${p.unit}`} />
+                <MobileField label="USt." value={`${(p.vatRateBps / 100).toFixed(0)}%`} />
+                {p.materials.length > 0 && (
+                  <MobileField label="Verbraucht" value={p.materials.map((m) => `${m.quantityPerUnit}${m.material.unit} ${m.material.name}`).join(", ")} />
+                )}
+              </MobileCard>
+            </div>
+          );
+        })}
         {filtered.length === 0 && <p className="px-4 py-6 text-center text-slate-500">Keine Produkte gefunden.</p>}
       </div>
     </div>

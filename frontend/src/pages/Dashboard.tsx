@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
+import { MobileCard, MobileField } from "../components/MobileCard";
 
 interface Invoice {
   id: string;
@@ -99,13 +100,21 @@ export default function Dashboard() {
           </div>
 
           <h2 className="text-lg font-medium mb-3">Letzte Rechnungen</h2>
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
             {invoices.slice(0, 8).map((inv) => (
-              <div key={inv.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "140px 1fr 120px 110px" }}>
-                <span className="truncate">{inv.invoiceNumber}</span>
-                <span className="truncate">{inv.customer.name}</span>
-                <span className="text-right">{format(inv.totalCents)}</span>
-                <span className="text-slate-500 text-right">{inv.status}</span>
+              <div key={inv.id}>
+                {/* Desktop */}
+                <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "140px 1fr 120px 110px" }}>
+                  <span className="truncate">{inv.invoiceNumber}</span>
+                  <span className="truncate">{inv.customer.name}</span>
+                  <span className="text-right">{format(inv.totalCents)}</span>
+                  <span className="text-slate-500 text-right">{inv.status}</span>
+                </div>
+                {/* Mobile */}
+                <MobileCard title={inv.invoiceNumber} subtitle={inv.customer.name}>
+                  <MobileField label="Betrag" value={format(inv.totalCents)} />
+                  <MobileField label="Status" value={inv.status} />
+                </MobileCard>
               </div>
             ))}
           </div>

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { InfoBox } from "../components/InfoBox";
 import { useAuthStore } from "../store/authStore";
+import { MobileCard, MobileField } from "../components/MobileCard";
 
 interface Invoice {
   id: string;
@@ -119,8 +120,8 @@ export default function Invoices() {
       {loading ? (
         <p>{t("common.loading")}</p>
       ) : (
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
-          <div className="grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+          <div className="hidden md:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
             <input
               type="checkbox"
               checked={allSelected}
@@ -136,13 +137,14 @@ export default function Invoices() {
             <span className="text-right">Status</span>
             <span className="text-right">E-Mail</span>
           </div>
-          {invoices.map((inv) => (
-            <div
-              key={inv.id}
-              onClick={() => navigate(`/invoices/${inv.id}`)}
-              className="grid items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
-              style={{ gridTemplateColumns: ROW_COLUMNS }}
-            >
+          {invoices.map((inv) => {
+            const statusBadge = (
+              <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[inv.status] ?? ""}`}>
+                {t(`invoices.${inv.status.toLowerCase()}`)}
+              </span>
+            );
+            const emailStatus = inv.emailStatus === "SENT" ? "✓ gesendet" : inv.emailStatus === "FAILED" ? "✕ Fehler" : "-";
+            const checkbox = (
               <input
                 type="checkbox"
                 checked={selected.includes(inv.id)}
@@ -151,19 +153,40 @@ export default function Invoices() {
                 onChange={() => toggleSelected(inv.id)}
                 title={inv.status !== "DRAFT" ? (isAdmin ? "Bereits versendet/bezahlt - nur als Admin endgültig löschbar" : "Nur Entwürfe können gelöscht werden") : undefined}
               />
-              <span className="font-medium truncate">{inv.invoiceNumber}</span>
-              <span className="truncate">{inv.customer.name}</span>
-              <span className="text-right text-slate-500">{formatDate(inv.issueDate)}</span>
-              <span className={`text-right ${inv.status === "OVERDUE" ? "text-red-600 font-medium" : "text-slate-500"}`}>{formatDate(inv.dueDate)}</span>
-              <span className="text-right">{format(inv.totalCents)}</span>
-              <span className={`px-2 py-0.5 rounded-full text-xs justify-self-end ${statusColors[inv.status] ?? ""}`}>
-                {t(`invoices.${inv.status.toLowerCase()}`)}
-              </span>
-              <span className="text-right text-xs text-slate-400" title="E-Mail-Status">
-                {inv.emailStatus === "SENT" ? "✓ gesendet" : inv.emailStatus === "FAILED" ? "✕ Fehler" : "-"}
-              </span>
-            </div>
-          ))}
+            );
+            return (
+              <div key={inv.id}>
+                {/* Desktop */}
+                <div
+                  onClick={() => navigate(`/invoices/${inv.id}`)}
+                  className="hidden md:grid items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
+                  style={{ gridTemplateColumns: ROW_COLUMNS }}
+                >
+                  {checkbox}
+                  <span className="font-medium truncate">{inv.invoiceNumber}</span>
+                  <span className="truncate">{inv.customer.name}</span>
+                  <span className="text-right text-slate-500">{formatDate(inv.issueDate)}</span>
+                  <span className={`text-right ${inv.status === "OVERDUE" ? "text-red-600 font-medium" : "text-slate-500"}`}>{formatDate(inv.dueDate)}</span>
+                  <span className="text-right">{format(inv.totalCents)}</span>
+                  <span className="justify-self-end">{statusBadge}</span>
+                  <span className="text-right text-xs text-slate-400" title="E-Mail-Status">{emailStatus}</span>
+                </div>
+                {/* Mobile */}
+                <MobileCard
+                  title={inv.invoiceNumber}
+                  subtitle={inv.customer.name}
+                  actions={checkbox}
+                  onClick={() => navigate(`/invoices/${inv.id}`)}
+                >
+                  <MobileField label="Datum" value={formatDate(inv.issueDate)} />
+                  <MobileField label="Fällig am" value={<span className={inv.status === "OVERDUE" ? "text-red-600 font-medium" : ""}>{formatDate(inv.dueDate)}</span>} />
+                  <MobileField label="Betrag" value={format(inv.totalCents)} />
+                  <MobileField label="Status" value={statusBadge} />
+                  <MobileField label="E-Mail" value={emailStatus} />
+                </MobileCard>
+              </div>
+            );
+          })}
           {invoices.length === 0 && <p className="px-4 py-6 text-center text-slate-500">Keine Rechnungen vorhanden.</p>}
         </div>
       )}

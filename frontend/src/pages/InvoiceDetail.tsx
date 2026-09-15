@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
+import { MobileCard, MobileField } from "../components/MobileCard";
 
 interface InvoiceItem {
   id: string;
@@ -212,8 +213,9 @@ export default function InvoiceDetail() {
         <p><strong>Zahlungserinnerungen:</strong> {invoice.reminderCount > 0 ? invoice.reminderCount : "keine"}</p>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow">
+        {/* Desktop */}
+        <table className="hidden md:table w-full text-sm">
           <thead className="bg-slate-50 dark:bg-slate-700">
             <tr>
               <th className="text-left p-3">Beschreibung</th>
@@ -233,6 +235,16 @@ export default function InvoiceDetail() {
             ))}
           </tbody>
         </table>
+        {/* Mobile */}
+        <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-700">
+          {invoice.items.map((item) => (
+            <MobileCard key={item.id} title={item.description}>
+              <MobileField label="Menge" value={`${item.quantity} ${item.unit}`} />
+              <MobileField label="Einzelpreis" value={format(item.unitPriceCents)} />
+              <MobileField label="Summe" value={format(item.lineTotalCents)} />
+            </MobileCard>
+          ))}
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mt-4 max-w-xs ml-auto text-sm">

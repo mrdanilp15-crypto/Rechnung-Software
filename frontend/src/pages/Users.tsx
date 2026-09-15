@@ -5,6 +5,7 @@ import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
 import { RowActionsMenu } from "../components/RowActionsMenu";
+import { MobileCard, MobileField } from "../components/MobileCard";
 
 interface CompanyUser {
   id: string;
@@ -178,8 +179,8 @@ export default function Users() {
         </form>
       )}
 
-      <div className="border-t border-slate-100 dark:border-slate-700 overflow-x-auto">
-        <div className="grid items-center gap-3 py-2 text-xs font-medium text-slate-500 border-b border-slate-100 dark:border-slate-700" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+      <div className="border-t border-slate-100 dark:border-slate-700">
+        <div className="hidden md:grid items-center gap-3 py-2 text-xs font-medium text-slate-500 border-b border-slate-100 dark:border-slate-700" style={{ gridTemplateColumns: ROW_COLUMNS }}>
           <span>Name / E-Mail</span>
           <span>Rolle</span>
           <span>Status</span>
@@ -188,12 +189,8 @@ export default function Users() {
           <span></span>
         </div>
         <div className="divide-y divide-slate-100 dark:divide-slate-700">
-          {users.map((u) => (
-            <div key={u.id} className="grid items-center gap-3 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
-              <div className="min-w-0">
-                <div className="font-medium truncate">{u.name}</div>
-                <div className="text-xs text-slate-500 truncate">{u.email}</div>
-              </div>
+          {users.map((u) => {
+            const roleSelect = (
               <select
                 value={u.role}
                 disabled={u.id === currentUser?.id}
@@ -204,23 +201,44 @@ export default function Users() {
                 <option value="BUCHHALTUNG">Buchhaltung</option>
                 <option value="ADMIN">Admin</option>
               </select>
-              <span className={u.isActive ? "text-green-600" : "text-slate-400"}>{u.isActive ? "Aktiv" : "Inaktiv"}</span>
-              <span className={u.totpEnabled ? "text-green-600" : "text-slate-400"}>{u.totpEnabled ? "An" : "Aus"}</span>
-              <span className="text-slate-500 text-xs truncate">{formatDate(u.lastLoginAt)}</span>
-              <div className="flex justify-end">
-                {u.id !== currentUser?.id ? (
-                  <RowActionsMenu
-                    actions={[
-                      { label: "Passwort zurücksetzen", onClick: () => handleResetPassword(u) },
-                      { label: u.isActive ? "Deaktivieren" : "Aktivieren", onClick: () => handleToggleActive(u), danger: u.isActive },
-                    ]}
-                  />
-                ) : (
-                  <span className="text-xs text-slate-400">(Sie)</span>
-                )}
+            );
+            const statusLabel = <span className={u.isActive ? "text-green-600" : "text-slate-400"}>{u.isActive ? "Aktiv" : "Inaktiv"}</span>;
+            const totpLabel = <span className={u.totpEnabled ? "text-green-600" : "text-slate-400"}>{u.totpEnabled ? "An" : "Aus"}</span>;
+            const actions =
+              u.id !== currentUser?.id ? (
+                <RowActionsMenu
+                  actions={[
+                    { label: "Passwort zurücksetzen", onClick: () => handleResetPassword(u) },
+                    { label: u.isActive ? "Deaktivieren" : "Aktivieren", onClick: () => handleToggleActive(u), danger: u.isActive },
+                  ]}
+                />
+              ) : (
+                <span className="text-xs text-slate-400">(Sie)</span>
+              );
+            return (
+              <div key={u.id}>
+                {/* Desktop */}
+                <div className="hidden md:grid items-center gap-3 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{u.name}</div>
+                    <div className="text-xs text-slate-500 truncate">{u.email}</div>
+                  </div>
+                  {roleSelect}
+                  {statusLabel}
+                  {totpLabel}
+                  <span className="text-slate-500 text-xs truncate">{formatDate(u.lastLoginAt)}</span>
+                  <div className="flex justify-end">{actions}</div>
+                </div>
+                {/* Mobile */}
+                <MobileCard title={u.name} subtitle={u.email} actions={actions}>
+                  <MobileField label="Rolle" value={<div className="w-32">{roleSelect}</div>} />
+                  <MobileField label="Status" value={statusLabel} />
+                  <MobileField label="2FA" value={totpLabel} />
+                  <MobileField label="Letzter Login" value={formatDate(u.lastLoginAt)} />
+                </MobileCard>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {users.length === 0 && <p className="py-6 text-center text-slate-500">Keine weiteren Benutzer.</p>}
         </div>
       </div>

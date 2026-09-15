@@ -6,6 +6,7 @@ import { PdfLink } from "../components/PdfLink";
 import { InfoBox } from "../components/InfoBox";
 import { RowActionsMenu } from "../components/RowActionsMenu";
 import { useToast } from "../components/Toast";
+import { MobileCard, MobileField } from "../components/MobileCard";
 
 interface Quote {
   id: string;
@@ -72,8 +73,8 @@ export default function Quotes() {
         <p>Ein <strong>unverbindliches Preisangebot</strong> an den Kunden, bevor ein Auftrag zustande kommt. Der Kunde prüft Preis und Leistung und sagt zu oder ab - noch keine rechtliche Verpflichtung.</p>
         <p><strong>1. Schritt im Ablauf:</strong> Angebot erstellen → versenden → Kunde nimmt an oder lehnt ab → bei Annahme direkt mit "→ Rechnung" in eine Rechnung umwandeln (Positionen werden übernommen).</p>
       </InfoBox>
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
-        <div className="grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="hidden md:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
           <span>Nummer</span>
           <span>Kunde</span>
           <span className="text-right">Datum</span>
@@ -82,14 +83,8 @@ export default function Quotes() {
           <span className="text-right">Status</span>
           <span></span>
         </div>
-        {quotes.map((q) => (
-          <div key={q.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
-            <span className="font-medium truncate">{q.quoteNumber}</span>
-            <span className="truncate">{q.customer.name}</span>
-            <span className="text-right text-slate-500">{formatDate(q.issueDate)}</span>
-            <span className="text-right text-slate-500">{formatDate(q.validUntil)}</span>
-            <span className="text-right">{format(q.totalCents)}</span>
-            <span className="text-slate-500 text-right">{statusLabel[q.status] ?? q.status}</span>
+        {quotes.map((q) => {
+          const actions = (
             <div className="flex gap-2 justify-end items-center flex-wrap">
               {q.status === "DRAFT" && (
                 <button onClick={() => setStatus(q, "SENT")} className="text-brand hover:underline">Versenden</button>
@@ -111,8 +106,30 @@ export default function Quotes() {
                 ]}
               />
             </div>
-          </div>
-        ))}
+          );
+          return (
+            <div key={q.id}>
+              {/* Desktop */}
+              <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+                <span className="font-medium truncate">{q.quoteNumber}</span>
+                <span className="truncate">{q.customer.name}</span>
+                <span className="text-right text-slate-500">{formatDate(q.issueDate)}</span>
+                <span className="text-right text-slate-500">{formatDate(q.validUntil)}</span>
+                <span className="text-right">{format(q.totalCents)}</span>
+                <span className="text-slate-500 text-right">{statusLabel[q.status] ?? q.status}</span>
+                {actions}
+              </div>
+              {/* Mobile */}
+              <MobileCard title={q.quoteNumber} subtitle={q.customer.name}>
+                <MobileField label="Datum" value={formatDate(q.issueDate)} />
+                <MobileField label="Gültig bis" value={formatDate(q.validUntil)} />
+                <MobileField label="Betrag" value={format(q.totalCents)} />
+                <MobileField label="Status" value={statusLabel[q.status] ?? q.status} />
+                <div className="pt-2">{actions}</div>
+              </MobileCard>
+            </div>
+          );
+        })}
         {quotes.length === 0 && <p className="px-4 py-6 text-center text-slate-500">Keine Angebote vorhanden.</p>}
       </div>
     </div>

@@ -4,6 +4,7 @@ import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { InfoBox } from "../components/InfoBox";
 import { useToast } from "../components/Toast";
+import { MobileCard, MobileField } from "../components/MobileCard";
 
 interface Material {
   id: string;
@@ -133,27 +134,40 @@ export default function Materials() {
         </form>
       )}
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
-        <div className="grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="hidden md:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
           <span>Name</span>
           <span className="text-right">Bestand</span>
           <span className="text-right">Preis/Einheit</span>
           <span></span>
         </div>
-        {materials.map((m) => (
-          <div key={m.id}>
-            <div className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
-              <span className="font-medium truncate">{m.name}</span>
-              <span className={`text-right ${m.stockQuantity < 0 ? "text-red-600 font-medium" : ""}`}>
-                {formatQty(m.stockQuantity)} {m.unit}
-              </span>
-              <span className="text-right text-slate-500">{formatEuro(m.costPerUnitCents)}/{m.unit}</span>
-              <div className="flex gap-3 justify-end">
-                <button onClick={() => startRestock(m)} className="text-brand hover:underline">Nachbestellen</button>
-                <button onClick={() => startEdit(m)} className="text-brand hover:underline">Bearbeiten</button>
-                <button onClick={() => handleArchive(m)} className="text-red-600 hover:underline">Archivieren</button>
-              </div>
+        {materials.map((m) => {
+          const stockValue = (
+            <span className={m.stockQuantity < 0 ? "text-red-600 font-medium" : ""}>
+              {formatQty(m.stockQuantity)} {m.unit}
+            </span>
+          );
+          const actions = (
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => startRestock(m)} className="text-brand hover:underline">Nachbestellen</button>
+              <button onClick={() => startEdit(m)} className="text-brand hover:underline">Bearbeiten</button>
+              <button onClick={() => handleArchive(m)} className="text-red-600 hover:underline">Archivieren</button>
             </div>
+          );
+          return (
+          <div key={m.id}>
+            {/* Desktop */}
+            <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
+              <span className="font-medium truncate">{m.name}</span>
+              <span className="text-right">{stockValue}</span>
+              <span className="text-right text-slate-500">{formatEuro(m.costPerUnitCents)}/{m.unit}</span>
+              {actions}
+            </div>
+            {/* Mobile */}
+            <MobileCard title={m.name} actions={actions}>
+              <MobileField label="Bestand" value={stockValue} />
+              <MobileField label="Preis/Einheit" value={`${formatEuro(m.costPerUnitCents)}/${m.unit}`} />
+            </MobileCard>
             {restockingId === m.id && (
               <form onSubmit={(e) => handleRestock(e, m)} className="grid grid-cols-1 sm:grid-cols-4 gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-700">
                 <div>
@@ -175,7 +189,8 @@ export default function Materials() {
               </form>
             )}
           </div>
-        ))}
+          );
+        })}
         {materials.length === 0 && <p className="px-4 py-6 text-center text-slate-500">Kein Material erfasst.</p>}
       </div>
     </div>

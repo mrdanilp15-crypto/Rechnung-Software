@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
 import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
+import { MobileCard, MobileField } from "../components/MobileCard";
 
 interface Expense {
   id: string;
@@ -201,16 +202,27 @@ export default function Finance() {
               </div>
             </form>
           )}
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
-            {expenses.map((exp) => (
-              <div key={exp.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "100px 1fr 130px 110px auto" }}>
-                <span>{new Date(exp.date).toLocaleDateString("de-DE")}</span>
-                <span className="font-medium truncate">{exp.vendor}</span>
-                <span className="text-slate-500 truncate">{exp.category}</span>
-                <span className="text-right">{formatEuro(exp.amountCents)}</span>
-                <button onClick={() => handleDeleteExpense(exp)} className="text-red-600 hover:underline justify-self-end">Löschen</button>
-              </div>
-            ))}
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+            {expenses.map((exp) => {
+              const deleteBtn = <button onClick={() => handleDeleteExpense(exp)} className="text-red-600 hover:underline">Löschen</button>;
+              return (
+                <div key={exp.id}>
+                  {/* Desktop */}
+                  <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "100px 1fr 130px 110px auto" }}>
+                    <span>{new Date(exp.date).toLocaleDateString("de-DE")}</span>
+                    <span className="font-medium truncate">{exp.vendor}</span>
+                    <span className="text-slate-500 truncate">{exp.category}</span>
+                    <span className="text-right">{formatEuro(exp.amountCents)}</span>
+                    <span className="justify-self-end">{deleteBtn}</span>
+                  </div>
+                  {/* Mobile */}
+                  <MobileCard title={exp.vendor} subtitle={new Date(exp.date).toLocaleDateString("de-DE")} actions={deleteBtn}>
+                    <MobileField label="Kategorie" value={exp.category} />
+                    <MobileField label="Betrag" value={formatEuro(exp.amountCents)} />
+                  </MobileCard>
+                </div>
+              );
+            })}
             {expenses.length === 0 && <p className="px-4 py-6 text-center text-slate-500">Keine Ausgaben für {year} erfasst.</p>}
           </div>
         </div>
@@ -236,16 +248,28 @@ export default function Finance() {
             />
             {bankMessage && <p className="text-sm">{bankMessage}</p>}
           </div>
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
-            {transactions.map((tx) => (
-              <div key={tx.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "100px 160px 1fr 110px 100px" }}>
-                <span>{new Date(tx.bookingDate).toLocaleDateString("de-DE")}</span>
-                <span className="truncate">{tx.counterparty}</span>
-                <span className="text-slate-500 truncate">{tx.purpose}</span>
-                <span className={`text-right ${tx.amountCents >= 0 ? "text-green-600" : "text-red-600"}`}>{formatEuro(tx.amountCents)}</span>
-                <span className="text-right">{tx.matchedInvoiceId ? "✓ zugeordnet" : "-"}</span>
-              </div>
-            ))}
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+            {transactions.map((tx) => {
+              const amount = <span className={tx.amountCents >= 0 ? "text-green-600" : "text-red-600"}>{formatEuro(tx.amountCents)}</span>;
+              return (
+                <div key={tx.id}>
+                  {/* Desktop */}
+                  <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "100px 160px 1fr 110px 100px" }}>
+                    <span>{new Date(tx.bookingDate).toLocaleDateString("de-DE")}</span>
+                    <span className="truncate">{tx.counterparty}</span>
+                    <span className="text-slate-500 truncate">{tx.purpose}</span>
+                    <span className="text-right">{amount}</span>
+                    <span className="text-right">{tx.matchedInvoiceId ? "✓ zugeordnet" : "-"}</span>
+                  </div>
+                  {/* Mobile */}
+                  <MobileCard title={tx.counterparty || "-"} subtitle={new Date(tx.bookingDate).toLocaleDateString("de-DE")}>
+                    <MobileField label="Zweck" value={tx.purpose || "-"} />
+                    <MobileField label="Betrag" value={amount} />
+                    <MobileField label="Zuordnung" value={tx.matchedInvoiceId ? "✓ zugeordnet" : "-"} />
+                  </MobileCard>
+                </div>
+              );
+            })}
             {transactions.length === 0 && <p className="px-4 py-6 text-center text-slate-500">Noch keine Buchungen importiert.</p>}
           </div>
         </div>

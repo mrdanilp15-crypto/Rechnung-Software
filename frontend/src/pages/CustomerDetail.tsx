@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
+import { MobileCard, MobileField } from "../components/MobileCard";
 
 interface HistoryInvoice {
   id: string;
@@ -41,6 +42,7 @@ const formatDate = (iso: string) => new Intl.DateTimeFormat("de-DE").format(new 
 export default function CustomerDetail() {
   const { id } = useParams();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
 
   useEffect(() => {
@@ -104,26 +106,42 @@ export default function CustomerDetail() {
       )}
 
       <h2 className="text-lg font-medium mb-3">Rechnungen</h2>
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 mb-6 overflow-x-auto">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 mb-6">
         {customer.history.invoices.map((inv) => (
-          <Link key={inv.id} to={`/invoices/${inv.id}`} className="grid items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700" style={{ gridTemplateColumns: "140px 1fr 100px 100px" }}>
-            <span className="font-medium">{inv.invoiceNumber}</span>
-            <span className="text-slate-500">{formatDate(inv.issueDate)}</span>
-            <span className="text-right">{formatEuro(inv.totalCents)}</span>
-            <span className="text-right text-slate-500">{inv.status}</span>
-          </Link>
+          <div key={inv.id}>
+            {/* Desktop */}
+            <Link to={`/invoices/${inv.id}`} className="hidden md:grid items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700" style={{ gridTemplateColumns: "140px 1fr 100px 100px" }}>
+              <span className="font-medium">{inv.invoiceNumber}</span>
+              <span className="text-slate-500">{formatDate(inv.issueDate)}</span>
+              <span className="text-right">{formatEuro(inv.totalCents)}</span>
+              <span className="text-right text-slate-500">{inv.status}</span>
+            </Link>
+            {/* Mobile */}
+            <MobileCard title={inv.invoiceNumber} subtitle={formatDate(inv.issueDate)} onClick={() => navigate(`/invoices/${inv.id}`)}>
+              <MobileField label="Betrag" value={formatEuro(inv.totalCents)} />
+              <MobileField label="Status" value={inv.status} />
+            </MobileCard>
+          </div>
         ))}
         {customer.history.invoices.length === 0 && <p className="px-4 py-6 text-center text-slate-500">Keine Rechnungen.</p>}
       </div>
 
       <h2 className="text-lg font-medium mb-3">Angebote</h2>
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
         {customer.history.quotes.map((q) => (
-          <div key={q.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "140px 1fr 100px 100px" }}>
-            <span className="font-medium">{q.quoteNumber}</span>
-            <span className="text-slate-500">{formatDate(q.issueDate)}</span>
-            <span className="text-right">{formatEuro(q.totalCents)}</span>
-            <span className="text-right text-slate-500">{q.status}</span>
+          <div key={q.id}>
+            {/* Desktop */}
+            <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "140px 1fr 100px 100px" }}>
+              <span className="font-medium">{q.quoteNumber}</span>
+              <span className="text-slate-500">{formatDate(q.issueDate)}</span>
+              <span className="text-right">{formatEuro(q.totalCents)}</span>
+              <span className="text-right text-slate-500">{q.status}</span>
+            </div>
+            {/* Mobile */}
+            <MobileCard title={q.quoteNumber} subtitle={formatDate(q.issueDate)}>
+              <MobileField label="Betrag" value={formatEuro(q.totalCents)} />
+              <MobileField label="Status" value={q.status} />
+            </MobileCard>
           </div>
         ))}
         {customer.history.quotes.length === 0 && <p className="px-4 py-6 text-center text-slate-500">Keine Angebote.</p>}

@@ -80,9 +80,12 @@ export function PricedItemsEditor({
     });
   }
 
+  const inputClass = "w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800";
+
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 overflow-x-auto">
-      <table className="w-full text-sm min-w-[640px]">
+    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4">
+      {/* Desktop */}
+      <table className="hidden md:table w-full text-sm">
         <thead>
           <tr className="text-left text-slate-500">
             <th className="pb-2">Produkt</th>
@@ -98,7 +101,7 @@ export function PricedItemsEditor({
           {items.map((item) => (
             <tr key={item._key} className="border-t border-slate-100 dark:border-slate-700">
               <td className="py-2 pr-2">
-                <select value={item.productId || ""} onChange={(e) => applyProduct(item._key, e.target.value)} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                <select value={item.productId || ""} onChange={(e) => applyProduct(item._key, e.target.value)} className={inputClass}>
                   <option value="">--</option>
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
@@ -106,16 +109,16 @@ export function PricedItemsEditor({
                 </select>
               </td>
               <td className="py-2 pr-2">
-                <input value={item.description} onChange={(e) => updateItem(item._key, { description: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <input value={item.description} onChange={(e) => updateItem(item._key, { description: e.target.value })} className={inputClass} />
               </td>
               <td className="py-2 pr-2">
-                <input type="number" min={0} step="any" value={item.quantity} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { quantity: parseFloat(e.target.value) || 0 })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <input type="number" min={0} step="any" value={item.quantity} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { quantity: parseFloat(e.target.value) || 0 })} className={inputClass} />
               </td>
               <td className="py-2 pr-2">
-                <input type="number" min={0} step="0.01" value={item.unitPriceCents / 100} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { unitPriceCents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <input type="number" min={0} step="0.01" value={item.unitPriceCents / 100} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { unitPriceCents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className={inputClass} />
               </td>
               <td className="py-2 pr-2">
-                <select value={item.vatRateBps} onChange={(e) => updateItem(item._key, { vatRateBps: Number(e.target.value) })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                <select value={item.vatRateBps} onChange={(e) => updateItem(item._key, { vatRateBps: Number(e.target.value) })} className={inputClass}>
                   <option value={1900}>19%</option>
                   <option value={700}>7%</option>
                   <option value={0}>0%</option>
@@ -129,6 +132,56 @@ export function PricedItemsEditor({
           ))}
         </tbody>
       </table>
+
+      {/* Mobile */}
+      <div className="md:hidden space-y-4">
+        {items.map((item, idx) => (
+          <div key={item._key} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-medium text-slate-500">Position {idx + 1}</span>
+              <button type="button" onClick={() => onChange(items.filter((it) => it._key !== item._key))} className="text-red-500 px-2">✕</button>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Produkt</label>
+              <select value={item.productId || ""} onChange={(e) => applyProduct(item._key, e.target.value)} className={inputClass}>
+                <option value="">--</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Beschreibung</label>
+              <input value={item.description} onChange={(e) => updateItem(item._key, { description: e.target.value })} className={inputClass} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Menge</label>
+                <input type="number" min={0} step="any" value={item.quantity} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { quantity: parseFloat(e.target.value) || 0 })} className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Preis (€)</label>
+                <input type="number" min={0} step="0.01" value={item.unitPriceCents / 100} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { unitPriceCents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className={inputClass} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 items-end">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">USt.</label>
+                <select value={item.vatRateBps} onChange={(e) => updateItem(item._key, { vatRateBps: Number(e.target.value) })} className={inputClass}>
+                  <option value={1900}>19%</option>
+                  <option value={700}>7%</option>
+                  <option value={0}>0%</option>
+                </select>
+              </div>
+              <div className="text-right text-sm">
+                <span className="text-slate-500">Summe: </span>
+                <span className="font-medium">{formatEuro(item.quantity * item.unitPriceCents)}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <button type="button" onClick={() => onChange([...items, createEmptyLineItem()])} className="mt-3 text-sm text-brand hover:underline">
         + {t("invoices.addItem")}
       </button>

@@ -119,8 +119,9 @@ export default function DeliveryNoteNew() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 overflow-x-auto">
-        <table className="w-full text-sm min-w-[480px]">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4">
+        {/* Desktop */}
+        <table className="hidden md:table w-full text-sm">
           <thead>
             <tr className="text-left text-slate-500">
               <th className="pb-2">Beschreibung</th>
@@ -148,6 +149,33 @@ export default function DeliveryNoteNew() {
             ))}
           </tbody>
         </table>
+
+        {/* Mobile */}
+        <div className="md:hidden space-y-4">
+          {items.map((item, idx) => (
+            <div key={item._key} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium text-slate-500">Position {idx + 1}</span>
+                <button type="button" onClick={() => setItems((prev) => prev.filter((it) => it._key !== item._key))} className="text-red-500 px-2">✕</button>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Beschreibung</label>
+                <input value={item.description} onChange={(e) => updateItem(item._key, { description: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Menge</label>
+                  <input type="number" min={0} step="any" value={item.quantity} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { quantity: parseFloat(e.target.value) || 0 })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Einheit</label>
+                  <input value={item.unit} onChange={(e) => updateItem(item._key, { unit: e.target.value })} className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
         <button type="button" onClick={() => setItems((prev) => [...prev, createEmptyItem()])} className="mt-3 text-sm text-brand hover:underline">
           + {t("invoices.addItem")}
         </button>

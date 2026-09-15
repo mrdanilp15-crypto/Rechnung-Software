@@ -6,6 +6,7 @@ import { PdfLink } from "../components/PdfLink";
 import { InfoBox } from "../components/InfoBox";
 import { RowActionsMenu } from "../components/RowActionsMenu";
 import { useToast } from "../components/Toast";
+import { MobileCard, MobileField } from "../components/MobileCard";
 
 interface OrderConfirmation {
   id: string;
@@ -51,8 +52,8 @@ export default function OrderConfirmations() {
         <p>Bestätigt schriftlich, dass ein Auftrag angenommen wurde - z.B. nach einer telefonischen Bestellung oder einem angenommenen Angebot. Legt Leistung, Preis und voraussichtlichen Liefertermin verbindlich fest, <strong>bevor</strong> produziert/versendet wird.</p>
         <p><strong>Optional:</strong> nicht gesetzlich vorgeschrieben, aber sinnvoll zur Absicherung bei individuellen Aufträgen. Aus einer Auftragsbestätigung lässt sich später mit "→ Lieferschein" direkt ein Lieferschein mit denselben Positionen erzeugen.</p>
       </InfoBox>
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
-        <div className="grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="hidden md:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
           <span>Nummer</span>
           <span>Kunde</span>
           <span className="text-right">Datum</span>
@@ -60,13 +61,8 @@ export default function OrderConfirmations() {
           <span className="text-right">Betrag</span>
           <span></span>
         </div>
-        {list.map((c) => (
-          <div key={c.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
-            <span className="font-medium truncate">{c.confirmationNumber}</span>
-            <span className="truncate">{c.customer.name}</span>
-            <span className="text-right text-slate-500">{formatDate(c.issueDate)}</span>
-            <span className="text-right text-slate-500">{formatDate(c.expectedDeliveryDate)}</span>
-            <span className="text-right">{format(c.totalCents)}</span>
+        {list.map((c) => {
+          const actions = (
             <div className="flex gap-2 justify-end items-center flex-wrap">
               {c._count.deliveryNotes > 0 ? (
                 <span className="text-xs text-green-600" title="Lieferschein wurde bereits erstellt">✓ Lieferschein</span>
@@ -76,8 +72,28 @@ export default function OrderConfirmations() {
               <PdfLink url={`/order-confirmations/${c.id}/pdf`} filename={`${c.confirmationNumber}.pdf`} className="text-brand hover:underline">PDF</PdfLink>
               <RowActionsMenu actions={[{ label: t("common.delete"), onClick: () => handleDelete(c), danger: true }]} />
             </div>
-          </div>
-        ))}
+          );
+          return (
+            <div key={c.id}>
+              {/* Desktop */}
+              <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+                <span className="font-medium truncate">{c.confirmationNumber}</span>
+                <span className="truncate">{c.customer.name}</span>
+                <span className="text-right text-slate-500">{formatDate(c.issueDate)}</span>
+                <span className="text-right text-slate-500">{formatDate(c.expectedDeliveryDate)}</span>
+                <span className="text-right">{format(c.totalCents)}</span>
+                {actions}
+              </div>
+              {/* Mobile */}
+              <MobileCard title={c.confirmationNumber} subtitle={c.customer.name}>
+                <MobileField label="Datum" value={formatDate(c.issueDate)} />
+                <MobileField label="Lieferung ca." value={formatDate(c.expectedDeliveryDate)} />
+                <MobileField label="Betrag" value={format(c.totalCents)} />
+                <div className="pt-2">{actions}</div>
+              </MobileCard>
+            </div>
+          );
+        })}
         {list.length === 0 && <p className="px-4 py-6 text-center text-slate-500">Keine Auftragsbestätigungen vorhanden.</p>}
       </div>
     </div>

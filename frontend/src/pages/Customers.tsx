@@ -6,6 +6,7 @@ import { api } from "../api/client";
 import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
+import { MobileCard, MobileField } from "../components/MobileCard";
 
 const ROW_COLUMNS = "1fr 100px 1fr 130px 120px 90px 130px";
 
@@ -213,8 +214,8 @@ export default function Customers() {
       {loading ? (
         <p>{t("common.loading")}</p>
       ) : (
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
-          <div className="grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+          <div className="hidden md:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
             <span>Name</span>
             <span>Nummer</span>
             <span>E-Mail</span>
@@ -223,22 +224,14 @@ export default function Customers() {
             <span>Typ</span>
             <span></span>
           </div>
-          {filtered.map((c) => (
-            <div key={c.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
-              <div className="min-w-0">
-                <Link to={`/customers/${c.id}`} className="font-medium truncate text-brand hover:underline block">
-                  {c.name}
-                </Link>
-                {c.contactName && <div className="text-xs text-slate-500 truncate">{c.contactName}</div>}
-              </div>
-              <span className="text-slate-500 truncate">{c.customerNumber}</span>
-              <span className="truncate">{c.email || "-"}</span>
-              <span className="truncate">{c.phone || "-"}</span>
-              <span className="truncate">{c.city || "-"}</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full justify-self-start ${c.type === "GEWERBLICH" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"}`}>
+          {filtered.map((c) => {
+            const typeBadge = (
+              <span className={`text-xs px-2 py-0.5 rounded-full ${c.type === "GEWERBLICH" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"}`}>
                 {c.type === "GEWERBLICH" ? t("customers.business") : t("customers.private")}
               </span>
-              <div className="flex gap-3 justify-end">
+            );
+            const actions = (
+              <div className="flex gap-3 justify-end shrink-0">
                 <button onClick={() => startEdit(c)} className="text-brand hover:underline">
                   {t("common.edit")}
                 </button>
@@ -246,8 +239,39 @@ export default function Customers() {
                   {t("common.delete")}
                 </button>
               </div>
-            </div>
-          ))}
+            );
+            return (
+              <div key={c.id}>
+                {/* Desktop */}
+                <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+                  <div className="min-w-0">
+                    <Link to={`/customers/${c.id}`} className="font-medium truncate text-brand hover:underline block">
+                      {c.name}
+                    </Link>
+                    {c.contactName && <div className="text-xs text-slate-500 truncate">{c.contactName}</div>}
+                  </div>
+                  <span className="text-slate-500 truncate">{c.customerNumber}</span>
+                  <span className="truncate">{c.email || "-"}</span>
+                  <span className="truncate">{c.phone || "-"}</span>
+                  <span className="truncate">{c.city || "-"}</span>
+                  <span className="justify-self-start">{typeBadge}</span>
+                  {actions}
+                </div>
+                {/* Mobile */}
+                <MobileCard
+                  title={<Link to={`/customers/${c.id}`} className="text-brand hover:underline">{c.name}</Link>}
+                  subtitle={c.contactName || c.customerNumber}
+                  actions={actions}
+                >
+                  <MobileField label="Nummer" value={c.customerNumber} />
+                  <MobileField label="E-Mail" value={c.email || "-"} />
+                  <MobileField label="Telefon" value={c.phone || "-"} />
+                  <MobileField label="Ort" value={c.city || "-"} />
+                  <MobileField label="Typ" value={typeBadge} />
+                </MobileCard>
+              </div>
+            );
+          })}
           {filtered.length === 0 && <p className="px-4 py-6 text-center text-slate-500">Keine Kunden gefunden.</p>}
         </div>
       )}
