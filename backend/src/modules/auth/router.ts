@@ -3,7 +3,7 @@ import { z } from "zod";
 import QRCode from "qrcode";
 import { prisma } from "../../db/prisma";
 import { hashPassword, verifyPassword, isPasswordStrongEnough } from "./password";
-import { signAccessToken, issueRefreshToken, rotateRefreshToken, revokeRefreshToken } from "./tokens";
+import { signAccessToken, issueRefreshToken, rotateRefreshToken, revokeRefreshToken, revokeAllUserTokens } from "./tokens";
 import { generateTotpSecret, encryptTotpSecret, buildOtpAuthUrl, verifyTotpToken } from "./twoFactor";
 import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
@@ -157,6 +157,34 @@ authRouter.get("/me", requireAuth, async (req, res) => {
     totpEnabled: user.totpEnabled,
     companyId: user.companyId,
   });
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string(),
+  newPassword: z.string().min(10),
+});
+
+// Passwort selbst ändern (angemeldet, mit Kenntnis des aktuellen Passworts) - der normale
+// Weg für den täglichen Gebrauch. Für den Fall, dass jemand sein Passwort komplett
+// vergessen hat, siehe POST /users/:id/reset-password (nur für Admins, siehe users/router.ts).
+authRouter.post("/change-password", requireAuth, async (req, res) => {
+  const body = changePasswordSchema.parse(req.body);
+  if (!isPasswordStrongEnough(body.newPassword)) {
+    throw new HttpError(400, "Neues Passwort zu schwach (mind. 10 Zeichen, Buchstaben und Ziffern)");
+  }
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.auth!.sub } });
+  const currentOk = await verifyPassword(user.passwordHash, body.currentPassword);
+  if (!currentOk) throw new HttpError(401, "Aktuelles Passwort ist falsch");
+
+  const passwordHash = await hashPassword(body.newPassword);
+  await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+  // Alle anderen angemeldeten Geräte/Sitzungen abmelden - nur diese Sitzung bleibt aktiv,
+  // da sie das neue Passwort ja gerade erst gesetzt hat.
+  await revokeAllUserTokens(user.id);
+  const accessToken = signAccessToken({ sub: user.id, companyId: user.companyId, role: user.role, email: user.email });
+  const refreshToken = await issueRefreshToken(user.id, req.ip);
+  await writeAuditLog({ req, companyId: user.companyId, userId: user.id, action: "auth.change_password", entityType: "User", entityId: user.id });
+  res.json({ ok: true, accessToken, refreshToken });
 });
 
 // ---------- Zwei-Faktor-Authentifizierung (TOTP, optional) ----------

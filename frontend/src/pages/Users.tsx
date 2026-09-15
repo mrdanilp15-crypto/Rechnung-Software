@@ -4,6 +4,7 @@ import { useAuthStore } from "../store/authStore";
 import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
+import { RowActionsMenu } from "../components/RowActionsMenu";
 
 interface CompanyUser {
   id: string;
@@ -98,6 +99,13 @@ export default function Users() {
     await api.patch(`/users/${u.id}`, { isActive: !u.isActive });
     load();
     showToast(`${u.name} ${u.isActive ? "deaktiviert" : "aktiviert"}`, "success");
+  }
+
+  async function handleResetPassword(u: CompanyUser) {
+    if (!confirm(`Neues, zufälliges Passwort für "${u.name}" erzeugen? Das alte Passwort wird ungültig, alle angemeldeten Geräte dieser Person werden abgemeldet.`)) return;
+    const { data } = await api.post<{ tempPassword: string }>(`/users/${u.id}/reset-password`);
+    load();
+    alert(`Neues Passwort für ${u.name} (${u.email}):\n\n${data.tempPassword}\n\nBitte sicher übermitteln - wird nur jetzt einmalig angezeigt.`);
   }
 
   return (
@@ -201,9 +209,12 @@ export default function Users() {
               <span className="text-slate-500 text-xs truncate">{formatDate(u.lastLoginAt)}</span>
               <div className="flex justify-end">
                 {u.id !== currentUser?.id ? (
-                  <button onClick={() => handleToggleActive(u)} className={u.isActive ? "text-red-600 hover:underline" : "text-brand hover:underline"}>
-                    {u.isActive ? "Deaktivieren" : "Aktivieren"}
-                  </button>
+                  <RowActionsMenu
+                    actions={[
+                      { label: "Passwort zurücksetzen", onClick: () => handleResetPassword(u) },
+                      { label: u.isActive ? "Deaktivieren" : "Aktivieren", onClick: () => handleToggleActive(u), danger: u.isActive },
+                    ]}
+                  />
                 ) : (
                   <span className="text-xs text-slate-400">(Sie)</span>
                 )}

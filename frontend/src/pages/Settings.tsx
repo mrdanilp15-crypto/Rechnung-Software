@@ -6,6 +6,7 @@ import { CompanyAssetUpload } from "../components/CompanyAssetUpload";
 import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import Users from "./Users";
+import { useToast } from "../components/Toast";
 
 interface Company {
   name: string;
@@ -34,6 +35,7 @@ const formatEuro = (cents: number) => new Intl.NumberFormat("de-DE", { style: "c
 
 const TABS = [
   { key: "company", label: "Firma" },
+  { key: "password", label: "Passwort" },
   { key: "users", label: "Benutzer" },
   { key: "branding", label: "Logo & Stempel" },
   { key: "email", label: "E-Mail-Versand" },
@@ -45,6 +47,8 @@ type TabKey = (typeof TABS)[number]["key"];
 export default function Settings() {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
+  const updateAccessToken = useAuthStore((s) => s.updateAccessToken);
+  const showToast = useToast();
   const [tab, setTab] = useState<TabKey>("company");
   const [company, setCompany] = useState<Company | null>(null);
   const [revenue, setRevenue] = useState<RevenueStatus | null>(null);
@@ -53,11 +57,14 @@ export default function Settings() {
   const [smtp, setSmtp] = useState({ smtpHost: "", smtpPort: 587, smtpSecure: false, smtpUser: "", smtpPassword: "", smtpFromEmail: "", smtpFromName: "" });
   const [smtpMessage, setSmtpMessage] = useState<string | null>(null);
   const [companyError, setCompanyError] = useState<string | null>(null);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", newPasswordRepeat: "" });
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const companySave = useSaveStatus();
   const smtpSave = useSaveStatus();
   const twoFaSave = useSaveStatus();
   const backupSave = useSaveStatus();
   const importSave = useSaveStatus();
+  const passwordSave = useSaveStatus();
 
   function load() {
     api.get("/companies/me").then((res) => setCompany(res.data));
@@ -74,6 +81,28 @@ export default function Settings() {
       load();
     } catch (err: any) {
       setCompanyError(err.response?.data?.error || t("common.error"));
+    }
+  }
+
+  async function handleChangePassword(e: FormEvent) {
+    e.preventDefault();
+    setPasswordError(null);
+    if (passwordForm.newPassword !== passwordForm.newPasswordRepeat) {
+      setPasswordError("Neue Passwörter stimmen nicht überein.");
+      return;
+    }
+    try {
+      const { data } = await passwordSave.run(() =>
+        api.post("/auth/change-password", {
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        })
+      );
+      updateAccessToken(data.accessToken, data.refreshToken);
+      setPasswordForm({ currentPassword: "", newPassword: "", newPasswordRepeat: "" });
+      showToast("Passwort geändert. Andere angemeldete Geräte wurden abgemeldet.", "success");
+    } catch (err: any) {
+      setPasswordError(err.response?.data?.error || t("common.error"));
     }
   }
 
@@ -131,7 +160,8 @@ export default function Settings() {
 
   if (!company) return <p>{t("common.loading")}</p>;
 
-  const visibleTabs = user?.role === "ADMIN" ? TABS : TABS.filter((tb) => tb.key === "company");
+  const visibleTabs =
+    user?.role === "ADMIN" ? TABS : TABS.filter((tb) => tb.key === "company" || tb.key === "password");
 
   return (
     <div className="max-w-3xl">
@@ -195,6 +225,48 @@ export default function Settings() {
           {companyError && <p className="text-red-600 text-sm">{companyError}</p>}
           <SaveButton status={companySave.status} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
             {t("common.save")}
+          </SaveButton>
+        </form>
+      )}
+
+      {tab === "password" && (
+        <form onSubmit={handleChangePassword} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-4 max-w-md">
+          <h2 className="font-medium">Passwort ändern</h2>
+          <div>
+            <label className="block text-sm mb-1">Aktuelles Passwort</label>
+            <input
+              required
+              type="password"
+              value={passwordForm.currentPassword}
+              onChange={(e) => setPasswordForm((f) => ({ ...f, currentPassword: e.target.value }))}
+              className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+            />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Neues Passwort (mind. 10 Zeichen, Buchstaben und Ziffern)</label>
+            <input
+              required
+              type="password"
+              minLength={10}
+              value={passwordForm.newPassword}
+              onChange={(e) => setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))}
+              className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+            />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Neues Passwort wiederholen</label>
+            <input
+              required
+              type="password"
+              minLength={10}
+              value={passwordForm.newPasswordRepeat}
+              onChange={(e) => setPasswordForm((f) => ({ ...f, newPasswordRepeat: e.target.value }))}
+              className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+            />
+          </div>
+          {passwordError && <p className="text-red-600 text-sm">{passwordError}</p>}
+          <SaveButton status={passwordSave.status} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
+            Passwort ändern
           </SaveButton>
         </form>
       )}

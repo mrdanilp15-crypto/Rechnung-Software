@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../../db/prisma";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { hashPassword, isPasswordStrongEnough } from "../auth/password";
+import crypto from "crypto";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { revokeAllUserTokens } from "../auth/tokens";
@@ -57,6 +58,33 @@ usersRouter.patch("/:id", requireRole("ADMIN"), async (req, res) => {
   if (body.isActive === false) await revokeAllUserTokens(user.id);
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "user.update", entityType: "User", entityId: user.id, metadata: body });
   res.json({ id: updated.id, name: updated.name, role: updated.role, isActive: updated.isActive });
+});
+
+/** Zufälliges, garantiert ausreichend starkes Temporär-Passwort (Base64url-Alphabet
+ * enthält Buchstaben, Ziffern, "-" und "_" - erfüllt die Mindestanforderung praktisch
+ * immer, im unwahrscheinlichen Ausnahmefall wird einfach neu gezogen). */
+function generateTempPassword(): string {
+  let candidate = crypto.randomBytes(9).toString("base64url");
+  while (!isPasswordStrongEnough(candidate)) candidate = crypto.randomBytes(9).toString("base64url");
+  return candidate;
+}
+
+// Admin setzt ein neues, zufällig erzeugtes Passwort für einen Benutzer, der sein
+// eigenes vergessen hat (oder ausgesperrt ist) - wird dem Admin einmalig angezeigt, damit
+// er es der Person mitteilen kann. Alle bestehenden Sitzungen dieses Benutzers werden
+// beendet, eine evtl. aktive Sperre (failedLoginCount/lockedUntil) wird mit aufgehoben.
+usersRouter.post("/:id/reset-password", requireRole("ADMIN"), async (req, res) => {
+  const user = await prisma.user.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
+  if (!user) throw new HttpError(404, "Benutzer nicht gefunden");
+  const tempPassword = generateTempPassword();
+  const passwordHash = await hashPassword(tempPassword);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash, failedLoginCount: 0, lockedUntil: null },
+  });
+  await revokeAllUserTokens(user.id);
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "user.reset_password", entityType: "User", entityId: user.id });
+  res.json({ tempPassword });
 });
 
 usersRouter.delete("/:id", requireRole("ADMIN"), async (req, res) => {
