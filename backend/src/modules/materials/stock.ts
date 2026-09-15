@@ -2,12 +2,13 @@ import { Prisma } from "@prisma/client";
 
 /**
  * Passt den Materialbestand anhand der Rezepte (ProductMaterial) der Positionen einer
- * Rechnung an. sign=-1 beim Erstellen (Verbrauch abziehen), sign=1 beim Löschen eines
- * Entwurfs (Verbrauch zurückbuchen). Nutzt immer den AKTUELLEN Rezeptstand - wurde das
- * Rezept eines Produkts nach dem Erstellen der Rechnung geändert, wird beim Löschen
- * entsprechend der neuen Rezeptur zurückgebucht, nicht der zum Erstellzeitpunkt gültigen.
- * Bewusste Vereinfachung für v1: Bearbeiten einer Entwurfsrechnung (PATCH) löst KEINE
- * Anpassung des Bestands aus, nur Erstellen und Löschen.
+ * Rechnung an. sign=-1 beim Erstellen/Ändern (neuen Verbrauch abziehen), sign=1 beim
+ * Löschen bzw. vor dem Ändern eines Entwurfs (alten Verbrauch zurückbuchen - siehe
+ * PATCH /invoices/:id, das erst die alten Positionen gutschreibt und dann die neuen
+ * abzieht, damit der Bestand nach jeder Bearbeitung wieder korrekt ist). Nutzt immer den
+ * AKTUELLEN Rezeptstand - wurde das Rezept eines Produkts nach dem Erstellen der Rechnung
+ * geändert, wird entsprechend der neuen Rezeptur zurückgebucht, nicht der zum
+ * Erstellzeitpunkt gültigen.
  */
 async function adjustMaterialStock(
   tx: Prisma.TransactionClient,

@@ -113,7 +113,7 @@ invoicesRouter.post("/", async (req, res) => {
 });
 
 invoicesRouter.patch("/:id", async (req, res) => {
-  const existing = await prisma.invoice.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
+  const existing = await prisma.invoice.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId }, include: { items: true } });
   if (!existing) throw new HttpError(404, "Rechnung nicht gefunden");
   if (existing.status !== "DRAFT") {
     throw new HttpError(409, "Nur Entwürfe können bearbeitet werden. Bereits versendete Rechnungen sind aus GoBD-Gründen unveränderlich - bitte stornieren und neu erstellen.");
@@ -152,7 +152,15 @@ invoicesRouter.patch("/:id", async (req, res) => {
     };
   }
 
-  const updated = await prisma.invoice.update({ where: { id: existing.id }, data: updateData, include: { items: true, customer: true } });
+  // Bei geänderten Positionen: Materialbestand neu berechnen - alte Positionen
+  // gutschreiben, neue Positionen abziehen, atomar zusammen mit dem Update.
+  const updated = await prisma.$transaction(async (tx) => {
+    if (body.items) {
+      await restoreMaterialStock(tx, existing.items);
+      await deductMaterialStock(tx, body.items);
+    }
+    return tx.invoice.update({ where: { id: existing.id }, data: updateData, include: { items: true, customer: true } });
+  });
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "invoice.update", entityType: "Invoice", entityId: existing.id });
   res.json(updated);
 });
