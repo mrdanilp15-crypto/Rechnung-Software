@@ -4,6 +4,8 @@
 # bauen - Portainer braucht deshalb KEINEN Zugriff auf den eigentlichen Quellcode (kein
 # "unable to prepare context"-Fehler, da kein Build-Kontext nötig ist). Die Images werden
 # bei jedem Push auf "main" automatisch aktualisiert (siehe .github/workflows/docker-image.yml).
+# "pull_policy: always" sorgt dafür, dass bei jedem Deploy wirklich das neueste ":latest"-
+# Image gezogen wird, statt eine evtl. lokal gecachte ältere Version weiterzuverwenden.
 # Wichtig: die GHCR-Pakete müssen einmalig auf "Public" gestellt werden (GitHub → Packages
 # → jeweiliges Paket → Package settings → Change visibility), sonst kann Portainer sie ohne
 # Registry-Login nicht pullen.
@@ -43,6 +45,7 @@ services:
 
   backend:
     image: ghcr.io/mrdanilp15-crypto/rechnung-software-backend:latest
+    pull_policy: always
     restart: unless-stopped
     depends_on:
       db:
@@ -94,6 +97,7 @@ services:
 
   frontend:
     image: ghcr.io/mrdanilp15-crypto/rechnung-software-frontend:latest
+    pull_policy: always
     restart: unless-stopped
     depends_on:
       backend:
