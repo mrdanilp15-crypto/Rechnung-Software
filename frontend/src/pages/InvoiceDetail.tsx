@@ -123,9 +123,9 @@ export default function InvoiceDetail() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
         <h1 className="text-2xl font-semibold">{invoice.invoiceNumber}</h1>
-        <div className="flex gap-2 flex-wrap justify-end">
+        <div className="flex gap-2 flex-wrap sm:justify-end">
           {invoice.status === "DRAFT" && (
             <>
               <Link to={`/invoices/${id}/edit`} className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm">
@@ -212,26 +212,28 @@ export default function InvoiceDetail() {
         <p><strong>Zahlungserinnerungen:</strong> {invoice.reminderCount > 0 ? invoice.reminderCount : "keine"}</p>
       </div>
 
-      <table className="w-full text-sm bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
-        <thead className="bg-slate-50 dark:bg-slate-700">
-          <tr>
-            <th className="text-left p-3">Beschreibung</th>
-            <th className="text-right p-3">Menge</th>
-            <th className="text-right p-3">Einzelpreis</th>
-            <th className="text-right p-3">Summe</th>
-          </tr>
-        </thead>
-        <tbody>
-          {invoice.items.map((item) => (
-            <tr key={item.id} className="border-t border-slate-100 dark:border-slate-700">
-              <td className="p-3">{item.description}</td>
-              <td className="p-3 text-right">{item.quantity} {item.unit}</td>
-              <td className="p-3 text-right">{format(item.unitPriceCents)}</td>
-              <td className="p-3 text-right">{format(item.lineTotalCents)}</td>
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 dark:bg-slate-700">
+            <tr>
+              <th className="text-left p-3">Beschreibung</th>
+              <th className="text-right p-3">Menge</th>
+              <th className="text-right p-3">Einzelpreis</th>
+              <th className="text-right p-3">Summe</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {invoice.items.map((item) => (
+              <tr key={item.id} className="border-t border-slate-100 dark:border-slate-700">
+                <td className="p-3">{item.description}</td>
+                <td className="p-3 text-right whitespace-nowrap">{item.quantity} {item.unit}</td>
+                <td className="p-3 text-right whitespace-nowrap">{format(item.unitPriceCents)}</td>
+                <td className="p-3 text-right whitespace-nowrap">{format(item.lineTotalCents)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mt-4 max-w-xs ml-auto text-sm">
         <div className="flex justify-between py-1"><span>Netto</span><span>{format(invoice.subtotalCents)}</span></div>

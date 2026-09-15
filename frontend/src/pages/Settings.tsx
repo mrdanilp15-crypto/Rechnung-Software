@@ -167,7 +167,7 @@ export default function Settings() {
       {tab === "company" && (
         <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-4">
           <h2 className="font-medium">{t("settings.company")}</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input value={company.name} onChange={(e) => setCompany({ ...company, name: e.target.value })} placeholder="Firmenname" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
             <input value={company.vatId || ""} onChange={(e) => setCompany({ ...company, vatId: e.target.value })} placeholder="USt-IdNr." className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
             <input value={company.street || ""} onChange={(e) => setCompany({ ...company, street: e.target.value })} placeholder="Straße" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
@@ -228,7 +228,7 @@ export default function Settings() {
               <span className="text-slate-500">nicht eingerichtet</span>
             )}
           </p>
-          <form onSubmit={saveSmtp} className="grid grid-cols-2 gap-3">
+          <form onSubmit={saveSmtp} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm mb-1">SMTP-Server</label>
               <input required placeholder="z.B. smtp.gmail.com" value={smtp.smtpHost} onChange={(e) => setSmtp((s) => ({ ...s, smtpHost: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />

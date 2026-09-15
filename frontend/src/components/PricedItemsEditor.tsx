@@ -81,8 +81,8 @@ export function PricedItemsEditor({
   }
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4">
-      <table className="w-full text-sm">
+    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 overflow-x-auto">
+      <table className="w-full text-sm min-w-[640px]">
         <thead>
           <tr className="text-left text-slate-500">
             <th className="pb-2">Produkt</th>

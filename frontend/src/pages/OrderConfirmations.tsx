@@ -51,7 +51,7 @@ export default function OrderConfirmations() {
         <p>Bestätigt schriftlich, dass ein Auftrag angenommen wurde - z.B. nach einer telefonischen Bestellung oder einem angenommenen Angebot. Legt Leistung, Preis und voraussichtlichen Liefertermin verbindlich fest, <strong>bevor</strong> produziert/versendet wird.</p>
         <p><strong>Optional:</strong> nicht gesetzlich vorgeschrieben, aber sinnvoll zur Absicherung bei individuellen Aufträgen. Aus einer Auftragsbestätigung lässt sich später mit "→ Lieferschein" direkt ein Lieferschein mit denselben Positionen erzeugen.</p>
       </InfoBox>
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
         <div className="grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
           <span>Nummer</span>
           <span>Kunde</span>

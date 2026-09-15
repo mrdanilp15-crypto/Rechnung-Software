@@ -113,7 +113,7 @@ export default function Materials() {
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
       {showForm && (
-        <form onSubmit={handleCreate} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 grid grid-cols-3 gap-4">
+        <form onSubmit={handleCreate} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm mb-1">Name *</label>
             <input required placeholder="z.B. PLA Filament schwarz" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
@@ -133,7 +133,7 @@ export default function Materials() {
         </form>
       )}
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
         <div className="grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
           <span>Name</span>
           <span className="text-right">Bestand</span>
@@ -155,7 +155,7 @@ export default function Materials() {
               </div>
             </div>
             {restockingId === m.id && (
-              <form onSubmit={(e) => handleRestock(e, m)} className="grid grid-cols-4 gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-700">
+              <form onSubmit={(e) => handleRestock(e, m)} className="grid grid-cols-1 sm:grid-cols-4 gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-700">
                 <div>
                   <label className="block text-sm mb-1">Menge ({m.unit})</label>
                   <input required type="number" step="any" min="0.01" value={restockForm.quantity} onFocus={(e) => e.target.select()} onChange={(e) => setRestockForm((f) => ({ ...f, quantity: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />

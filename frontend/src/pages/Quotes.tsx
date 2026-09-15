@@ -72,7 +72,7 @@ export default function Quotes() {
         <p>Ein <strong>unverbindliches Preisangebot</strong> an den Kunden, bevor ein Auftrag zustande kommt. Der Kunde prüft Preis und Leistung und sagt zu oder ab - noch keine rechtliche Verpflichtung.</p>
         <p><strong>1. Schritt im Ablauf:</strong> Angebot erstellen → versenden → Kunde nimmt an oder lehnt ab → bei Annahme direkt mit "→ Rechnung" in eine Rechnung umwandeln (Positionen werden übernommen).</p>
       </InfoBox>
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
         <div className="grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
           <span>Nummer</span>
           <span>Kunde</span>

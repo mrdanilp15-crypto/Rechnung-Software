@@ -129,7 +129,7 @@ export default function Finance() {
           </div>
           {summary && (
             <>
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div className="bg-white dark:bg-slate-800 rounded-lg p-5 shadow">
                   <p className="text-sm text-slate-500">Einnahmen (bezahlte Rechnungen)</p>
                   <p className="text-2xl font-semibold text-green-600">{formatEuro(summary.incomeCents)}</p>
@@ -170,7 +170,7 @@ export default function Finance() {
             </button>
           </div>
           {showExpenseForm && (
-            <form onSubmit={handleAddExpense} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 grid grid-cols-2 gap-4">
+            <form onSubmit={handleAddExpense} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm mb-1">Datum</label>
                 <input type="date" required value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
@@ -201,7 +201,7 @@ export default function Finance() {
               </div>
             </form>
           )}
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
             {expenses.map((exp) => (
               <div key={exp.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "100px 1fr 130px 110px auto" }}>
                 <span>{new Date(exp.date).toLocaleDateString("de-DE")}</span>
@@ -236,7 +236,7 @@ export default function Finance() {
             />
             {bankMessage && <p className="text-sm">{bankMessage}</p>}
           </div>
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
             {transactions.map((tx) => (
               <div key={tx.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "100px 160px 1fr 110px 100px" }}>
                 <span>{new Date(tx.bookingDate).toLocaleDateString("de-DE")}</span>

@@ -142,7 +142,7 @@ export default function Users() {
       {error && <p className="text-red-600 text-sm">{error}</p>}
 
       {showForm && (
-        <form onSubmit={handleCreate} className="grid grid-cols-2 gap-3 border-t border-slate-100 dark:border-slate-700 pt-4">
+        <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-100 dark:border-slate-700 pt-4">
           <div>
             <label className="block text-sm mb-1">Name</label>
             <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
@@ -170,7 +170,7 @@ export default function Users() {
         </form>
       )}
 
-      <div className="border-t border-slate-100 dark:border-slate-700">
+      <div className="border-t border-slate-100 dark:border-slate-700 overflow-x-auto">
         <div className="grid items-center gap-3 py-2 text-xs font-medium text-slate-500 border-b border-slate-100 dark:border-slate-700" style={{ gridTemplateColumns: ROW_COLUMNS }}>
           <span>Name / E-Mail</span>
           <span>Rolle</span>

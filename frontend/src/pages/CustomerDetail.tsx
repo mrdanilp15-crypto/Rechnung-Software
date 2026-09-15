@@ -104,7 +104,7 @@ export default function CustomerDetail() {
       )}
 
       <h2 className="text-lg font-medium mb-3">Rechnungen</h2>
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 mb-6">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 mb-6 overflow-x-auto">
         {customer.history.invoices.map((inv) => (
           <Link key={inv.id} to={`/invoices/${inv.id}`} className="grid items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700" style={{ gridTemplateColumns: "140px 1fr 100px 100px" }}>
             <span className="font-medium">{inv.invoiceNumber}</span>
@@ -117,7 +117,7 @@ export default function CustomerDetail() {
       </div>
 
       <h2 className="text-lg font-medium mb-3">Angebote</h2>
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
         {customer.history.quotes.map((q) => (
           <div key={q.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "140px 1fr 100px 100px" }}>
             <span className="font-medium">{q.quoteNumber}</span>

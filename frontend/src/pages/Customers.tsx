@@ -142,7 +142,7 @@ export default function Customers() {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm mb-1">{t("customers.name")} *</label>
               <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
@@ -158,7 +158,7 @@ export default function Customers() {
             {form.type === "GEWERBLICH" && field("vatId", "USt-IdNr.")}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm mb-1">{t("customers.email")}</label>
               <input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
@@ -166,11 +166,11 @@ export default function Customers() {
             {field("phone", "Telefon")}
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            {field("street", "Straße & Hausnummer", "col-span-2")}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {field("street", "Straße & Hausnummer", "sm:col-span-2")}
             {field("postalCode", "Postleitzahl")}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {field("city", t("customers.city"))}
             {field("country", "Land (ISO-Code, z.B. DE, AT, CH)")}
           </div>
@@ -213,7 +213,7 @@ export default function Customers() {
       {loading ? (
         <p>{t("common.loading")}</p>
       ) : (
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
           <div className="grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
             <span>Name</span>
             <span>Nummer</span>

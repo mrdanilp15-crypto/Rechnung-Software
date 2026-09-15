@@ -99,7 +99,7 @@ export default function Dashboard() {
           </div>
 
           <h2 className="text-lg font-medium mb-3">Letzte Rechnungen</h2>
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700 overflow-x-auto">
             {invoices.slice(0, 8).map((inv) => (
               <div key={inv.id} className="grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "140px 1fr 120px 110px" }}>
                 <span className="truncate">{inv.invoiceNumber}</span>

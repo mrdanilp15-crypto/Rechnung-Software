@@ -86,7 +86,7 @@ export default function InvoiceNew() {
       <h1 className="text-2xl font-semibold mb-6">{isEditing ? t("common.edit") : t("invoices.new")}</h1>
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 grid grid-cols-2 gap-4">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm mb-1">{t("invoices.customer")}</label>
           <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
