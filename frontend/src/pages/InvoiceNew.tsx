@@ -27,6 +27,7 @@ export default function InvoiceNew() {
   const [products, setProducts] = useState<Product[]>([]);
   const [customerId, setCustomerId] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
   const [items, setItems] = useState<LineItem[]>([createEmptyLineItem()]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(isEditing);
@@ -47,6 +48,7 @@ export default function InvoiceNew() {
       }
       setCustomerId(inv.customerId);
       setDueDate(inv.dueDate ? inv.dueDate.slice(0, 10) : "");
+      setDeliveryDate(inv.deliveryDate ? inv.deliveryDate.slice(0, 10) : "");
       setItems(withClientKeys(inv.items.map((it: any) => ({
         productId: it.productId ?? undefined,
         description: it.description,
@@ -65,9 +67,9 @@ export default function InvoiceNew() {
     try {
       await run(async () => {
         if (isEditing) {
-          await api.patch(`/invoices/${id}`, { customerId, dueDate: dueDate || undefined, items });
+          await api.patch(`/invoices/${id}`, { customerId, dueDate: dueDate || undefined, deliveryDate: deliveryDate || undefined, items });
         } else {
-          const { data } = await api.post("/invoices", { customerId, dueDate: dueDate || undefined, items });
+          const { data } = await api.post("/invoices", { customerId, dueDate: dueDate || undefined, deliveryDate: deliveryDate || undefined, items });
           navigate(`/invoices/${data.id}`);
         }
       });
@@ -97,6 +99,11 @@ export default function InvoiceNew() {
         <div>
           <label className="block text-sm mb-1">{t("invoices.dueDate")}</label>
           <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+        </div>
+        <div>
+          <label className="block text-sm mb-1">Leistungs-/Lieferdatum</label>
+          <input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+          <p className="text-xs text-slate-500 mt-1">Leer lassen = Rechnungsdatum gilt als Leistungsdatum (§14 Abs. 4 Nr. 6 UStG verlangt i.d.R. eine explizite Angabe).</p>
         </div>
       </div>
 
