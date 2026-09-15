@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
 import { InfoBox } from "../components/InfoBox";
+import { RowActionsMenu } from "../components/RowActionsMenu";
+import { useToast } from "../components/Toast";
 
 interface OrderConfirmation {
   id: string;
@@ -20,6 +22,7 @@ const formatDate = (iso?: string) => (iso ? new Intl.DateTimeFormat("de-DE").for
 
 export default function OrderConfirmations() {
   const { t } = useTranslation();
+  const showToast = useToast();
   const [list, setList] = useState<OrderConfirmation[]>([]);
 
   function load() {
@@ -33,6 +36,7 @@ export default function OrderConfirmations() {
     if (!confirm(`Auftragsbestätigung "${c.confirmationNumber}" wirklich löschen?`)) return;
     await api.delete(`/order-confirmations/${c.id}`);
     load();
+    showToast(`Auftragsbestätigung ${c.confirmationNumber} gelöscht`, "success");
   }
 
   return (
@@ -63,14 +67,14 @@ export default function OrderConfirmations() {
             <span className="text-right text-slate-500">{formatDate(c.issueDate)}</span>
             <span className="text-right text-slate-500">{formatDate(c.expectedDeliveryDate)}</span>
             <span className="text-right">{format(c.totalCents)}</span>
-            <div className="flex gap-3 justify-end items-center flex-wrap">
-              <PdfLink url={`/order-confirmations/${c.id}/pdf`} filename={`${c.confirmationNumber}.pdf`} className="text-brand hover:underline">PDF</PdfLink>
+            <div className="flex gap-2 justify-end items-center flex-wrap">
               {c._count.deliveryNotes > 0 ? (
                 <span className="text-xs text-green-600" title="Lieferschein wurde bereits erstellt">✓ Lieferschein</span>
               ) : (
-                <Link to={`/delivery-notes/new?fromOrderConfirmation=${c.id}`} className="text-brand hover:underline">→ Lieferschein</Link>
+                <Link to={`/delivery-notes/new?fromOrderConfirmation=${c.id}`} className="bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded text-sm">→ Lieferschein</Link>
               )}
-              <button onClick={() => handleDelete(c)} className="text-red-600 hover:underline">{t("common.delete")}</button>
+              <PdfLink url={`/order-confirmations/${c.id}/pdf`} filename={`${c.confirmationNumber}.pdf`} className="text-brand hover:underline">PDF</PdfLink>
+              <RowActionsMenu actions={[{ label: t("common.delete"), onClick: () => handleDelete(c), danger: true }]} />
             </div>
           </div>
         ))}

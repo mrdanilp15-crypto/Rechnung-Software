@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
 import { InfoBox } from "../components/InfoBox";
+import { RowActionsMenu } from "../components/RowActionsMenu";
+import { useToast } from "../components/Toast";
 
 interface DeliveryNote {
   id: string;
@@ -19,6 +21,7 @@ const formatDate = (iso: string) => new Intl.DateTimeFormat("de-DE").format(new 
 
 export default function DeliveryNotes() {
   const { t } = useTranslation();
+  const showToast = useToast();
   const [notes, setNotes] = useState<DeliveryNote[]>([]);
 
   function load() {
@@ -30,6 +33,7 @@ export default function DeliveryNotes() {
     if (!confirm(`Lieferschein "${n.noteNumber}" wirklich löschen?`)) return;
     await api.delete(`/delivery-notes/${n.id}`);
     load();
+    showToast(`Lieferschein ${n.noteNumber} gelöscht`, "success");
   }
 
   return (
@@ -63,9 +67,9 @@ export default function DeliveryNotes() {
             <span className="text-right text-slate-500">{formatDate(n.deliveryDate)}</span>
             <span className="text-right text-slate-500 truncate">{n.customer.city || "-"}</span>
             <span className="text-right text-slate-500">{n._count.items}</span>
-            <div className="flex gap-3 justify-end">
+            <div className="flex gap-2 justify-end items-center">
               <PdfLink url={`/delivery-notes/${n.id}/pdf`} filename={`${n.noteNumber}.pdf`} className="text-brand hover:underline">PDF</PdfLink>
-              <button onClick={() => handleDelete(n)} className="text-red-600 hover:underline">{t("common.delete")}</button>
+              <RowActionsMenu actions={[{ label: t("common.delete"), onClick: () => handleDelete(n), danger: true }]} />
             </div>
           </div>
         ))}

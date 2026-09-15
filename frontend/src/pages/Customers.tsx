@@ -5,6 +5,7 @@ import Fuse from "fuse.js";
 import { api } from "../api/client";
 import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
+import { useToast } from "../components/Toast";
 
 const ROW_COLUMNS = "1fr 100px 1fr 130px 120px 90px 130px";
 
@@ -48,6 +49,7 @@ export default function Customers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { status, run } = useSaveStatus();
+  const showToast = useToast();
 
   function load() {
     api
@@ -110,6 +112,7 @@ export default function Customers() {
     try {
       await api.delete(`/customers/${c.id}`);
       load();
+      showToast(`${c.name} archiviert`, "success");
     } catch (err: any) {
       setError(err.response?.data?.error || t("common.error"));
     }

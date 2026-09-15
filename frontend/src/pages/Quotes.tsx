@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
 import { InfoBox } from "../components/InfoBox";
+import { RowActionsMenu } from "../components/RowActionsMenu";
+import { useToast } from "../components/Toast";
 
 interface Quote {
   id: string;
@@ -28,6 +30,8 @@ const formatDate = (iso?: string) => (iso ? new Intl.DateTimeFormat("de-DE").for
 
 export default function Quotes() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const showToast = useToast();
   const [quotes, setQuotes] = useState<Quote[]>([]);
 
   function load() {
@@ -37,20 +41,23 @@ export default function Quotes() {
 
   const format = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
 
-  async function convert(id: string) {
-    await api.post(`/quotes/${id}/convert-to-invoice`);
+  async function convert(q: Quote) {
+    const { data: invoice } = await api.post(`/quotes/${q.id}/convert-to-invoice`);
     load();
+    showToast(`Angebot ${q.quoteNumber} als Rechnung ${invoice.invoiceNumber} angelegt`, "success");
   }
 
-  async function setStatus(id: string, status: string) {
-    await api.patch(`/quotes/${id}/status`, { status });
+  async function setStatus(q: Quote, status: string) {
+    await api.patch(`/quotes/${q.id}/status`, { status });
     load();
+    showToast(`${q.quoteNumber}: Status auf "${statusLabel[status] ?? status}" gesetzt`, "success");
   }
 
   async function handleDelete(q: Quote) {
     if (!confirm(`Angebot "${q.quoteNumber}" wirklich löschen?`)) return;
     await api.delete(`/quotes/${q.id}`);
     load();
+    showToast(`Angebot ${q.quoteNumber} gelöscht`, "success");
   }
 
   return (
@@ -83,22 +90,26 @@ export default function Quotes() {
             <span className="text-right text-slate-500">{formatDate(q.validUntil)}</span>
             <span className="text-right">{format(q.totalCents)}</span>
             <span className="text-slate-500 text-right">{statusLabel[q.status] ?? q.status}</span>
-            <div className="flex gap-3 justify-end flex-wrap">
-              <PdfLink url={`/quotes/${q.id}/pdf`} filename={`${q.quoteNumber}.pdf`} className="text-brand hover:underline">PDF</PdfLink>
-              <Link to={`/quotes/${q.id}/edit`} className="text-brand hover:underline">{t("common.edit")}</Link>
-              <button onClick={() => handleDelete(q)} className="text-red-600 hover:underline">{t("common.delete")}</button>
+            <div className="flex gap-2 justify-end items-center flex-wrap">
               {q.status === "DRAFT" && (
-                <button onClick={() => setStatus(q.id, "SENT")} className="text-brand hover:underline">Versenden</button>
+                <button onClick={() => setStatus(q, "SENT")} className="text-brand hover:underline">Versenden</button>
               )}
               {q.status === "SENT" && (
                 <>
-                  <button onClick={() => setStatus(q.id, "ACCEPTED")} className="text-green-600 hover:underline">Angenommen</button>
-                  <button onClick={() => setStatus(q.id, "DECLINED")} className="text-red-600 hover:underline">Abgelehnt</button>
+                  <button onClick={() => setStatus(q, "ACCEPTED")} className="text-green-600 hover:underline">Angenommen</button>
+                  <button onClick={() => setStatus(q, "DECLINED")} className="text-red-600 hover:underline">Abgelehnt</button>
                 </>
               )}
               {q.status === "ACCEPTED" && (
-                <button onClick={() => convert(q.id)} className="text-brand hover:underline">→ Rechnung</button>
+                <button onClick={() => convert(q)} className="bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded text-sm">→ Rechnung</button>
               )}
+              <PdfLink url={`/quotes/${q.id}/pdf`} filename={`${q.quoteNumber}.pdf`} className="text-brand hover:underline">PDF</PdfLink>
+              <RowActionsMenu
+                actions={[
+                  { label: t("common.edit"), onClick: () => navigate(`/quotes/${q.id}/edit`) },
+                  { label: t("common.delete"), onClick: () => handleDelete(q), danger: true },
+                ]}
+              />
             </div>
           </div>
         ))}

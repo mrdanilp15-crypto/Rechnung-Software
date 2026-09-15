@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
+import { useToast } from "../components/Toast";
 
 interface CompanyUser {
   id: string;
@@ -66,6 +67,7 @@ export default function Users() {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const { status, run } = useSaveStatus();
+  const showToast = useToast();
 
   function load() {
     api.get("/users").then((res) => setUsers(res.data));
@@ -88,12 +90,14 @@ export default function Users() {
   async function handleRoleChange(u: CompanyUser, role: string) {
     await api.patch(`/users/${u.id}`, { role });
     load();
+    showToast(`Rolle von ${u.name} geändert`, "success");
   }
 
   async function handleToggleActive(u: CompanyUser) {
     if (u.isActive && !confirm(`"${u.name}" deaktivieren? Die Person kann sich danach nicht mehr anmelden.`)) return;
     await api.patch(`/users/${u.id}`, { isActive: !u.isActive });
     load();
+    showToast(`${u.name} ${u.isActive ? "deaktiviert" : "aktiviert"}`, "success");
   }
 
   return (

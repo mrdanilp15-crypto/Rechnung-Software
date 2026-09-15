@@ -4,6 +4,7 @@ import Fuse from "fuse.js";
 import { api } from "../api/client";
 import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
+import { useToast } from "../components/Toast";
 
 interface Material {
   id: string;
@@ -43,6 +44,7 @@ export default function Products() {
   const [materialRows, setMaterialRows] = useState<MaterialUsageRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { status, run } = useSaveStatus();
+  const showToast = useToast();
 
   function load() {
     api.get("/products").then((res) => setProducts(res.data));
@@ -122,6 +124,7 @@ export default function Products() {
     try {
       await api.delete(`/products/${p.id}`);
       load();
+      showToast(`${p.name} archiviert`, "success");
     } catch (err: any) {
       setError(err.response?.data?.error || t("common.error"));
     }

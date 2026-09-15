@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { InfoBox } from "../components/InfoBox";
+import { useToast } from "../components/Toast";
 
 interface Material {
   id: string;
@@ -28,6 +29,7 @@ export default function Materials() {
   const [error, setError] = useState<string | null>(null);
   const createSave = useSaveStatus();
   const restockSave = useSaveStatus();
+  const showToast = useToast();
 
   function load() {
     api.get("/materials").then((res) => setMaterials(res.data));
@@ -81,6 +83,7 @@ export default function Materials() {
       );
       setRestockingId(null);
       load();
+      showToast(`${material.name} nachbestellt, Ausgabe automatisch angelegt`, "success");
     } catch (err: any) {
       setError(err.response?.data?.error || "Fehler beim Nachbestellen");
     }
@@ -90,6 +93,7 @@ export default function Materials() {
     if (!confirm(`Material "${m.name}" wirklich archivieren?`)) return;
     await api.delete(`/materials/${m.id}`);
     load();
+    showToast(`${m.name} archiviert`, "success");
   }
 
   return (
