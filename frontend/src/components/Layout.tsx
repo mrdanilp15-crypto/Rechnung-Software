@@ -8,6 +8,7 @@ const navItems = [
   { to: "/", key: "dashboard" },
   { to: "/customers", key: "customers" },
   { to: "/products", key: "products" },
+  { to: "/materials", key: "materials" },
   { to: "/invoices", key: "invoices" },
   { to: "/quotes", key: "quotes" },
   { to: "/delivery-notes", key: "deliveryNotes" },

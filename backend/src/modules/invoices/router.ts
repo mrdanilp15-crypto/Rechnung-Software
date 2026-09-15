@@ -11,6 +11,7 @@ import { emitEvent } from "../plugins/hooks";
 import { generateAndStoreInvoicePdf } from "./pdfHelper";
 import { getInvoiceComplianceWarnings } from "../tax/compliance";
 import { sendMailForCompany, isSmtpConfigured, buildInvoiceEmailText, buildReminderEmailText } from "../email/mailer";
+import { deductMaterialStock, restoreMaterialStock } from "../materials/stock";
 
 export const invoicesRouter = Router();
 invoicesRouter.use(requireAuth);
@@ -70,6 +71,7 @@ invoicesRouter.post("/", async (req, res) => {
 
   const invoice = await prisma.$transaction(async (tx) => {
     const invoiceNumber = await nextDocumentNumber(company.id, "INVOICE", tx);
+    await deductMaterialStock(tx, body.items);
     return tx.invoice.create({
       data: {
         companyId: company.id,
@@ -158,12 +160,15 @@ invoicesRouter.patch("/:id", async (req, res) => {
 // Entwürfe dürfen hart gelöscht werden (kein GoBD-Konflikt, da noch keine Ausgabe an den
 // Kunden erfolgt ist). Bereits versendete Rechnungen können nur storniert werden (siehe unten).
 invoicesRouter.delete("/:id", async (req, res) => {
-  const existing = await prisma.invoice.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
+  const existing = await prisma.invoice.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId }, include: { items: true } });
   if (!existing) throw new HttpError(404, "Rechnung nicht gefunden");
   if (existing.status !== "DRAFT") {
     throw new HttpError(409, "Nur Entwürfe können gelöscht werden. Bereits versendete Rechnungen bitte stornieren.");
   }
-  await prisma.invoice.delete({ where: { id: existing.id } });
+  await prisma.$transaction(async (tx) => {
+    await restoreMaterialStock(tx, existing.items);
+    await tx.invoice.delete({ where: { id: existing.id } });
+  });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "invoice.delete_draft", entityType: "Invoice", entityId: existing.id });
   res.status(204).send();
 });
@@ -202,9 +207,18 @@ invoicesRouter.post("/bulk-delete", async (req, res) => {
   });
   const deletableIds = (body.force ? candidates : candidates.filter((inv) => inv.status === "DRAFT")).map((inv) => inv.id);
   const skippedIds = body.ids.filter((id) => !deletableIds.includes(id));
+  // Materialbestand nur für gelöschte ENTWÜRFE zurückbuchen - bei per force gelöschten
+  // bereits versendeten Rechnungen wurde das Material schon real verbraucht/produziert.
+  const draftIdsBeingDeleted = candidates.filter((inv) => inv.status === "DRAFT" && deletableIds.includes(inv.id)).map((inv) => inv.id);
 
   if (deletableIds.length > 0) {
-    await prisma.invoice.deleteMany({ where: { id: { in: deletableIds } } });
+    await prisma.$transaction(async (tx) => {
+      if (draftIdsBeingDeleted.length > 0) {
+        const draftItems = await tx.invoiceItem.findMany({ where: { invoiceId: { in: draftIdsBeingDeleted } } });
+        await restoreMaterialStock(tx, draftItems);
+      }
+      await tx.invoice.deleteMany({ where: { id: { in: deletableIds } } });
+    });
     await writeAuditLog({
       req,
       companyId: req.auth!.companyId,

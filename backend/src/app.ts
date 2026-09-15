@@ -30,6 +30,7 @@ import { importRouter } from "./modules/export/importRouter";
 import { openApiRouter } from "./modules/docs/openapi";
 import { expensesRouter } from "./modules/expenses/router";
 import { bankRouter } from "./modules/bank/router";
+import { materialsRouter } from "./modules/materials/router";
 
 export function createApp() {
   const app = express();
@@ -93,6 +94,7 @@ export function createApp() {
   app.use("/api/import", importRouter);
   app.use("/api/expenses", expensesRouter);
   app.use("/api/bank", bankRouter);
+  app.use("/api/materials", materialsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

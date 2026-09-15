@@ -1,6 +1,6 @@
 {
   "app": { "title": "Rechnungssoftware" },
-  "nav": { "dashboard": "Übersicht", "customers": "Kunden", "products": "Produkte", "invoices": "Rechnungen", "quotes": "Angebote", "deliveryNotes": "Lieferscheine", "orderConfirmations": "Auftragsbestätigungen", "finance": "Finanzen", "settings": "Einstellungen", "logout": "Abmelden" },
+  "nav": { "dashboard": "Übersicht", "customers": "Kunden", "products": "Produkte", "materials": "Material", "invoices": "Rechnungen", "quotes": "Angebote", "deliveryNotes": "Lieferscheine", "orderConfirmations": "Auftragsbestätigungen", "finance": "Finanzen", "settings": "Einstellungen", "logout": "Abmelden" },
   "auth": {
     "login": "Anmelden", "register": "Registrieren", "email": "E-Mail", "password": "Passwort",
     "companyName": "Firmenname", "name": "Name", "totpToken": "2FA-Code", "loginError": "Anmeldung fehlgeschlagen",

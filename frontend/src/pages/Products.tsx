@@ -5,6 +5,16 @@ import { api } from "../api/client";
 import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 
+interface Material {
+  id: string;
+  name: string;
+  unit: string;
+}
+interface ProductMaterial {
+  materialId: string;
+  quantityPerUnit: number;
+  material: Material;
+}
 interface Product {
   id: string;
   sku?: string;
@@ -13,6 +23,11 @@ interface Product {
   unit: string;
   unitPriceCents: number;
   vatRateBps: number;
+  materials: ProductMaterial[];
+}
+interface MaterialUsageRow {
+  materialId: string;
+  quantityPerUnit: string;
 }
 
 const emptyForm = { sku: "", name: "", description: "", unit: "Stk.", unitPriceEur: "0.00", vatRateBps: 1900 };
@@ -20,10 +35,12 @@ const emptyForm = { sku: "", name: "", description: "", unit: "Stk.", unitPriceE
 export default function Products() {
   const { t } = useTranslation();
   const [products, setProducts] = useState<Product[]>([]);
+  const [materials, setMaterials] = useState<Material[]>([]);
   const [query, setQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [materialRows, setMaterialRows] = useState<MaterialUsageRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { status, run } = useSaveStatus();
 
@@ -31,6 +48,9 @@ export default function Products() {
     api.get("/products").then((res) => setProducts(res.data));
   }
   useEffect(load, []);
+  useEffect(() => {
+    api.get("/materials").then((res) => setMaterials(res.data));
+  }, []);
 
   const fuse = useMemo(() => new Fuse(products, { keys: ["name", "sku", "description"], threshold: 0.35 }), [products]);
   const filtered = query ? fuse.search(query).map((r) => r.item) : products;
@@ -38,6 +58,7 @@ export default function Products() {
   function startCreate() {
     setEditingId(null);
     setForm(emptyForm);
+    setMaterialRows([]);
     setShowForm(true);
   }
 
@@ -51,12 +72,25 @@ export default function Products() {
       unitPriceEur: (p.unitPriceCents / 100).toFixed(2),
       vatRateBps: p.vatRateBps,
     });
+    setMaterialRows(p.materials.map((m) => ({ materialId: m.materialId, quantityPerUnit: String(m.quantityPerUnit) })));
     setShowForm(true);
+  }
+
+  function addMaterialRow() {
+    if (materials.length === 0) return;
+    setMaterialRows((rows) => [...rows, { materialId: materials[0].id, quantityPerUnit: "" }]);
+  }
+  function updateMaterialRow(idx: number, patch: Partial<MaterialUsageRow>) {
+    setMaterialRows((rows) => rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  }
+  function removeMaterialRow(idx: number) {
+    setMaterialRows((rows) => rows.filter((_, i) => i !== idx));
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    const validMaterialRows = materialRows.filter((r) => r.materialId && parseFloat(r.quantityPerUnit) > 0);
     const payload = {
       sku: form.sku || undefined,
       name: form.name,
@@ -64,6 +98,7 @@ export default function Products() {
       unit: form.unit,
       unitPriceCents: Math.round(parseFloat(form.unitPriceEur) * 100),
       vatRateBps: form.vatRateBps,
+      materials: validMaterialRows.map((r) => ({ materialId: r.materialId, quantityPerUnit: parseFloat(r.quantityPerUnit) })),
     };
     try {
       await run(async () => {
@@ -145,6 +180,37 @@ export default function Products() {
               </select>
             </div>
           </div>
+
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-sm">Materialverbrauch pro {form.unit || "Einheit"} (optional)</label>
+              <button type="button" onClick={addMaterialRow} disabled={materials.length === 0} className="text-brand hover:underline text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                + Material hinzufügen
+              </button>
+            </div>
+            {materials.length === 0 && <p className="text-xs text-slate-500">Noch kein Material angelegt - siehe Menüpunkt "Material".</p>}
+            {materialRows.map((row, idx) => (
+              <div key={idx} className="grid grid-cols-[1fr_140px_auto] gap-2 mb-2">
+                <select value={row.materialId} onChange={(e) => updateMaterialRow(idx, { materialId: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                  {materials.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  placeholder={`Menge (${materials.find((m) => m.id === row.materialId)?.unit || ""})`}
+                  value={row.quantityPerUnit}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => updateMaterialRow(idx, { quantityPerUnit: e.target.value })}
+                  className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                />
+                <button type="button" onClick={() => removeMaterialRow(idx)} className="text-red-500 px-2">✕</button>
+              </div>
+            ))}
+          </div>
+
           <div className="flex gap-2">
             <SaveButton status={status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">
               {t("common.save")}
@@ -177,6 +243,11 @@ export default function Products() {
               <div className="font-medium truncate">{p.name}</div>
               {(p.sku || p.description) && (
                 <div className="text-xs text-slate-500 truncate">{[p.sku, p.description].filter(Boolean).join(" · ")}</div>
+              )}
+              {p.materials.length > 0 && (
+                <div className="text-xs text-slate-400 truncate">
+                  Verbraucht: {p.materials.map((m) => `${m.quantityPerUnit}${m.material.unit} ${m.material.name}`).join(", ")}
+                </div>
               )}
             </div>
             <span className="text-right">{formatPrice(p.unitPriceCents)} / {p.unit}</span>

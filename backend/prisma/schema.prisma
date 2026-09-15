@@ -61,6 +61,7 @@ model Company {
   users               User[]
   customers           Customer[]
   products            Product[]
+  materials           Material[]
   invoices            Invoice[]
   quotes              Quote[]
   deliveryNotes       DeliveryNote[]
@@ -186,8 +187,49 @@ model Product {
 
   invoiceItems  InvoiceItem[]
   quoteItems    QuoteItem[]
+  materials     ProductMaterial[]
 
   @@index([companyId])
+}
+
+// ---------- Material-/Lagerverwaltung ----------
+// Rohstoffe (z.B. Filament), die für die Produktion verbraucht werden - getrennt von
+// Product (das ist das, was verkauft wird). Über ProductMaterial hinterlegt man, wie viel
+// von welchem Material ein Produkt pro verkaufter Einheit verbraucht ("Rezept"). Beim
+// Erstellen einer Rechnung wird der Bestand automatisch entsprechend reduziert (siehe
+// modules/invoices/router.ts), beim Löschen eines Entwurfs wieder gutgeschrieben.
+
+model Material {
+  id               String   @id @default(uuid())
+  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId        String
+  name             String
+  unit             String   @default("g")
+  stockQuantity    Float    @default(0)
+  // Zuletzt gezahlter Preis pro Einheit - wird bei jeder Nachbestellung aktualisiert,
+  // dient nur der Anzeige/Bewertung, nicht der exakten Einzelbuchführung.
+  costPerUnitCents Int      @default(0)
+  isArchived       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  products         ProductMaterial[]
+
+  @@index([companyId])
+}
+
+model ProductMaterial {
+  id              String   @id @default(uuid())
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId       String
+  material        Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  materialId      String
+  // Verbrauchte Menge (in Material.unit) pro einer verkauften Einheit des Produkts.
+  quantityPerUnit Float
+
+  @@unique([productId, materialId])
+  @@index([productId])
+  @@index([materialId])
 }
 
 // ---------- Fortlaufende Belegnummern (pro Firma & Beleg-Typ) ----------
