@@ -54,6 +54,9 @@ export default function Settings() {
   const [revenue, setRevenue] = useState<RevenueStatus | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [totpToken, setTotpToken] = useState("");
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [disablePassword, setDisablePassword] = useState("");
+  const [disableError, setDisableError] = useState<string | null>(null);
   const [smtp, setSmtp] = useState({ smtpHost: "", smtpPort: 587, smtpSecure: false, smtpUser: "", smtpPassword: "", smtpFromEmail: "", smtpFromName: "" });
   const [smtpMessage, setSmtpMessage] = useState<string | null>(null);
   const [companyError, setCompanyError] = useState<string | null>(null);
@@ -65,12 +68,16 @@ export default function Settings() {
   const backupSave = useSaveStatus();
   const importSave = useSaveStatus();
   const passwordSave = useSaveStatus();
+  const disable2faSave = useSaveStatus();
 
   function load() {
     api.get("/companies/me").then((res) => setCompany(res.data));
     api.get("/companies/me/revenue-status").then((res) => setRevenue(res.data));
   }
   useEffect(load, []);
+  useEffect(() => {
+    if (user?.role === "ADMIN") api.get("/auth/me").then((res) => setTotpEnabled(res.data.totpEnabled));
+  }, [user?.role]);
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -115,6 +122,20 @@ export default function Settings() {
     await twoFaSave.run(() => api.post("/auth/2fa/confirm", { token: totpToken }));
     setQrDataUrl(null);
     setTotpToken("");
+    setTotpEnabled(true);
+  }
+
+  async function disable2fa(e: FormEvent) {
+    e.preventDefault();
+    setDisableError(null);
+    try {
+      await disable2faSave.run(() => api.post("/auth/2fa/disable", { currentPassword: disablePassword }));
+      setTotpEnabled(false);
+      setDisablePassword("");
+      showToast("2FA deaktiviert.", "success");
+    } catch (err: any) {
+      setDisableError(err.response?.data?.error || t("common.error"));
+    }
   }
 
   async function runBackupNow() {
@@ -352,7 +373,27 @@ export default function Settings() {
       {tab === "security" && user?.role === "ADMIN" && (
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
           <h2 className="font-medium">{t("settings.twoFactor")}</h2>
-          {!qrDataUrl ? (
+          {totpEnabled ? (
+            <div className="space-y-3">
+              <p className="text-sm text-green-600">✓ 2FA ist aktiviert.</p>
+              <form onSubmit={disable2fa} className="space-y-3 max-w-sm">
+                <div>
+                  <label className="block text-sm mb-1">Aktuelles Passwort zum Deaktivieren</label>
+                  <input
+                    required
+                    type="password"
+                    value={disablePassword}
+                    onChange={(e) => setDisablePassword(e.target.value)}
+                    className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                  />
+                </div>
+                {disableError && <p className="text-red-600 text-sm">{disableError}</p>}
+                <SaveButton status={disable2faSave.status} className="bg-red-100 text-red-700 px-4 py-2 rounded text-sm">
+                  2FA deaktivieren
+                </SaveButton>
+              </form>
+            </div>
+          ) : !qrDataUrl ? (
             <button onClick={setup2fa} className="bg-slate-200 dark:bg-slate-700 px-4 py-2 rounded text-sm">
               2FA einrichten
             </button>

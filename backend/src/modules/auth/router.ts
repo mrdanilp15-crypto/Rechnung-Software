@@ -211,8 +211,16 @@ authRouter.post("/2fa/confirm", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+const disable2faSchema = z.object({ currentPassword: z.string() });
+
+// Verlangt bewusst das aktuelle Passwort - sonst könnte eine gestohlene/vergessene
+// angemeldete Sitzung allein den 2FA-Schutz abschalten, ohne dass jemand das
+// Passwort kennen muss.
 authRouter.post("/2fa/disable", requireAuth, async (req, res) => {
+  const body = disable2faSchema.parse(req.body);
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.auth!.sub } });
+  const passwordOk = await verifyPassword(user.passwordHash, body.currentPassword);
+  if (!passwordOk) throw new HttpError(401, "Aktuelles Passwort ist falsch");
   await prisma.user.update({ where: { id: user.id }, data: { totpEnabled: false, totpSecret: null } });
   await writeAuditLog({ req, companyId: user.companyId, userId: user.id, action: "auth.2fa_disabled", entityType: "User", entityId: user.id });
   res.json({ ok: true });
