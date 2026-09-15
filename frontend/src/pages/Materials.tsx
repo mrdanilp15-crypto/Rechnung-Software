@@ -12,7 +12,7 @@ interface Material {
   costPerUnitCents: number;
 }
 
-const emptyForm = { name: "", unit: "g" };
+const emptyForm = { name: "", unit: "g", stockQuantity: "0" };
 const emptyRestock = { quantity: "", totalCostEur: "", vendor: "" };
 
 const formatEuro = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
@@ -21,6 +21,7 @@ const formatQty = (n: number) => new Intl.NumberFormat("de-DE", { maximumFractio
 export default function Materials() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [restockingId, setRestockingId] = useState<string | null>(null);
   const [restockForm, setRestockForm] = useState(emptyRestock);
@@ -33,16 +34,32 @@ export default function Materials() {
   }
   useEffect(load, []);
 
+  function startCreate() {
+    setEditingId(null);
+    setForm(emptyForm);
+    setShowForm(true);
+  }
+
+  function startEdit(m: Material) {
+    setEditingId(m.id);
+    setForm({ name: m.name, unit: m.unit, stockQuantity: String(m.stockQuantity) });
+    setShowForm(true);
+  }
+
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    const payload = { name: form.name, unit: form.unit, stockQuantity: parseFloat(form.stockQuantity) || 0 };
     try {
-      await createSave.run(() => api.post("/materials", form));
+      await createSave.run(() =>
+        editingId ? api.patch(`/materials/${editingId}`, payload) : api.post("/materials", payload)
+      );
       setForm(emptyForm);
+      setEditingId(null);
       setShowForm(false);
       load();
     } catch (err: any) {
-      setError(err.response?.data?.error || "Fehler beim Anlegen");
+      setError(err.response?.data?.error || "Fehler beim Speichern");
     }
   }
 
@@ -79,7 +96,7 @@ export default function Materials() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Material</h1>
-        <button onClick={() => setShowForm((v) => !v)} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
+        <button onClick={startCreate} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
           Neues Material
         </button>
       </div>
@@ -92,7 +109,7 @@ export default function Materials() {
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
       {showForm && (
-        <form onSubmit={handleCreate} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 grid grid-cols-2 gap-4">
+        <form onSubmit={handleCreate} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 grid grid-cols-3 gap-4">
           <div>
             <label className="block text-sm mb-1">Name *</label>
             <input required placeholder="z.B. PLA Filament schwarz" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
@@ -101,9 +118,13 @@ export default function Materials() {
             <label className="block text-sm mb-1">Einheit</label>
             <input placeholder="z.B. g, kg, Stk., m" value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
           </div>
-          <div className="col-span-2 flex gap-2">
-            <SaveButton status={createSave.status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">Anlegen</SaveButton>
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Abbrechen</button>
+          <div>
+            <label className="block text-sm mb-1">{editingId ? "Bestand (Korrektur)" : "Aktueller Bestand"}</label>
+            <input type="number" step="any" min="0" value={form.stockQuantity} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, stockQuantity: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+          </div>
+          <div className="col-span-3 flex gap-2">
+            <SaveButton status={createSave.status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">{editingId ? "Speichern" : "Anlegen"}</SaveButton>
+            <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Abbrechen</button>
           </div>
         </form>
       )}
@@ -125,6 +146,7 @@ export default function Materials() {
               <span className="text-right text-slate-500">{formatEuro(m.costPerUnitCents)}/{m.unit}</span>
               <div className="flex gap-3 justify-end">
                 <button onClick={() => startRestock(m)} className="text-brand hover:underline">Nachbestellen</button>
+                <button onClick={() => startEdit(m)} className="text-brand hover:underline">Bearbeiten</button>
                 <button onClick={() => handleArchive(m)} className="text-red-600 hover:underline">Archivieren</button>
               </div>
             </div>

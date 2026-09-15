@@ -19,6 +19,9 @@ materialsRouter.get("/", async (req, res) => {
 const materialSchema = z.object({
   name: z.string().min(1),
   unit: z.string().default("g"),
+  // Anfangsbestand bzw. Korrektur (z.B. Inventur) - im Unterschied zu POST /:id/restock
+  // wird hierbei KEINE Ausgabe angelegt, da kein tatsächlicher Neukauf stattfindet.
+  stockQuantity: z.number().min(0).optional(),
 });
 
 materialsRouter.post("/", async (req, res) => {
