@@ -52,10 +52,10 @@ export function CompanyAssetUpload({ assetName, label, hint }: { assetName: "log
           <span className="text-xs text-slate-400 text-center px-1">kein Bild</span>
         )}
       </div>
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <p className="text-sm font-medium">{label}</p>
         {hint && <p className="text-xs text-slate-500 mb-2">{hint}</p>}
-        <div className="flex gap-3 items-center">
+        <div className="flex flex-wrap gap-3 items-center">
           <input
             type="file"
             accept="image/png,image/jpeg,image/webp,image/svg+xml"
@@ -64,7 +64,7 @@ export function CompanyAssetUpload({ assetName, label, hint }: { assetName: "log
               if (file) handleUpload(file);
               e.target.value = "";
             }}
-            className="text-sm"
+            className="text-sm max-w-full"
           />
           {previewUrl && (
             <button type="button" onClick={handleDelete} className="text-red-600 text-sm hover:underline">

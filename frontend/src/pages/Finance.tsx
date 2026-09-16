@@ -192,11 +192,11 @@ export default function Finance() {
                 <label className="block text-sm mb-1">Betrag (€, brutto)</label>
                 <input type="number" step="0.01" required value={form.amountEur} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, amountEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               </div>
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <label className="block text-sm mb-1">Beschreibung (optional)</label>
                 <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               </div>
-              <div className="col-span-2 flex gap-2">
+              <div className="sm:col-span-2 flex gap-2">
                 <SaveButton status={expenseSave.status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">Speichern</SaveButton>
                 <button type="button" onClick={() => setShowExpenseForm(false)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Abbrechen</button>
               </div>

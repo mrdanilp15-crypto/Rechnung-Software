@@ -346,11 +346,11 @@ export default function Settings() {
               <label className="block text-sm mb-1">Absendername (optional)</label>
               <input placeholder="sonst Firmenname" value={smtp.smtpFromName} onChange={(e) => setSmtp((s) => ({ ...s, smtpFromName: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
             </div>
-            <label className="flex items-center gap-2 text-sm col-span-2">
+            <label className="flex items-center gap-2 text-sm sm:col-span-2">
               <input type="checkbox" checked={smtp.smtpSecure} onChange={(e) => setSmtp((s) => ({ ...s, smtpSecure: e.target.checked }))} />
               Direktes TLS verwenden (Port 465). Bei Port 587 unmarkiert lassen (STARTTLS).
             </label>
-            <div className="col-span-2 flex gap-2">
+            <div className="sm:col-span-2 flex gap-2 flex-wrap">
               <SaveButton status={smtpSave.status} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
                 Speichern
               </SaveButton>
@@ -365,7 +365,7 @@ export default function Settings() {
                 </>
               )}
             </div>
-            {smtpMessage && <p className="col-span-2 text-sm">{smtpMessage}</p>}
+            {smtpMessage && <p className="sm:col-span-2 text-sm">{smtpMessage}</p>}
           </form>
         </div>
       )}

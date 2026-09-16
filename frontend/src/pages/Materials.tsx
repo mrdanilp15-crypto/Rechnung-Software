@@ -5,6 +5,7 @@ import { useSaveStatus } from "../hooks/useSaveStatus";
 import { InfoBox } from "../components/InfoBox";
 import { useToast } from "../components/Toast";
 import { MobileCard, MobileField } from "../components/MobileCard";
+import { RowActionsMenu } from "../components/RowActionsMenu";
 
 interface Material {
   id: string;
@@ -127,7 +128,7 @@ export default function Materials() {
             <label className="block text-sm mb-1">{editingId ? "Bestand (Korrektur)" : "Aktueller Bestand"}</label>
             <input type="number" step="any" min="0" value={form.stockQuantity} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, stockQuantity: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
           </div>
-          <div className="col-span-3 flex gap-2">
+          <div className="sm:col-span-3 flex gap-2">
             <SaveButton status={createSave.status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">{editingId ? "Speichern" : "Anlegen"}</SaveButton>
             <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Abbrechen</button>
           </div>
@@ -148,10 +149,14 @@ export default function Materials() {
             </span>
           );
           const actions = (
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => startRestock(m)} className="text-brand hover:underline">Nachbestellen</button>
-              <button onClick={() => startEdit(m)} className="text-brand hover:underline">Bearbeiten</button>
-              <button onClick={() => handleArchive(m)} className="text-red-600 hover:underline">Archivieren</button>
+            <div className="flex gap-2 justify-end items-center">
+              <button onClick={() => startRestock(m)} className="text-brand hover:underline whitespace-nowrap">Nachbestellen</button>
+              <RowActionsMenu
+                actions={[
+                  { label: "Bearbeiten", onClick: () => startEdit(m) },
+                  { label: "Archivieren", onClick: () => handleArchive(m), danger: true },
+                ]}
+              />
             </div>
           );
           return (

@@ -172,7 +172,7 @@ export default function Users() {
               <option value="ADMIN">Admin</option>
             </select>
           </div>
-          <div className="col-span-2 flex gap-2">
+          <div className="sm:col-span-2 flex gap-2">
             <SaveButton status={status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">Anlegen</SaveButton>
             <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Abbrechen</button>
           </div>
