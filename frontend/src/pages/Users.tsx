@@ -111,14 +111,14 @@ export default function Users() {
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <h2 className="font-medium">Benutzerkonten</h2>
           <p className="text-sm text-slate-500">
             Mehrere Personen (z.B. Büro, Versand, Buchhaltung) können eigene Logins für dieselbe Firma erhalten. Jede Person sieht dieselben Kunden, Rechnungen und Produkte - nur die Rolle bestimmt, welche Aktionen erlaubt sind.
           </p>
         </div>
-        <button onClick={() => setShowForm((v) => !v)} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm shrink-0 ml-4">
+        <button onClick={() => setShowForm((v) => !v)} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm shrink-0 w-full sm:w-auto sm:ml-4">
           Neuer Benutzer
         </button>
       </div>
