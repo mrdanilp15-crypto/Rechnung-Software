@@ -20,7 +20,7 @@ export function MobileCard({
   onClick?: () => void;
 }) {
   return (
-    <div className={`p-4 ${onClick ? "cursor-pointer active:bg-slate-50 dark:active:bg-slate-700/50" : ""}`} onClick={onClick}>
+    <div className={`md:hidden p-4 ${onClick ? "cursor-pointer active:bg-slate-50 dark:active:bg-slate-700/50" : ""}`} onClick={onClick}>
       <div className="flex justify-between items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="font-medium truncate">{title}</div>
