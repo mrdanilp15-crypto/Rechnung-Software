@@ -22,11 +22,41 @@ const materialSchema = z.object({
   // Anfangsbestand bzw. Korrektur (z.B. Inventur) - im Unterschied zu POST /:id/restock
   // wird hierbei KEINE Ausgabe angelegt, da kein tatsächlicher Neukauf stattfindet.
   stockQuantity: z.number().min(0).optional(),
+  // Direkte Korrektur des Preises/Einheit (z.B. Tippfehler beheben) - ebenfalls ohne
+  // automatische Ausgabe, im Unterschied zu initialCostCents/POST /:id/restock.
+  costPerUnitCents: z.number().min(0).optional(),
+});
+
+// Nur beim Anlegen: Gesamtpreis für den angegebenen Anfangsbestand - daraus wird der
+// Preis/Einheit berechnet und (wie bei /:id/restock) automatisch eine Ausgabe angelegt,
+// sofern tatsächlich ein Bestand > 0 mit Preis angegeben wurde.
+const createSchema = materialSchema.extend({
+  initialCostCents: z.number().int().min(0).optional(),
 });
 
 materialsRouter.post("/", async (req, res) => {
-  const body = materialSchema.parse(req.body);
-  const material = await prisma.material.create({ data: { ...body, companyId: req.auth!.companyId } });
+  const { initialCostCents, ...body } = createSchema.parse(req.body);
+  const hasInitialPurchase = !!initialCostCents && (body.stockQuantity ?? 0) > 0;
+  const costPerUnitCents = hasInitialPurchase ? initialCostCents! / body.stockQuantity! : body.costPerUnitCents;
+
+  const material = await prisma.$transaction(async (tx) => {
+    const created = await tx.material.create({
+      data: { ...body, costPerUnitCents, companyId: req.auth!.companyId },
+    });
+    if (hasInitialPurchase) {
+      await tx.expense.create({
+        data: {
+          companyId: req.auth!.companyId,
+          vendor: created.name,
+          category: "Material",
+          amountCents: initialCostCents!,
+          description: `Anfangsbestand: ${body.stockQuantity} ${created.unit} ${created.name}`,
+        },
+      });
+    }
+    return created;
+  });
+
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "material.create", entityType: "Material", entityId: material.id });
   res.status(201).json(material);
 });
@@ -62,7 +92,7 @@ materialsRouter.post("/:id/restock", async (req, res) => {
   const material = await prisma.material.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!material) throw new HttpError(404, "Material nicht gefunden");
 
-  const costPerUnitCents = Math.round(body.totalCostCents / body.quantity);
+  const costPerUnitCents = body.totalCostCents / body.quantity;
 
   const [updated] = await prisma.$transaction([
     prisma.material.update({

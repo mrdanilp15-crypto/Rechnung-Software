@@ -206,9 +206,12 @@ model Material {
   name             String
   unit             String   @default("g")
   stockQuantity    Float    @default(0)
-  // Zuletzt gezahlter Preis pro Einheit - wird bei jeder Nachbestellung aktualisiert,
-  // dient nur der Anzeige/Bewertung, nicht der exakten Einzelbuchführung.
-  costPerUnitCents Int      @default(0)
+  // Zuletzt gezahlter Preis pro Einheit in Cent - wird bei jeder Nachbestellung/Anlage
+  // aktualisiert, dient nur der Anzeige/Bewertung, nicht der exakten Einzelbuchführung.
+  // Float statt Int, da bei kleinen Einheiten (z.B. Gramm) der Preis pro Einheit oft
+  // deutlich unter einem Cent liegt (z.B. 24,99€/kg = 2,499 Cent/g) - ein ganzzahliger
+  // Cent-Betrag würde hier sichtbar falsch runden.
+  costPerUnitCents Float    @default(0)
   isArchived       Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Material" ALTER COLUMN "costPerUnitCents" SET DEFAULT 0,
+ALTER COLUMN "costPerUnitCents" SET DATA TYPE DOUBLE PRECISION;
