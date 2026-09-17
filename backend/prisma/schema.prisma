@@ -160,6 +160,12 @@ model Customer {
   country       String   @default("DE")
   vatId         String?
   notes         String?
+  // "Leitweg-ID" - von öffentlichen Auftraggebern (Bund/Länder/Kommunen) vergebene
+  // Kennung, die eine E-Rechnung (XRechnung) als Buyer Reference (BT-10) enthalten MUSS,
+  // damit sie automatisiert der richtigen Behörde/Kostenstelle zugeordnet werden kann.
+  // Vom jeweiligen Auftraggeber mitgeteilt, nicht selbst erfunden - für normale
+  // Privat-/Geschäftskunden ohne Leitweg-ID leer lassen.
+  leitwegId     String?
   isArchived    Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -275,6 +281,12 @@ model Invoice {
   dueDate         DateTime?
   deliveryDate    DateTime?
   isSmallBusiness Boolean       @default(false) // Kleinunternehmerregelung, eingefroren zum Erstellzeitpunkt
+  // Zusätzlicher Pflicht-/Rechtshinweis auf dem PDF, wenn aus anderem Grund als der
+  // Kleinunternehmerregelung 0% USt. ausgewiesen wird - "REVERSE_CHARGE" (innergemein-
+  // schaftliche B2B-Leistung, Steuerschuldnerschaft des Leistungsempfängers, §13b UStG)
+  // oder "EXPORT" (Ausfuhrlieferung in ein Nicht-EU-Land, §4 Nr. 1a UStG). NULL = normale
+  // inländische Rechnung (oder Kleinunternehmer, dafür gibt es bereits isSmallBusiness).
+  vatNoticeKey    String?
   currency        String        @default("EUR")
   subtotalCents   Int           @default(0)
   vatTotalCents   Int           @default(0)

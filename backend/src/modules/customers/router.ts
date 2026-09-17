@@ -52,6 +52,7 @@ const customerSchema = z.object({
   city: z.string().optional(),
   country: z.string().default("DE"),
   vatId: z.string().optional(),
+  leitwegId: z.string().optional(),
   notes: z.string().optional(),
 });
 

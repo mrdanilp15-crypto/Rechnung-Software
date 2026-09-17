@@ -80,3 +80,14 @@ export const SMALL_BUSINESS_NOTICE_DE =
   "Gemäß §19 UStG wird keine Umsatzsteuer berechnet (Kleinunternehmerregelung).";
 export const SMALL_BUSINESS_NOTICE_EN =
   "No VAT is charged in accordance with §19 of the German VAT Act (small business regulation).";
+
+export const VAT_NOTICES: Record<"REVERSE_CHARGE" | "EXPORT", { de: string; en: string }> = {
+  REVERSE_CHARGE: {
+    de: "Steuerschuldnerschaft des Leistungsempfängers gem. §13b UStG (innergemeinschaftliche Leistung, Reverse-Charge-Verfahren).",
+    en: "VAT liability of the recipient (reverse charge, intra-community supply) pursuant to §13b of the German VAT Act.",
+  },
+  EXPORT: {
+    de: "Steuerfreie Ausfuhrlieferung gem. §4 Nr. 1a UStG.",
+    en: "VAT-exempt export supply pursuant to §4 No. 1a of the German VAT Act.",
+  },
+};

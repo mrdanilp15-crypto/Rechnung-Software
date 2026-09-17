@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import type { Invoice, InvoiceItem, Customer, Company } from "@prisma/client";
 import { renderDocumentPdf } from "../pdf/documentTemplate";
-import { vatBreakdownFromLineItems } from "../tax/calculator";
+import { vatBreakdownFromLineItems, VAT_NOTICES } from "../tax/calculator";
 import { env } from "../../config/env";
 import { prisma } from "../../db/prisma";
 
@@ -37,6 +37,7 @@ export async function generateAndStoreInvoicePdf(invoice: InvoiceWithRelations, 
     vatTotalCents: invoice.vatTotalCents,
     totalCents: invoice.totalCents,
     isSmallBusiness: invoice.isSmallBusiness,
+    vatNoticeText: invoice.vatNoticeKey && invoice.vatNoticeKey in VAT_NOTICES ? VAT_NOTICES[invoice.vatNoticeKey as keyof typeof VAT_NOTICES][locale] : null,
     notes: invoice.notes,
     showPrices: true,
     showSepaQr: !invoice.isCancellationDocument && invoice.status !== "PAID" && invoice.status !== "CANCELLED",

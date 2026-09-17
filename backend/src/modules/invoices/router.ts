@@ -7,9 +7,11 @@ import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { nextDocumentNumber } from "../shared/numbering";
 import { calculateDocumentTotals, formatCents } from "../tax/calculator";
+import { determineVatTreatment } from "../tax/euVat";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { emitEvent } from "../plugins/hooks";
 import { generateAndStoreInvoicePdf } from "./pdfHelper";
+import { buildXRechnungXml } from "../einvoice/xrechnung";
 import { getInvoiceComplianceWarnings } from "../tax/compliance";
 import { sendMailForCompany, isSmtpConfigured, buildInvoiceEmailText, buildReminderEmailText } from "../email/mailer";
 import { deductMaterialStock, restoreMaterialStock } from "../materials/stock";
@@ -79,7 +81,12 @@ invoicesRouter.post("/", async (req, res) => {
   const customer = await prisma.customer.findFirst({ where: { id: body.customerId, companyId: company.id } });
   if (!customer) throw new HttpError(404, "Kunde nicht gefunden");
 
-  const totals = calculateDocumentTotals(body.items, company.isSmallBusiness);
+  // Reverse-Charge (innergemeinschaftliche B2B-Leistung) bzw. steuerfreie Ausfuhr-
+  // lieferung (Nicht-EU) erzwingen ebenfalls 0% USt., unabhängig von der Kleinunter-
+  // nehmerregelung - siehe tax/euVat.ts. Kleinunternehmer haben ohnehin nie USt.
+  const vatTreatment = company.isSmallBusiness ? { forceZeroVat: false, noticeKey: null } : determineVatTreatment(company.country, customer);
+  const forceZeroVat = company.isSmallBusiness || vatTreatment.forceZeroVat;
+  const totals = calculateDocumentTotals(body.items, forceZeroVat);
 
   const invoice = await prisma.$transaction(async (tx) => {
     await deductMaterialStock(tx, body.items);
@@ -92,6 +99,7 @@ invoicesRouter.post("/", async (req, res) => {
         dueDate: body.dueDate,
         deliveryDate: body.deliveryDate,
         isSmallBusiness: company.isSmallBusiness,
+        vatNoticeKey: vatTreatment.noticeKey,
         notes: body.notes,
         footerText: company.invoiceFooterText,
         sourceQuoteId: body.sourceQuoteId,
@@ -100,7 +108,7 @@ invoicesRouter.post("/", async (req, res) => {
         totalCents: totals.totalCents,
         items: {
           create: body.items.map((item, idx) => {
-            const effectiveVat = company.isSmallBusiness ? 0 : item.vatRateBps;
+            const effectiveVat = forceZeroVat ? 0 : item.vatRateBps;
             return {
               position: idx + 1,
               productId: item.productId,
@@ -141,9 +149,13 @@ invoicesRouter.patch("/:id", async (req, res) => {
   };
 
   if (body.items) {
-    const totals = calculateDocumentTotals(body.items, company.isSmallBusiness);
+    const customer = await prisma.customer.findFirstOrThrow({ where: { id: body.customerId ?? existing.customerId, companyId: company.id } });
+    const vatTreatment = company.isSmallBusiness ? { forceZeroVat: false, noticeKey: null } : determineVatTreatment(company.country, customer);
+    const forceZeroVat = company.isSmallBusiness || vatTreatment.forceZeroVat;
+    const totals = calculateDocumentTotals(body.items, forceZeroVat);
     updateData = {
       ...updateData,
+      vatNoticeKey: vatTreatment.noticeKey,
       subtotalCents: totals.subtotalCents,
       vatTotalCents: totals.vatTotalCents,
       totalCents: totals.totalCents,
@@ -156,7 +168,7 @@ invoicesRouter.patch("/:id", async (req, res) => {
           quantity: item.quantity,
           unit: item.unit,
           unitPriceCents: item.unitPriceCents,
-          vatRateBps: company.isSmallBusiness ? 0 : item.vatRateBps,
+          vatRateBps: forceZeroVat ? 0 : item.vatRateBps,
           lineTotalCents: Math.round(item.quantity * item.unitPriceCents),
         })),
       },
@@ -328,6 +340,26 @@ invoicesRouter.get("/:id/pdf", async (req, res) => {
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `inline; filename="${invoice.invoiceNumber ?? "entwurf"}.pdf"`);
   res.send(pdfBuffer);
+});
+
+// E-Rechnung (XRechnung, UBL 2.1/EN16931) - siehe modules/einvoice/xrechnung.ts für
+// Details und wichtige Hinweise zur Validierung vor dem produktiven Einsatz. Nur für
+// bereits finalisierte Rechnungen (mit Nummer) möglich, ein Entwurf kann sich noch
+// ändern und ist ohnehin noch kein rechtsgültiger Beleg.
+invoicesRouter.get("/:id/xrechnung", async (req, res) => {
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: req.params.id, companyId: req.auth!.companyId },
+    include: { items: true, customer: true, company: true },
+  });
+  if (!invoice) throw new HttpError(404, "Rechnung nicht gefunden");
+  if (!invoice.invoiceNumber) {
+    throw new HttpError(409, "Nur bereits versendete/finalisierte Rechnungen können als XRechnung exportiert werden.");
+  }
+  const xml = buildXRechnungXml(invoice);
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "invoice.xrechnung_export", entityType: "Invoice", entityId: invoice.id });
+  res.setHeader("Content-Type", "application/xml");
+  res.setHeader("Content-Disposition", `attachment; filename="${invoice.invoiceNumber}.xml"`);
+  res.send(xml);
 });
 
 // ---------- E-Mail-Versand & Zahlungserinnerung ----------

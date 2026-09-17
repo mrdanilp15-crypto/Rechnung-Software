@@ -22,6 +22,7 @@ interface Customer {
   city?: string;
   country: string;
   vatId?: string;
+  leitwegId?: string;
   notes?: string;
   type: "PRIVAT" | "GEWERBLICH";
 }
@@ -36,6 +37,7 @@ const emptyForm = {
   city: "",
   country: "DE",
   vatId: "",
+  leitwegId: "",
   notes: "",
   type: "PRIVAT" as "PRIVAT" | "GEWERBLICH",
 };
@@ -82,6 +84,7 @@ export default function Customers() {
       city: c.city || "",
       country: c.country || "DE",
       vatId: c.vatId || "",
+      leitwegId: c.leitwegId || "",
       notes: c.notes || "",
       type: c.type,
     });
@@ -157,6 +160,7 @@ export default function Customers() {
               </select>
             </div>
             {form.type === "GEWERBLICH" && field("vatId", "USt-IdNr.")}
+            {form.type === "GEWERBLICH" && field("leitwegId", "Leitweg-ID (nur bei Behörden/öffentlichen Auftraggebern)")}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

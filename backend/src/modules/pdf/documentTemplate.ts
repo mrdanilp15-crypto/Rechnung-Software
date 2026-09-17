@@ -58,6 +58,9 @@ export interface DocumentPdfInput {
   vatTotalCents?: number;
   totalCents?: number;
   isSmallBusiness?: boolean;
+  // Zusätzlicher Pflichthinweis, wenn aus anderem Grund als der Kleinunternehmerregelung
+  // 0% USt. ausgewiesen wird (Reverse-Charge, Ausfuhrlieferung) - siehe tax/euVat.ts.
+  vatNoticeText?: string | null;
   notes?: string | null;
   showPrices: boolean; // false für Lieferscheine
   showSepaQr?: boolean; // true für offene Rechnungen
@@ -263,6 +266,9 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
       doc.fontSize(8).fillColor("#555").text(input.locale === "de" ? SMALL_BUSINESS_NOTICE_DE : SMALL_BUSINESS_NOTICE_EN, PAGE_MARGIN, cursorY, {
         width: 495,
       });
+      cursorY += 20;
+    } else if (input.vatNoticeText) {
+      doc.fontSize(8).fillColor("#555").text(input.vatNoticeText, PAGE_MARGIN, cursorY, { width: 495 });
       cursorY += 20;
     } else if (input.vatBreakdown) {
       for (const [rateBps, amount] of Object.entries(input.vatBreakdown)) {

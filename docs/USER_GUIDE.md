@@ -43,15 +43,29 @@ aber überschrieben werden.
 
 In der Rechnungsdetailansicht:
 
-- **Versenden**: markiert die Rechnung als `SENT`. Ab diesem Zeitpunkt sind die
-  Positionen aus rechtlichen Gründen (GoBD) nicht mehr editierbar.
+- Ein neu angelegter Entwurf hat noch **keine feste Rechnungsnummer** - die wird erst
+  beim Versenden bzw. direkten "als bezahlt markieren" vergeben, damit ein gelöschter,
+  nie versendeter Entwurf keine Lücke in der Nummernfolge hinterlässt.
+- **Versenden**: markiert die Rechnung als `SENT` und vergibt die endgültige Nummer. Ab
+  diesem Zeitpunkt sind die Positionen aus rechtlichen Gründen (GoBD) nicht mehr
+  editierbar oder löschbar.
 - **Als bezahlt markieren**: setzt den Status auf `PAID` (nur Rolle Admin/Buchhaltung).
-- **Stornieren**: setzt den Status auf `CANCELLED` (nicht möglich, wenn bereits bezahlt).
+- **Stornieren**: erzeugt einen eigenständigen Korrekturbeleg (Gutschrift) mit negierten
+  Beträgen und eigener Nummer, der auf die Originalrechnung verweist - funktioniert auch
+  für bereits bezahlte Rechnungen. Die Originalrechnung bleibt unverändert erhalten und
+  wird nur als `CANCELLED` markiert (GoBD-Unveränderbarkeit).
 - Überfällige, versendete Rechnungen wechseln automatisch stündlich in den Status
   `OVERDUE`, sobald das Fälligkeitsdatum verstrichen ist.
 - **PDF herunterladen**: erzeugt das Rechnungs-PDF inkl. SEPA-QR-Code (sofern IBAN in
   den Firmeneinstellungen hinterlegt ist und die Rechnung noch offen ist) - Kunden
   können den QR-Code direkt mit ihrer Banking-App scannen.
+- **XRechnung (XML)**: erzeugt eine strukturierte E-Rechnung im XRechnung-Format (nur für
+  bereits versendete Rechnungen, da eine feste Nummer nötig ist) - z.B. für öffentliche
+  Auftraggeber, die eine XRechnung statt eines PDFs verlangen. Bei Behörden/öffentlichen
+  Auftraggebern vorher unbedingt die vom Auftraggeber mitgeteilte **Leitweg-ID** beim
+  Kunden hinterlegen (Pflichtfeld für diese Kunden). Vor dem ersten echten Versand
+  empfiehlt sich eine Prüfung der erzeugten Datei mit einem offiziellen XRechnung-
+  Validator (siehe [SECURITY.md](SECURITY.md)).
 
 ## Angebote
 
@@ -66,12 +80,15 @@ Warenbegleitung ohne Preisangabe an den Empfänger.
 
 ## DSGVO: Kundendaten exportieren oder löschen
 
-In der Kundendetailansicht (aktuell per API, UI-Schaltflächen sind ein naheliegender
-nächster Ausbauschritt - siehe [STATUS.md](../docs/STATUS.md)):
+In der Kundendetailansicht, oben rechts:
 
-- **Auskunft**: liefert alle gespeicherten Daten des Kunden als JSON-Datei.
-- **Löschung**: anonymisiert Name, Kontaktdaten und Notizen. Rechnungsbelege selbst
-  bleiben aus steuerrechtlichen Gründen bestehen (siehe [SECURITY.md](SECURITY.md)).
+- **DSGVO-Export**: liefert alle gespeicherten Daten des Kunden als JSON-Datei.
+- **Anonymisieren (DSGVO)**: anonymisiert Name, Kontaktdaten und Notizen (nur Admin).
+  Rechnungsbelege selbst bleiben aus steuerrechtlichen Gründen bestehen (siehe
+  [SECURITY.md](SECURITY.md)).
+
+Für den eigenen Benutzer-Account: **Einstellungen → Passwort → Eigene Daten
+exportieren** liefert Kontodaten und das eigene Aktivitätsprotokoll als JSON-Datei.
 
 ## Einstellungen
 

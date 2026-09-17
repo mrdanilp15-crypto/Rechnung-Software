@@ -199,6 +199,11 @@ export default function InvoiceDetail() {
           <PdfLink url={`/invoices/${id}/pdf`} filename={`${numberLabel}.pdf`} className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm">
             {t("invoices.downloadPdf")}
           </PdfLink>
+          {invoice.invoiceNumber && (
+            <PdfLink url={`/invoices/${id}/xrechnung`} filename={`${numberLabel}.xml`} download className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm" title="E-Rechnung im XRechnung-Format (UBL/XML) - z.B. für öffentliche Auftraggeber">
+              XRechnung (XML)
+            </PdfLink>
+          )}
           <button onClick={handleShare} className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm">
             Teilen (WhatsApp, Mail, ...)
           </button>

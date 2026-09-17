@@ -39,6 +39,16 @@
 - Kompatibel mit Standard-Authenticator-Apps (Google/Microsoft Authenticator, Authy)
   über den `otplib`-Standard (RFC 6238).
 
+## Registrierung
+
+`POST /api/auth/register` legt eine komplett neue, unabhängige Firma auf derselben
+Instanz an - ohne weitere Absicherung könnte das jeder im Internet aufrufen, der die
+URL kennt. Über `REGISTRATION_INVITE_CODE` (`.env`/Portainer) kann die Registrierung auf
+Personen beschränkt werden, die einen vorher festgelegten Code kennen. Für eine als
+Einzelfirma betriebene Instanz (der Normalfall dieser Software) empfohlen: den Wert
+setzen, sobald der eigene erste Admin-Account eingerichtet ist - ein weiteres `/register`
+ist danach ohnehin nicht mehr nötig.
+
 ## Rollen & Rechte (RBAC)
 
 Drei Rollen: `ADMIN`, `MITARBEITER`, `BUCHHALTUNG`. Durchsetzung über
@@ -133,9 +143,14 @@ ausgeschlossen.
   vorgesehen (Art. 17 Abs. 3 lit. b DSGVO).
 - **Datenminimierung**: Es werden nur Felder erhoben, die für die Rechnungsstellung
   nach § 14 UStG erforderlich sind oder vom Nutzer freiwillig ergänzt werden (Notizen).
-- **Auftragsverarbeitung**: Wird ein S3-kompatibler Cloud-Speicher für Backups genutzt
-  (`.env`: `S3_*`), ist mit dem jeweiligen Anbieter ein Auftragsverarbeitungsvertrag
-  (AVV) nach Art. 28 DSGVO abzuschließen - dies kann Software nicht automatisieren.
+- **Auftragsverarbeitung**: Wird ein S3-kompatibler Cloud-Speicher für Backups oder ein
+  externer SMTP-Anbieter für den E-Mail-Versand genutzt, ist mit dem jeweiligen Anbieter
+  ein Auftragsverarbeitungsvertrag (AVV) nach Art. 28 DSGVO abzuschließen - dies kann
+  Software nicht automatisieren. Checkliste: [compliance/AVV-CHECKLISTE.md](compliance/AVV-CHECKLISTE.md).
+- **Verzeichnis von Verarbeitungstätigkeiten** (Art. 30 DSGVO): unabhängig von der
+  Unternehmensgröße zu führen, sobald personenbezogene Daten nicht nur gelegentlich
+  verarbeitet werden (bei laufender Rechnungsstellung i.d.R. der Fall). Ausfüllbare
+  Vorlage: [compliance/VERARBEITUNGSVERZEICHNIS.md](compliance/VERARBEITUNGSVERZEICHNIS.md).
 
 ## Container-Härtung
 

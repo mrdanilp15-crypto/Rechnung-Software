@@ -8,7 +8,7 @@ export default function Register() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const setUser = useAuthStore((s) => s.setUser);
-  const [form, setForm] = useState({ companyName: "", name: "", email: "", password: "" });
+  const [form, setForm] = useState({ companyName: "", name: "", email: "", password: "", inviteCode: "" });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -38,13 +38,17 @@ export default function Register() {
             ["name", "auth.name", "text"],
             ["email", "auth.email", "email"],
             ["password", "auth.password", "password"],
+            ["inviteCode", "auth.inviteCode", "text"],
           ] as const
         ).map(([field, labelKey, type]) => (
           <div key={field} className="mb-4">
-            <label className="block text-sm mb-1">{t(labelKey)}</label>
+            <label className="block text-sm mb-1">
+              {t(labelKey)}
+              {field === "inviteCode" && " (optional)"}
+            </label>
             <input
               type={type}
-              required
+              required={field !== "inviteCode"}
               minLength={type === "password" ? 10 : undefined}
               value={(form as any)[field]}
               onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}

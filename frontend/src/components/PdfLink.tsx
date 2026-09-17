@@ -12,12 +12,14 @@ export function PdfLink({
   filename,
   download = false,
   className,
+  title,
   children,
 }: {
   url: string;
   filename: string;
   download?: boolean;
   className?: string;
+  title?: string;
   children: React.ReactNode;
 }) {
   const [loading, setLoading] = useState(false);
@@ -49,7 +51,7 @@ export function PdfLink({
   }
 
   return (
-    <button type="button" onClick={handleClick} disabled={loading} className={className}>
+    <button type="button" onClick={handleClick} disabled={loading} className={className} title={title}>
       {loading ? "..." : children}
     </button>
   );

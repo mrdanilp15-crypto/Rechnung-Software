@@ -14,7 +14,8 @@ implementiert.
 | Kundenverwaltung (Adressen, Historie, Notizen) | ✅ | inkl. Beleghistorie und DSGVO-Endpunkten |
 | Produkt-/Leistungsverzeichnis | ✅ | |
 | Automatische Rechnungsnummern | ✅ | Lückenlos je Firma/Jahr, transaktional |
-| Steuerlogik (USt., §19 Kleinunternehmer) | ✅ | Zentral in `modules/tax/calculator.ts` |
+| Steuerlogik (USt., §19 Kleinunternehmer, Reverse-Charge/Ausfuhr) | ✅ | Zentral in `modules/tax/calculator.ts`/`modules/tax/euVat.ts`; §19-Schwellenwerte an die Reform seit 1.1.2025 angepasst (25.000€/100.000€) |
+| E-Rechnung (XRechnung, UBL/EN16931) | 🟡 | Export je Rechnung über "XRechnung (XML)"; nach bester Kenntnis der Spezifikation erstellt, aber **nicht** gegen den offiziellen KoSIT-Validator geprüft (kein Zugriff auf das Tool in der Entwicklungsumgebung) - vor dem ersten Versand an einen (insbesondere öffentlichen) Auftraggeber unbedingt selbst validieren, siehe SECURITY.md. ZUGFeRD (Hybrid-PDF) nicht implementiert. |
 | PDF-Generierung, PDF/A-kompatibel | 🟡 | Gültiges PDF 1.7 mit Metadaten; **keine** validierte PDF/A-3b-Konformität (ICC/XMP fehlen) - siehe ARCHITECTURE.md |
 | Exportfunktionen (PDF, JSON, CSV) | ✅ | |
 | Dunkelmodus/helles UI | ✅ | |
@@ -84,7 +85,7 @@ implementiert.
 | Drag-and-Drop für Dateien | 🧩 Logo-/CSV-Upload funktioniert über Dateiauswahl, kein Drag-and-Drop-Handler |
 | Live-Vorschau für Rechnungen | 🟡 Live-Summenberechnung beim Erstellen; PDF-Vorschau erfolgt nach Speichern (kein Live-PDF-Rendering im Formular) |
 | Schnelles Suchfeld (Fuzzy Search) | ✅ `fuse.js` bei Kunden/Produkten |
-| Mobile-optimiert | 🟡 Responsive Tailwind-Klassen vorhanden; kein dediziertes Mobile-Layout/Tests auf echten Geräten |
+| Mobile-optimiert | ✅ Dediziertes Karten-Layout für alle Listen auf schmalen Bildschirmen (`MobileCard`), zusätzlich als installierbare PWA |
 
 ## 8. Erweiterbarkeit
 

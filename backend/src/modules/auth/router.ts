@@ -9,6 +9,7 @@ import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { setAuthCookies, clearAuthCookies, getRefreshTokenCookie } from "./cookies";
+import { env } from "../../config/env";
 
 export const authRouter = Router();
 
@@ -21,11 +22,18 @@ const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(10),
   locale: z.enum(["de", "en"]).default("de"),
+  inviteCode: z.string().optional(),
 });
 
-// Registrierung legt eine neue Firma (Mandant) samt erstem Admin-Benutzer an.
+// Registrierung legt eine neue Firma (Mandant) samt erstem Admin-Benutzer an. Ist
+// REGISTRATION_INVITE_CODE gesetzt (empfohlen für einen als Einzelfirma betriebenen
+// Server), muss der übergebene Code exakt übereinstimmen - sonst wäre die Registrierung
+// für jeden im Internet offen, der die URL kennt (siehe config/env.ts).
 authRouter.post("/register", async (req, res) => {
   const body = registerSchema.parse(req.body);
+  if (env.REGISTRATION_INVITE_CODE && body.inviteCode !== env.REGISTRATION_INVITE_CODE) {
+    throw new HttpError(403, "Registrierung ist auf dieser Instanz nur mit gültigem Einladungscode möglich.");
+  }
   if (!isPasswordStrongEnough(body.password)) {
     throw new HttpError(400, "Passwort zu schwach (mind. 10 Zeichen, Buchstaben und Ziffern)");
   }

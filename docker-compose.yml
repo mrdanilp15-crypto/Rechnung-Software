@@ -81,10 +81,17 @@ services:
       UPLOAD_DIR: /app/uploads
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-5}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_DIR: /app/logs
+      BACKUP_ENCRYPTION_ENABLED: ${BACKUP_ENCRYPTION_ENABLED:-true}
+      # Leer lassen = Registrierung bleibt für jeden im Internet offen (Standardverhalten
+      # bisher). Für eine als Einzelfirma betriebene Instanz empfohlen: nach Einrichtung
+      # des ersten Admin-Accounts hier einen zufälligen Wert setzen, siehe .env.example.
+      REGISTRATION_INVITE_CODE: ${REGISTRATION_INVITE_CODE:-}
     volumes:
       - backend_data:/app/data
       - backend_uploads:/app/uploads
       - backend_backups:/app/backups
+      - backend_logs:/app/logs
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:4000/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
       interval: 15s
@@ -110,3 +117,4 @@ volumes:
   backend_data:
   backend_uploads:
   backend_backups:
+  backend_logs:

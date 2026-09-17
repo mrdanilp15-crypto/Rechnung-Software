@@ -20,6 +20,14 @@ const envSchema = z.object({
 
   CORS_ORIGINS: z.string().default("http://localhost:5173"),
 
+  // Ohne diesen Wert (Default: leer) ist POST /auth/register für jeden im Internet
+  // erreichbar - das legt eine komplett neue, unabhängige Firma auf derselben Instanz
+  // an. Für einen als Einzelfirma gedachten, selbstgehosteten Betrieb (der Normalfall
+  // dieser Software) sollte hier ein zufälliger Wert gesetzt werden, sobald der erste
+  // Admin-Account eingerichtet ist - danach ist ohnehin kein weiteres /register mehr
+  // nötig. Ist ein Wert gesetzt, muss die Registrierung ihn als "inviteCode" mitschicken.
+  REGISTRATION_INVITE_CODE: z.string().optional().default(""),
+
   BACKUP_DIR: z.string().default("./backups"),
   // GoBD/§147 AO verlangen eine 10-jährige Aufbewahrung der Buchführungsunterlagen -
   // ein Backup ist zwar primär eine Katastrophen-Sicherung und kein Ersatz für die
@@ -50,6 +58,10 @@ const envSchema = z.object({
   MAX_UPLOAD_MB: z.coerce.number().default(5),
 
   LOG_LEVEL: z.string().default("info"),
+  // Optional: zusätzlich zu stdout auch in eine Datei in einem gemounteten Volume
+  // schreiben, damit Logs einen Container-Neustart überleben (z.B. für nachträgliche
+  // forensische Analyse bei einem Sicherheitsvorfall). Ohne Angabe wie bisher nur stdout.
+  LOG_DIR: z.string().optional().default(""),
 });
 
 const parsed = envSchema.safeParse(process.env);
