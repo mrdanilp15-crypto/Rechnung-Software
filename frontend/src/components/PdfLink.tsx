@@ -2,12 +2,10 @@ import { useState } from "react";
 import { api } from "../api/client";
 
 /**
- * Öffnet/lädt eine über die API ausgelieferte Datei (PDF, CSV, ...) herunter. Kann bewusst
- * KEIN normaler <a href="/api/..."> Link sein: Der Server verlangt einen Bearer-Access-
- * Token im Authorization-Header (siehe middleware/auth.ts), den ein normaler Browser-
- * Linkklick nie mitschickt - das würde immer zu "Nicht authentifiziert" führen.
- * Stattdessen wird die Datei authentifiziert per Axios geladen und als Object-URL
- * geöffnet (PDFs in neuem Tab) bzw. heruntergeladen (download=true, z.B. CSV-Exporte).
+ * Öffnet/lädt eine über die API ausgelieferte Datei (PDF, CSV, JSON, ...) herunter,
+ * authentifiziert per Axios (Auth-Cookie wird von withCredentials automatisch
+ * mitgeschickt, siehe api/client.ts) und als Object-URL geöffnet (PDFs in neuem Tab)
+ * bzw. heruntergeladen (download=true, z.B. CSV-/JSON-Exporte).
  */
 export function PdfLink({
   url,

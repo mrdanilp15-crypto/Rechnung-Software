@@ -8,6 +8,7 @@ import { generateTotpSecret, encryptTotpSecret, buildOtpAuthUrl, verifyTotpToken
 import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
+import { setAuthCookies, clearAuthCookies, getRefreshTokenCookie } from "./cookies";
 
 export const authRouter = Router();
 
@@ -65,6 +66,7 @@ authRouter.post("/register", async (req, res) => {
     email: result.user.email,
   });
   const refreshToken = await issueRefreshToken(result.user.id, req.ip);
+  setAuthCookies(res, accessToken, refreshToken);
 
   res.status(201).json({
     accessToken,
@@ -119,6 +121,7 @@ authRouter.post("/login", async (req, res) => {
 
   const accessToken = signAccessToken({ sub: user.id, companyId: user.companyId, role: user.role, email: user.email });
   const refreshToken = await issueRefreshToken(user.id, req.ip);
+  setAuthCookies(res, accessToken, refreshToken);
 
   await writeAuditLog({ req, companyId: user.companyId, userId: user.id, action: "auth.login", entityType: "User", entityId: user.id });
 
@@ -129,20 +132,31 @@ authRouter.post("/login", async (req, res) => {
   });
 });
 
-const refreshSchema = z.object({ refreshToken: z.string() });
+// refreshToken im Body ist optional, da das Web-Frontend den Refresh-Token gar nicht
+// mehr kennt (httpOnly-Cookie) und ihn automatisch über den Cookie mitschickt - der
+// Body bleibt für Skripte/externe Integrationen ohne Cookie-Unterstützung nutzbar.
+const refreshSchema = z.object({ refreshToken: z.string().optional() });
 
 authRouter.post("/refresh", async (req, res) => {
   const body = refreshSchema.parse(req.body);
-  const result = await rotateRefreshToken(body.refreshToken, req.ip);
-  if (!result) throw new HttpError(401, "Refresh-Token ungültig oder abgelaufen");
+  const rawToken = body.refreshToken ?? getRefreshTokenCookie(req.cookies);
+  if (!rawToken) throw new HttpError(401, "Kein Refresh-Token vorhanden");
+  const result = await rotateRefreshToken(rawToken, req.ip);
+  if (!result) {
+    clearAuthCookies(res);
+    throw new HttpError(401, "Refresh-Token ungültig oder abgelaufen");
+  }
   const { user, newRefreshToken } = result;
   const accessToken = signAccessToken({ sub: user.id, companyId: user.companyId, role: user.role, email: user.email });
+  setAuthCookies(res, accessToken, newRefreshToken);
   res.json({ accessToken, refreshToken: newRefreshToken });
 });
 
 authRouter.post("/logout", async (req, res) => {
   const body = refreshSchema.parse(req.body);
-  await revokeRefreshToken(body.refreshToken);
+  const rawToken = body.refreshToken ?? getRefreshTokenCookie(req.cookies);
+  if (rawToken) await revokeRefreshToken(rawToken);
+  clearAuthCookies(res);
   res.status(204).send();
 });
 
@@ -156,6 +170,35 @@ authRouter.get("/me", requireAuth, async (req, res) => {
     locale: user.locale,
     totpEnabled: user.totpEnabled,
     companyId: user.companyId,
+  });
+});
+
+// Selbstauskunft nach Art. 15 DSGVO für den eigenen Benutzer-Account (Login-Daten,
+// Rollen/Rechte, eigene Aktivität) - ergänzt die bereits vorhandene kundenbezogene
+// Auskunft (customers/:id/gdpr-export), die andere personenbezogene Daten betrifft.
+// Enthält bewusst KEINE Passwort-Hashes/TOTP-Secrets, auch nicht verschlüsselt.
+authRouter.get("/me/export", requireAuth, async (req, res) => {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.auth!.sub } });
+  const auditLog = await prisma.auditLog.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, action: true, entityType: true, entityId: true, ipAddress: true, createdAt: true },
+  });
+  await writeAuditLog({ req, companyId: user.companyId, userId: user.id, action: "auth.self_export", entityType: "User", entityId: user.id });
+  res.setHeader("Content-Disposition", `attachment; filename="dsgvo-export-benutzerkonto.json"`);
+  res.json({
+    account: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      locale: user.locale,
+      isActive: user.isActive,
+      totpEnabled: user.totpEnabled,
+      lastLoginAt: user.lastLoginAt,
+      createdAt: user.createdAt,
+    },
+    activityLog: auditLog,
   });
 });
 
@@ -183,6 +226,7 @@ authRouter.post("/change-password", requireAuth, async (req, res) => {
   await revokeAllUserTokens(user.id);
   const accessToken = signAccessToken({ sub: user.id, companyId: user.companyId, role: user.role, email: user.email });
   const refreshToken = await issueRefreshToken(user.id, req.ip);
+  setAuthCookies(res, accessToken, refreshToken);
   await writeAuditLog({ req, companyId: user.companyId, userId: user.id, action: "auth.change_password", entityType: "User", entityId: user.id });
   res.json({ ok: true, accessToken, refreshToken });
 });

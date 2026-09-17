@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../store/authStore";
 import { useDarkMode } from "../theme/useDarkMode";
 import { setLocale } from "../i18n";
+import { api } from "../api/client";
 
 const navItems = [
   { to: "/", key: "dashboard" },
@@ -15,6 +16,7 @@ const navItems = [
   { to: "/delivery-notes", key: "deliveryNotes" },
   { to: "/order-confirmations", key: "orderConfirmations" },
   { to: "/finance", key: "finance" },
+  { to: "/audit-log", key: "auditLog", adminOnly: true },
   { to: "/settings", key: "settings" },
 ] as const;
 
@@ -43,7 +45,9 @@ export default function Layout() {
         </button>
       </div>
       <nav className="flex flex-col gap-1 flex-1">
-        {navItems.map((item) => (
+        {navItems
+          .filter((item) => !("adminOnly" in item && item.adminOnly) || user?.role === "ADMIN")
+          .map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -82,9 +86,13 @@ export default function Layout() {
           {user?.name} ({user?.role})
         </div>
         <button
-          onClick={() => {
-            clearSession();
-            navigate("/login");
+          onClick={async () => {
+            try {
+              await api.post("/auth/logout");
+            } finally {
+              clearSession();
+              navigate("/login");
+            }
           }}
           className="text-sm text-left text-red-600 hover:underline"
         >

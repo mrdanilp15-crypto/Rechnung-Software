@@ -22,7 +22,12 @@ Ablauf:
 4. `POST /api/auth/logout` mit dem `refreshToken` widerruft die Sitzung serverseitig.
 
 Das Frontend implementiert diesen Ablauf bereits transparent über einen Axios-
-Interceptor (`frontend/src/api/client.ts`).
+Interceptor (`frontend/src/api/client.ts`) - dort werden die Tokens allerdings NICHT
+mehr manuell gehalten: `POST /api/auth/login`, `/register`, `/refresh` und
+`/change-password` setzen dieselben Tokens zusätzlich als httpOnly-Cookies
+(`backend/src/modules/auth/cookies.ts`), die der Browser automatisch mitschickt. Der
+oben beschriebene Bearer-Header-Ablauf bleibt für Skripte/externe Integrationen ohne
+Cookie-Unterstützung unverändert nutzbar - `middleware/auth.ts` akzeptiert beide Wege.
 
 ## Geldbeträge
 

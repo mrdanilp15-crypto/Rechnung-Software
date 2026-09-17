@@ -3,6 +3,9 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { MobileCard, MobileField } from "../components/MobileCard";
+import { PdfLink } from "../components/PdfLink";
+import { useAuthStore } from "../store/authStore";
+import { useToast } from "../components/Toast";
 
 interface HistoryInvoice {
   id: string;
@@ -43,11 +46,22 @@ export default function CustomerDetail() {
   const { id } = useParams();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const isAdmin = useAuthStore((s) => s.user?.role) === "ADMIN";
+  const showToast = useToast();
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
 
-  useEffect(() => {
+  function load() {
     api.get(`/customers/${id}`).then((res) => setCustomer(res.data));
-  }, [id]);
+  }
+  useEffect(load, [id]);
+
+  async function handleGdprErase() {
+    if (!customer) return;
+    if (!confirm(`Personenbezogene Daten von "${customer.name}" (Name, Adresse, E-Mail, Telefon, Notizen) unwiderruflich anonymisieren? Rechnungen/Belege selbst bleiben aus gesetzlichen Aufbewahrungsgründen erhalten. Das kann nicht rückgängig gemacht werden.`)) return;
+    await api.post(`/customers/${id}/gdpr-erase`);
+    showToast("Kundendaten anonymisiert", "success");
+    load();
+  }
 
   if (!customer) return <p>{t("common.loading")}</p>;
 
@@ -60,10 +74,20 @@ export default function CustomerDetail() {
         <Link to="/customers" className="text-brand hover:underline text-sm">&larr; Kunden</Link>
       </div>
 
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-semibold">{customer.name}</h1>
           <p className="text-sm text-slate-500">{customer.customerNumber} · {customer.type === "GEWERBLICH" ? t("customers.business") : t("customers.private")} · Kunde seit {formatDate(customer.createdAt)}</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <PdfLink url={`/customers/${id}/gdpr-export`} filename={`dsgvo-export-${customer.customerNumber}.json`} download className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm">
+            DSGVO-Export
+          </PdfLink>
+          {isAdmin && (
+            <button onClick={handleGdprErase} className="bg-red-100 text-red-700 px-3 py-1.5 rounded text-sm">
+              Anonymisieren (DSGVO)
+            </button>
+          )}
         </div>
       </div>
 

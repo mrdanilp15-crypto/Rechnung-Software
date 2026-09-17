@@ -18,15 +18,18 @@
   gibt keine gültigen Tokens preis. Rotierend: Jede Nutzung erzeugt ein neues Token und
   widerruft das alte (`rotateRefreshToken`), Wiederverwendung eines bereits
   ausgetauschten Tokens ist daher erkennbar/unterbindbar.
-- Access-Tokens werden im Frontend in `localStorage` gehalten (kein eigenes
-  Server-Side-Rendering, daher kein praktikables httpOnly-Cookie ohne zusätzliche
-  Infrastruktur). **Bekannte Abwägung:** `localStorage` ist bei einem XSS-Angriff
-  auslesbar. Gegenmaßnahmen: kurze Access-Token-Lebensdauer (15 Min), serverseitige
-  Content-Security-Policy via `helmet`, keine Fremd-Skripte im Frontend, Refresh-Token-
-  Rotation begrenzt den Schaden bei Kompromittierung. Wer ein noch härteres
-  Sicherheitsniveau benötigt: Access-Token stattdessen serverseitig in einem
-  `httpOnly`-Cookie ausliefern und Frontend als serverseitig gerendertes Next.js/Remix
-  umbauen (Architekturänderung, siehe [STATUS.md](STATUS.md)).
+- Access- und Refresh-Token werden dem Browser als **httpOnly-, Secure- (Produktion)
+  und SameSite=strict-Cookies** gesetzt (`modules/auth/cookies.ts`) - für JavaScript im
+  Frontend grundsätzlich unsichtbar, ein XSS-Angriff könnte sie also nicht direkt
+  auslesen (anders als die frühere `localStorage`-Speicherung). Funktioniert ohne
+  Cross-Origin-Sonderfälle, weil sowohl in Produktion (nginx) als auch lokal
+  (Vite-Dev-Proxy, `vite.config.ts`) die API aus Browsersicht immer unter demselben
+  Origin wie das Frontend erreichbar ist. Der Refresh-Token-Cookie ist zusätzlich auf
+  den Pfad `/api/auth` beschränkt, damit er nicht bei jeder beliebigen Anfrage
+  mitgeschickt wird. Die Tokens werden zusätzlich weiterhin im JSON-Response-Body
+  zurückgegeben, damit nicht-browserbasierte Aufrufer (Skripte, `Authorization: Bearer`,
+  siehe [API.md](API.md)) die API unverändert nutzen können - `middleware/auth.ts`
+  akzeptiert beide Wege.
 
 ## Zwei-Faktor-Authentifizierung (2FA/TOTP)
 
@@ -52,6 +55,9 @@ Zeitstempel, handelnder Benutzer, IP-Adresse, betroffene Entität, sowie ein JSO
 in `metadata` (ohne Klartext-Passwörter/-Secrets - siehe Redaction in `utils/logger.ts`
 und die bewusste Auswahl der geloggten Felder in den jeweiligen Routern). Einträge
 werden nie verändert oder gelöscht (kein UPDATE/DELETE-Endpunkt für `AuditLog`).
+Einsehbar für Admins über `GET /api/audit-logs` bzw. die Seite "Audit-Log" im Frontend
+(`pages/AuditLog.tsx`) - vorher wurde zwar protokolliert, es gab aber keine Möglichkeit,
+die Einträge tatsächlich einzusehen.
 
 ## Verschlüsselung ruhender Daten
 
@@ -115,7 +121,10 @@ ausgeschlossen.
 ## DSGVO-Konformität
 
 - **Auskunftsrecht (Art. 15 DSGVO)**: `GET /api/customers/:id/gdpr-export` liefert alle
-  gespeicherten personenbezogenen Daten eines Kunden inkl. Belegen als JSON.
+  gespeicherten personenbezogenen Daten eines Kunden inkl. Belegen als JSON (Button
+  "DSGVO-Export" auf der Kundendetailseite). Für den eigenen Benutzer-Account gibt es
+  zusätzlich `GET /api/auth/me/export` (Kontodaten + eigenes Aktivitätsprotokoll, Button
+  "Eigene Daten exportieren" unter Einstellungen → Passwort).
 - **Recht auf Löschung (Art. 17 DSGVO)**: `POST /api/customers/:id/gdpr-erase`
   anonymisiert personenbezogene Felder (Name, E-Mail, Telefon, Adresse, Notizen).
   Rechnungsbelege selbst werden **nicht** hart gelöscht, da hierfür die steuerrechtliche

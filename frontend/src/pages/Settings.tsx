@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 import { CompanyAssetUpload } from "../components/CompanyAssetUpload";
+import { PdfLink } from "../components/PdfLink";
 import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import Users from "./Users";
@@ -53,7 +54,6 @@ type TabKey = (typeof TABS)[number]["key"];
 export default function Settings() {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
-  const updateAccessToken = useAuthStore((s) => s.updateAccessToken);
   const showToast = useToast();
   const [tab, setTab] = useState<TabKey>("company");
   const [company, setCompany] = useState<Company | null>(null);
@@ -105,13 +105,15 @@ export default function Settings() {
       return;
     }
     try {
-      const { data } = await passwordSave.run(() =>
+      // Backend setzt bei Erfolg automatisch frische Auth-Cookies für diese Sitzung
+      // (siehe backend/src/modules/auth/router.ts, setAuthCookies) - das Frontend muss
+      // selbst nichts weiter tun, da es die Tokens nicht mehr selbst verwaltet.
+      await passwordSave.run(() =>
         api.post("/auth/change-password", {
           currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,
         })
       );
-      updateAccessToken(data.accessToken, data.refreshToken);
       setPasswordForm({ currentPassword: "", newPassword: "", newPasswordRepeat: "" });
       showToast("Passwort geändert. Andere angemeldete Geräte wurden abgemeldet.", "success");
     } catch (err: any) {
@@ -317,6 +319,18 @@ export default function Settings() {
             Passwort ändern
           </SaveButton>
         </form>
+      )}
+
+      {tab === "password" && (
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-2 max-w-md mt-4">
+          <h2 className="font-medium">Meine Daten (DSGVO)</h2>
+          <p className="text-sm text-slate-500">
+            Lädt eine Kopie aller zu deinem Benutzerkonto gespeicherten Daten herunter (Art. 15 DSGVO) - Kontodaten und dein eigenes Aktivitätsprotokoll, ohne Passwort oder 2FA-Geheimnis.
+          </p>
+          <PdfLink url="/auth/me/export" filename="dsgvo-export-benutzerkonto.json" download className="bg-slate-200 dark:bg-slate-700 px-4 py-2 rounded text-sm">
+            Eigene Daten exportieren
+          </PdfLink>
+        </div>
       )}
 
       {tab === "users" && user?.role === "ADMIN" && <Users />}

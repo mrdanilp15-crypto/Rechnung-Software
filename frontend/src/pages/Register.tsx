@@ -7,7 +7,7 @@ import { useAuthStore } from "../store/authStore";
 export default function Register() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const setSession = useAuthStore((s) => s.setSession);
+  const setUser = useAuthStore((s) => s.setUser);
   const [form, setForm] = useState({ companyName: "", name: "", email: "", password: "" });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,7 +18,7 @@ export default function Register() {
     setLoading(true);
     try {
       const { data } = await api.post("/auth/register", form);
-      setSession({ accessToken: data.accessToken, refreshToken: data.refreshToken, user: data.user });
+      setUser(data.user);
       navigate("/");
     } catch (err: any) {
       setError(err.response?.data?.error || t("common.error"));

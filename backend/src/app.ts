@@ -7,6 +7,7 @@ import "express-async-errors";
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import compression from "compression";
 import pinoHttp from "pino-http";
 import { randomUUID } from "crypto";
@@ -31,6 +32,7 @@ import { openApiRouter } from "./modules/docs/openapi";
 import { expensesRouter } from "./modules/expenses/router";
 import { bankRouter } from "./modules/bank/router";
 import { materialsRouter } from "./modules/materials/router";
+import { auditRouter } from "./modules/audit/router";
 
 export function createApp() {
   const app = express();
@@ -74,6 +76,7 @@ export function createApp() {
   app.use(compression());
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ extended: true }));
+  app.use(cookieParser());
 
   app.use(apiRateLimiter);
 
@@ -95,6 +98,7 @@ export function createApp() {
   app.use("/api/expenses", expensesRouter);
   app.use("/api/bank", bankRouter);
   app.use("/api/materials", materialsRouter);
+  app.use("/api/audit-logs", auditRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

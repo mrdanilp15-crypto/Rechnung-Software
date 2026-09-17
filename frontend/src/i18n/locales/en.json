@@ -1,6 +1,6 @@
 {
   "app": { "title": "Invoicing Software" },
-  "nav": { "dashboard": "Dashboard", "customers": "Customers", "products": "Products", "materials": "Materials", "invoices": "Invoices", "quotes": "Quotes", "deliveryNotes": "Delivery Notes", "orderConfirmations": "Order Confirmations", "finance": "Finance", "settings": "Settings", "logout": "Log out" },
+  "nav": { "dashboard": "Dashboard", "customers": "Customers", "products": "Products", "materials": "Materials", "invoices": "Invoices", "quotes": "Quotes", "deliveryNotes": "Delivery Notes", "orderConfirmations": "Order Confirmations", "finance": "Finance", "auditLog": "Audit Log", "settings": "Settings", "logout": "Log out" },
   "auth": {
     "login": "Log in", "register": "Register", "email": "Email", "password": "Password",
     "companyName": "Company name", "name": "Name", "totpToken": "2FA code", "loginError": "Login failed",

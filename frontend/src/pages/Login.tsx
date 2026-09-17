@@ -7,7 +7,7 @@ import { useAuthStore } from "../store/authStore";
 export default function Login() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const setSession = useAuthStore((s) => s.setSession);
+  const setUser = useAuthStore((s) => s.setUser);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [totpToken, setTotpToken] = useState("");
@@ -21,7 +21,7 @@ export default function Login() {
     setLoading(true);
     try {
       const { data } = await api.post("/auth/login", { email, password, totpToken: totpToken || undefined });
-      setSession({ accessToken: data.accessToken, refreshToken: data.refreshToken, user: data.user });
+      setUser(data.user);
       navigate("/");
     } catch (err: any) {
       if (err.response?.data?.requiresTotp) {

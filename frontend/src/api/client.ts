@@ -1,26 +1,20 @@
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
 
-export const api = axios.create({ baseURL: "/api" });
+// withCredentials: true sorgt dafür, dass der Browser die httpOnly-Auth-Cookies
+// (siehe backend/src/modules/auth/cookies.ts) automatisch an jede Anfrage anhängt -
+// das Frontend liest/verwaltet die Tokens selbst nicht mehr (kein localStorage).
+export const api = axios.create({ baseURL: "/api", withCredentials: true });
 
-api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken;
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+let refreshPromise: Promise<boolean> | null = null;
 
-let refreshPromise: Promise<string | null> | null = null;
-
-async function refreshAccessToken(): Promise<string | null> {
-  const { refreshToken, updateAccessToken, clearSession } = useAuthStore.getState();
-  if (!refreshToken) return null;
+async function refreshAccessToken(): Promise<boolean> {
   try {
-    const { data } = await axios.post("/api/auth/refresh", { refreshToken });
-    updateAccessToken(data.accessToken, data.refreshToken);
-    return data.accessToken;
+    await axios.post("/api/auth/refresh", {}, { withCredentials: true });
+    return true;
   } catch {
-    clearSession();
-    return null;
+    useAuthStore.getState().clearSession();
+    return false;
   }
 }
 
@@ -31,12 +25,12 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
       refreshPromise = refreshPromise ?? refreshAccessToken();
-      const newToken = await refreshPromise;
+      const refreshed = await refreshPromise;
       refreshPromise = null;
-      if (newToken) {
-        original.headers.Authorization = `Bearer ${newToken}`;
-        return api(original);
-      }
+      // Der neue Access-Token steckt im (vom Browser bereits übernommenen) Set-Cookie-
+      // Header der Refresh-Antwort - der Retry braucht keinen Header manuell zu setzen,
+      // das Cookie wird beim erneuten Request automatisch mitgeschickt.
+      if (refreshed) return api(original);
     }
     return Promise.reject(error);
   }

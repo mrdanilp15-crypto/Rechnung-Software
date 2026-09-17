@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyAccessToken, AccessTokenPayload } from "../modules/auth/tokens";
+import { getAccessTokenCookie } from "../modules/auth/cookies";
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -11,12 +12,16 @@ declare global {
   }
 }
 
+// Akzeptiert den Access-Token entweder aus dem httpOnly-Cookie (Web-Frontend, siehe
+// modules/auth/cookies.ts) ODER aus einem "Authorization: Bearer ..."-Header (Skripte/
+// externe API-Integrationen, siehe docs/API.md) - das Cookie ist der primäre, sicherere
+// Weg für den Browser, der Header bleibt für nicht-browserbasierte Aufrufer nutzbar.
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) {
+  const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length) : getAccessTokenCookie(req.cookies);
+  if (!token) {
     return res.status(401).json({ error: "Nicht authentifiziert" });
   }
-  const token = header.slice("Bearer ".length);
   try {
     req.auth = verifyAccessToken(token);
     next();
