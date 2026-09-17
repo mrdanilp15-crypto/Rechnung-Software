@@ -55,12 +55,37 @@ werden nie verändert oder gelöscht (kein UPDATE/DELETE-Endpunkt für `AuditLog
 
 ## Verschlüsselung ruhender Daten
 
-- **AES-256-GCM** für hochsensible Einzelfelder (aktuell: TOTP-Secrets) via
+- **AES-256-GCM** für hochsensible Einzelfelder (TOTP-Secrets, SMTP-Passwort) via
   `utils/crypto.ts`. GCM liefert Authentizität (Auth-Tag) zusätzlich zur Vertraulichkeit.
+- Backup-Archive werden mit demselben Schlüssel/Verfahren ganzheitlich verschlüsselt
+  (`utils/fileCrypto.ts`, `BACKUP_ENCRYPTION_ENABLED`, Standard: an) - siehe Abschnitt
+  "Backup & Wiederherstellung" unten.
 - Die Datenbank selbst (PostgreSQL-Datenverzeichnis) liegt **nicht** automatisch
   verschlüsselt auf der Festplatte. Für Volltextverschlüsselung: Windows BitLocker
   bzw. LUKS auf dem Server-Volume aktivieren, oder PostgreSQL mit
   `pgcrypto`/Transparent Data Encryption des Hosting-Anbieters betreiben.
+
+## Backup & Wiederherstellung
+
+- Automatisiertes Backup (`BACKUP_INTERVAL_HOURS`, Standard: alle 24h) und manuell über
+  "Backup jetzt erstellen" (Einstellungen) bzw. `npm run backup`: vollständiger
+  PostgreSQL-Dump (`pg_dump --clean --if-exists`, macht den Dump selbst restaurierbar
+  über eine bereits bestehende Datenbank hinweg) plus alle Uploads (Logos, Stempel,
+  Unterschrift), gepackt als ZIP.
+- **Aufbewahrung 10 Jahre** (`BACKUP_RETENTION_DAYS`, Standard: 3650) statt vorher 30
+  Tage - ein Backup ist zwar primär eine Katastrophen-Sicherung und kein Ersatz für die
+  eigentliche GoBD-Aufbewahrungspflicht (die die Live-Datenbank erfüllt, solange nichts
+  gelöscht wird), sollte als letzte Verteidigungslinie gegen einen Totalverlust der
+  Datenbank aber selbst genauso lange vorgehalten werden.
+- **Verschlüsselung**: Jedes Backup-ZIP wird standardmäßig mit AES-256-GCM verschlüsselt
+  (`.zip.enc`, `BACKUP_ENCRYPTION_ENABLED=false` zum Deaktivieren) - relevant vor allem
+  für das optionale S3-Ziel, das außerhalb der eigenen Infrastruktur liegen kann.
+- **Wiederherstellung**: `npm run restore -- <Pfad-zum-Backup> --yes` im Container
+  (Portainer-Terminal des Backend-Dienstes) entschlüsselt, entpackt und spielt Dump +
+  Uploads zurück (`scripts/restoreBackup.ts`). Ohne `--yes` bricht das Skript mit einer
+  Warnung ab, da der Vorgang bestehende Daten überschreibt. Ein Restore, der nie
+  getestet wurde, ist im Ernstfall keine verlässliche Absicherung - vor dem produktiven
+  Einsatz einmal gegen eine Testdatenbank ausprobieren.
 
 ## Transport (HTTPS)
 
@@ -102,6 +127,14 @@ ausgeschlossen.
 - **Auftragsverarbeitung**: Wird ein S3-kompatibler Cloud-Speicher für Backups genutzt
   (`.env`: `S3_*`), ist mit dem jeweiligen Anbieter ein Auftragsverarbeitungsvertrag
   (AVV) nach Art. 28 DSGVO abzuschließen - dies kann Software nicht automatisieren.
+
+## Container-Härtung
+
+- Der Backend-Container startet zwar (Docker-Standard) als `root`, der Entrypoint
+  repariert damit einmalig die Besitzrechte etwaiger noch root-owned Alt-Volumes und
+  wechselt danach über `su-exec` dauerhaft zum nicht-root-Benutzer `node`, **bevor** der
+  eigentliche Server-Prozess startet (`docker-entrypoint.sh`) - der laufende Node-Prozess
+  besitzt also keine root-Rechte im Container.
 
 ## Bekannte Grenzen (transparent, kein "false sense of security")
 

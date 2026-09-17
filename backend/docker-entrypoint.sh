@@ -2,14 +2,22 @@
 # Startet beim Hochfahren des Containers:
 #   1. erzeugt fehlende Secrets einmalig und hält sie über Neustarts hinweg stabil
 #   2. wartet auf die Datenbank und wendet alle offenen Prisma-Migrationen an
-#   3. startet den eigentlichen Server
+#   3. wechselt vom (Standard-)root-Benutzer dauerhaft zum nicht-root-Benutzer "node"
+#      und startet erst dann den eigentlichen Server (Sicherheits-Härtung: der
+#      laufende Node-Prozess besitzt danach keine root-Rechte mehr im Container)
 # So funktioniert "Compose hochladen und starten" in Portainer ohne dass irgendein
 # manueller Migrations- oder Konfigurationsschritt nötig ist.
 set -e
 
 DATA_DIR="/app/data"
 SECRETS_FILE="$DATA_DIR/.generated-secrets.env"
-mkdir -p "$DATA_DIR"
+mkdir -p "$DATA_DIR" /app/uploads /app/backups
+
+# Volumes aus einer älteren Image-Version (vor Einführung des nicht-root-Benutzers)
+# gehören noch root - hier einmalig korrigieren, damit der Server nach dem Wechsel zu
+# "node" (siehe exec su-exec unten) weiterhin schreiben kann. Läuft bei jedem Start,
+# ist bei bereits korrekten Rechten ein no-op.
+chown -R node:node "$DATA_DIR" /app/uploads /app/backups
 
 # Werden JWT_ACCESS_SECRET/JWT_REFRESH_SECRET/FIELD_ENCRYPTION_KEY nicht per Umgebungs-
 # variable vorgegeben (z.B. weil in Portainer keine Environment-Variablen gesetzt wurden),
@@ -48,5 +56,5 @@ until npx prisma migrate deploy; do
   sleep 2
 done
 
-echo "[entrypoint] Starte Server..."
-exec node dist/src/index.js
+echo "[entrypoint] Starte Server als nicht-root-Benutzer 'node'..."
+exec su-exec node node dist/src/index.js

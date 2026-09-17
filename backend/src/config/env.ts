@@ -21,7 +21,19 @@ const envSchema = z.object({
   CORS_ORIGINS: z.string().default("http://localhost:5173"),
 
   BACKUP_DIR: z.string().default("./backups"),
-  BACKUP_RETENTION_DAYS: z.coerce.number().default(30),
+  // GoBD/§147 AO verlangen eine 10-jährige Aufbewahrung der Buchführungsunterlagen -
+  // ein Backup ist zwar primär eine Katastrophen-Sicherung und kein Ersatz für die
+  // eigentliche Aufbewahrungspflicht (die die Live-Datenbank erfüllt, solange niemand
+  // Daten löscht), aber es ist die letzte Verteidigungslinie gegen einen Totalverlust
+  // der Datenbank - Backups sollten deshalb mindestens genauso lange vorgehalten werden
+  // wie die gesetzliche Aufbewahrungsfrist. Bei einem Datenvolumen dieser Größenordnung
+  // (ZIP aus DB-Dump + Uploads, i.d.R. wenige MB bis niedrige zweistellige MB-Zahl) ist
+  // das über 10 Jahre unproblematisch günstig.
+  BACKUP_RETENTION_DAYS: z.coerce.number().default(3650),
+  // AES-256-GCM-Verschlüsselung der Backup-ZIPs (siehe utils/fileCrypto.ts) - standardmäßig
+  // aktiv, nutzt denselben persistenten Schlüssel wie die Feldverschlüsselung
+  // (FIELD_ENCRYPTION_KEY), damit kein zusätzliches Secret verwaltet werden muss.
+  BACKUP_ENCRYPTION_ENABLED: z.string().default("true").transform((v) => v.toLowerCase() !== "false" && v !== "0"),
   // Bewusst kein z.coerce.boolean(): das nutzt JS Boolean(x), das jeden nicht-leeren
   // String (auch "false") als true behandelt. Env-Werte aus Docker/Portainer kommen
   // aber immer als String an, "false" muss also wirklich false ergeben.

@@ -14,7 +14,7 @@ backupRouter.get("/", async (_req, res) => {
   fs.mkdirSync(env.BACKUP_DIR, { recursive: true });
   const files = fs
     .readdirSync(env.BACKUP_DIR)
-    .filter((f) => f.endsWith(".zip"))
+    .filter((f) => f.endsWith(".zip") || f.endsWith(".zip.enc"))
     .map((f) => {
       const stat = fs.statSync(path.join(env.BACKUP_DIR, f));
       return { name: f, sizeBytes: stat.size, createdAt: stat.mtime };

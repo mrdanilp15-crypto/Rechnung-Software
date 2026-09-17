@@ -5,6 +5,7 @@ import { promisify } from "util";
 import { zip } from "zip-a-folder";
 import { env } from "../../config/env";
 import { logger } from "../../utils/logger";
+import { encryptFileAes256Gcm } from "../../utils/fileCrypto";
 
 const execFileAsync = promisify(execFile);
 
@@ -40,22 +41,37 @@ export async function runBackup(): Promise<string> {
   await zip(stagingDir, zipPath);
   fs.rmSync(stagingDir, { recursive: true, force: true });
 
-  await maybeUploadToS3(zipPath);
+  // Backups enthalten dieselben personenbezogenen/finanziellen Daten wie die
+  // Datenbank selbst (Kundendaten, Rechnungsbeträge, IBAN) - werden standardmäßig
+  // verschlüsselt abgelegt (Art. 32 DSGVO), insbesondere relevant für das optionale
+  // S3-Ziel, das außerhalb der eigenen Infrastruktur liegen kann.
+  let finalPath = zipPath;
+  if (env.BACKUP_ENCRYPTION_ENABLED) {
+    finalPath = `${zipPath}.enc`;
+    encryptFileAes256Gcm(zipPath, finalPath);
+    fs.rmSync(zipPath);
+  }
+
+  await maybeUploadToS3(finalPath);
   cleanupOldBackups();
 
-  logger.info({ zipPath }, "Backup erstellt");
-  return zipPath;
+  logger.info({ finalPath }, "Backup erstellt");
+  return finalPath;
 }
 
 /**
  * Erzeugt einen reinen SQL-Dump per pg_dump (im Backend-Image via `apk add
  * postgresql-client` installiert, siehe Dockerfile). --no-owner/--no-privileges, damit
  * ein Restore auch in eine Datenbank mit einem anderen Benutzernamen funktioniert.
+ * --clean --if-exists macht den Dump selbst "idempotent" (DROP ... IF EXISTS vor jedem
+ * CREATE) - so lässt er sich mit scripts/restoreBackup.ts direkt über eine bereits
+ * bestehende Datenbank (z.B. nach einem frischen `prisma migrate deploy`) einspielen,
+ * ohne "relation already exists"-Fehler.
  */
 async function dumpPostgres(stagingDir: string) {
   const outFile = path.join(stagingDir, "database.sql");
   try {
-    await execFileAsync("pg_dump", [env.DATABASE_URL, "--format=plain", "--no-owner", "--no-privileges", "-f", outFile]);
+    await execFileAsync("pg_dump", [env.DATABASE_URL, "--format=plain", "--no-owner", "--no-privileges", "--clean", "--if-exists", "-f", outFile]);
   } catch (err) {
     logger.error({ err }, "pg_dump fehlgeschlagen - Backup enthält keinen Datenbank-Dump");
     throw err;
@@ -77,7 +93,7 @@ function resolveSqliteFilePath(databaseUrl: string): string | null {
 }
 
 function cleanupOldBackups() {
-  const files = fs.readdirSync(env.BACKUP_DIR).filter((f) => f.endsWith(".zip"));
+  const files = fs.readdirSync(env.BACKUP_DIR).filter((f) => f.endsWith(".zip") || f.endsWith(".zip.enc"));
   const cutoff = Date.now() - env.BACKUP_RETENTION_DAYS * 24 * 60 * 60 * 1000;
   for (const file of files) {
     const fullPath = path.join(env.BACKUP_DIR, file);

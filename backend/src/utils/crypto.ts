@@ -9,7 +9,9 @@ import { env } from "../config/env";
 
 const ALGO = "aes-256-gcm";
 
-function getKey(): Buffer {
+// Exportiert (statt privat), damit utils/fileCrypto.ts (Backup-Verschlüsselung) denselben
+// bereits verwalteten Schlüssel wiederverwenden kann, ohne ein zweites Secret einzuführen.
+export function getFieldEncryptionKey(): Buffer {
   const raw = Buffer.from(env.FIELD_ENCRYPTION_KEY, "base64");
   if (raw.length !== 32) {
     // Fällt zurück auf einen abgeleiteten 32-Byte-Schlüssel, falls der Base64-Wert
@@ -21,7 +23,7 @@ function getKey(): Buffer {
 
 export function encryptField(plaintext: string): string {
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv(ALGO, getKey(), iv);
+  const cipher = crypto.createCipheriv(ALGO, getFieldEncryptionKey(), iv);
   const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const authTag = cipher.getAuthTag();
   return [iv.toString("base64"), authTag.toString("base64"), encrypted.toString("base64")].join(".");
@@ -33,7 +35,7 @@ export function decryptField(payload: string): string {
   const iv = Buffer.from(ivB64, "base64");
   const authTag = Buffer.from(tagB64, "base64");
   const data = Buffer.from(dataB64, "base64");
-  const decipher = crypto.createDecipheriv(ALGO, getKey(), iv);
+  const decipher = crypto.createDecipheriv(ALGO, getFieldEncryptionKey(), iv);
   decipher.setAuthTag(authTag);
   const decrypted = Buffer.concat([decipher.update(data), decipher.final()]);
   return decrypted.toString("utf8");
