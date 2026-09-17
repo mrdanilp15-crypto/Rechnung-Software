@@ -48,6 +48,7 @@ export interface DocumentPdfInput {
   issueDate: Date;
   dueDate?: Date | null;
   validUntil?: Date | null;
+  deliveryDate?: Date | null; // Leistungs-/Lieferdatum, §14 Abs. 4 Nr. 6 UStG
   locale: "de" | "en";
   branding: BrandingInput;
   recipient: RecipientInput;
@@ -60,6 +61,12 @@ export interface DocumentPdfInput {
   notes?: string | null;
   showPrices: boolean; // false für Lieferscheine
   showSepaQr?: boolean; // true für offene Rechnungen
+  // Entwürfe sind noch keine rechtsgültigen Rechnungen (keine feste Nummer, jederzeit
+  // änderbar) - ein deutlich sichtbarer Wasserzusatz verhindert, dass eine Vorschau-PDF
+  // versehentlich als echte Rechnung verwendet/verschickt wird.
+  isDraft?: boolean;
+  // Stornorechnung/Korrekturbeleg: ersetzt nicht das Original, sondern verweist darauf.
+  correctsDocumentNumber?: string | null;
 }
 
 const LABELS = {
@@ -98,6 +105,12 @@ const LABELS = {
     payVia: "Pay via SEPA transfer, scan QR code:",
   },
 } as const;
+
+const DELIVERY_DATE_LABEL = { de: "Leistungsdatum", en: "Delivery/service date" } as const;
+const TAX_ID_LABEL = { de: "Steuernr.", en: "Tax no." } as const;
+const VAT_ID_LABEL = { de: "USt-IdNr.", en: "VAT ID" } as const;
+const CORRECTS_LABEL = { de: "Korrektur zu Rechnung", en: "Correction of invoice" } as const;
+const DRAFT_WATERMARK = { de: "ENTWURF", en: "DRAFT" } as const;
 
 const PAGE_MARGIN = 50;
 
@@ -145,13 +158,31 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
     .text(`${t.date}: ${formatDate(input.issueDate, input.locale)}`, { align: "right" });
   if (input.dueDate) doc.text(`${t.dueDate}: ${formatDate(input.dueDate, input.locale)}`, { align: "right" });
   if (input.validUntil) doc.text(`${t.validUntil}: ${formatDate(input.validUntil, input.locale)}`, { align: "right" });
+  // Leistungsdatum: eigene Pflichtangabe nach §14 Abs. 4 Nr. 6 UStG, getrennt vom
+  // Rechnungsdatum auszuweisen (auch wenn beide Daten zufällig übereinstimmen).
+  if (input.deliveryDate) {
+    doc.text(`${DELIVERY_DATE_LABEL[input.locale]}: ${formatDate(input.deliveryDate, input.locale)}`, { align: "right" });
+  }
+  if (input.correctsDocumentNumber) {
+    doc.fillColor("#b91c1c").text(`${CORRECTS_LABEL[input.locale]} ${input.correctsDocumentNumber}`, { align: "right" });
+    doc.fillColor("black");
+  }
 
   cursorY = 130;
   doc.fontSize(9).fillColor("#555");
+  // Steuernummer/USt-IdNr. des leistenden Unternehmers: Pflichtangabe nach §14 Abs. 4
+  // Nr. 2 UStG - ohne sie ist die Rechnung formal mangelhaft und dem Empfänger kann der
+  // Vorsteuerabzug versagt werden.
+  const taxIdLine = input.branding.vatId
+    ? `${VAT_ID_LABEL[input.locale]} ${input.branding.vatId}`
+    : input.branding.taxId
+    ? `${TAX_ID_LABEL[input.locale]} ${input.branding.taxId}`
+    : null;
   const senderLine = [
     input.branding.name,
     input.branding.street,
     [input.branding.postalCode, input.branding.city].filter(Boolean).join(" "),
+    taxIdLine,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -335,6 +366,19 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
   const originalBottomMargin = doc.page.margins.bottom;
   for (let i = 0; i < range.count; i++) {
     doc.switchToPage(range.start + i);
+
+    if (input.isDraft) {
+      doc.save();
+      doc
+        .rotate(-45, { origin: [doc.page.width / 2, doc.page.height / 2] })
+        .fontSize(90)
+        .fillOpacity(0.12)
+        .fillColor("#b91c1c")
+        .text(DRAFT_WATERMARK[input.locale], 0, doc.page.height / 2 - 50, { width: doc.page.width, align: "center" });
+      doc.restore();
+      doc.fillOpacity(1).fillColor("black");
+    }
+
     doc.page.margins.bottom = 0;
     doc
       .fontSize(8)

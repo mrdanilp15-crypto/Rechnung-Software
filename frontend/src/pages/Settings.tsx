@@ -13,22 +13,28 @@ interface Company {
   street?: string;
   postalCode?: string;
   city?: string;
+  taxId?: string;
   vatId?: string;
   iban?: string;
   bic?: string;
   isSmallBusiness: boolean;
   invoiceFooterText?: string;
   smallBusinessThresholdCents: number;
+  smallBusinessCurrentYearThresholdCents: number;
   smtpConfigured?: boolean;
 }
 
 interface RevenueStatus {
   isSmallBusiness: boolean;
   yearRevenueCents: number;
+  priorYearRevenueCents: number;
   thresholdCents: number;
+  currentYearThresholdCents: number;
   percentUsed: number;
   isApproaching: boolean;
   isExceeded: boolean;
+  priorYearExceeded: boolean;
+  currentYearExceeded: boolean;
 }
 
 const formatEuro = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
@@ -188,18 +194,24 @@ export default function Settings() {
     <div className="max-w-3xl">
       <h1 className="text-2xl font-semibold mb-6">{t("settings.title")}</h1>
 
-      {revenue?.isSmallBusiness && (revenue.isApproaching || revenue.isExceeded) && (
-        <div className={`rounded-lg p-4 mb-6 text-sm ${revenue.isExceeded ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"}`}>
-          {revenue.isExceeded ? (
-            <>
-              <strong>Umsatzgrenze überschritten:</strong> {formatEuro(revenue.yearRevenueCents)} von {formatEuro(revenue.thresholdCents)} in diesem Jahr.
-              Die Kleinunternehmerregelung (§19 UStG) entfällt damit voraussichtlich - bitte mit Steuerberater/Finanzamt klären, ab wann Umsatzsteuer ausgewiesen werden muss.
-            </>
-          ) : (
-            <>
-              <strong>Achtung:</strong> {formatEuro(revenue.yearRevenueCents)} von {formatEuro(revenue.thresholdCents)} ({revenue.percentUsed}%) der Kleinunternehmer-Umsatzgrenze in diesem Jahr bereits erreicht.
-            </>
+      {revenue?.isSmallBusiness && (revenue.isApproaching || revenue.currentYearExceeded || revenue.priorYearExceeded) && (
+        <div className="space-y-3 mb-6">
+          {revenue.priorYearExceeded && (
+            <div className="rounded-lg p-4 text-sm bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">
+              <strong>Vorjahresgrenze überschritten:</strong> {formatEuro(revenue.priorYearRevenueCents)} von {formatEuro(revenue.thresholdCents)} im Vorjahr.
+              Die Kleinunternehmerregelung (§19 UStG) entfällt damit voraussichtlich rückwirkend für das gesamte laufende Jahr - bitte dringend mit Steuerberater/Finanzamt klären.
+            </div>
           )}
+          {revenue.currentYearExceeded ? (
+            <div className="rounded-lg p-4 text-sm bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">
+              <strong>Laufende Umsatzgrenze überschritten:</strong> {formatEuro(revenue.yearRevenueCents)} von {formatEuro(revenue.currentYearThresholdCents)} in diesem Jahr.
+              Die Steuerbefreiung endet damit sofort ab dem Umsatz, der die Grenze überschritten hat (nicht erst im Folgejahr) - bitte umgehend mit Steuerberater/Finanzamt klären.
+            </div>
+          ) : revenue.isApproaching ? (
+            <div className="rounded-lg p-4 text-sm bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200">
+              <strong>Achtung:</strong> {formatEuro(revenue.yearRevenueCents)} von {formatEuro(revenue.currentYearThresholdCents)} ({revenue.percentUsed}%) der laufenden Kleinunternehmer-Umsatzgrenze in diesem Jahr bereits erreicht.
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -218,9 +230,13 @@ export default function Settings() {
       {tab === "company" && (
         <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-4">
           <h2 className="font-medium">{t("settings.company")}</h2>
+          <p className="text-xs text-slate-500 -mt-2">
+            Steuernummer oder USt-IdNr. sind Pflichtangaben auf jeder Rechnung (§14 Abs. 4 Nr. 2 UStG) - mindestens eine der beiden bitte ausfüllen.
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input value={company.name} onChange={(e) => setCompany({ ...company, name: e.target.value })} placeholder="Firmenname" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <input value={company.vatId || ""} onChange={(e) => setCompany({ ...company, vatId: e.target.value })} placeholder="USt-IdNr." className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            <input value={company.taxId || ""} onChange={(e) => setCompany({ ...company, taxId: e.target.value })} placeholder="Steuernummer" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            <input value={company.vatId || ""} onChange={(e) => setCompany({ ...company, vatId: e.target.value })} placeholder="USt-IdNr. (optional)" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
             <input value={company.street || ""} onChange={(e) => setCompany({ ...company, street: e.target.value })} placeholder="Straße" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
             <input value={company.postalCode || ""} onChange={(e) => setCompany({ ...company, postalCode: e.target.value })} placeholder="PLZ" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
             <input value={company.city || ""} onChange={(e) => setCompany({ ...company, city: e.target.value })} placeholder="Ort" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
@@ -233,14 +249,25 @@ export default function Settings() {
             {t("settings.smallBusiness")}
           </label>
           {company.isSmallBusiness && (
-            <div>
-              <label className="block text-sm mb-1">Umsatzgrenze für Warnhinweis (€/Jahr)</label>
-              <input
-                type="number"
-                value={company.smallBusinessThresholdCents / 100}
-                onChange={(e) => setCompany({ ...company, smallBusinessThresholdCents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
-                className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 w-40"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm mb-1">Vorjahresgrenze für Warnhinweis (€, gesetzlich seit 2025: 25.000 €)</label>
+                <input
+                  type="number"
+                  value={company.smallBusinessThresholdCents / 100}
+                  onChange={(e) => setCompany({ ...company, smallBusinessThresholdCents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
+                  className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Laufende-Jahr-Grenze für Warnhinweis (€, gesetzlich seit 2025: 100.000 €)</label>
+                <input
+                  type="number"
+                  value={company.smallBusinessCurrentYearThresholdCents / 100}
+                  onChange={(e) => setCompany({ ...company, smallBusinessCurrentYearThresholdCents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
+                  className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                />
+              </div>
             </div>
           )}
           {companyError && <p className="text-red-600 text-sm">{companyError}</p>}

@@ -45,7 +45,8 @@ export default function Quotes() {
   async function convert(q: Quote) {
     const { data: invoice } = await api.post(`/quotes/${q.id}/convert-to-invoice`);
     load();
-    showToast(`Angebot ${q.quoteNumber} als Rechnung ${invoice.invoiceNumber} angelegt`, "success");
+    showToast(`Angebot ${q.quoteNumber} als Rechnungsentwurf angelegt`, "success");
+    navigate(`/invoices/${invoice.id}`);
   }
 
   async function setStatus(q: Quote, status: string) {

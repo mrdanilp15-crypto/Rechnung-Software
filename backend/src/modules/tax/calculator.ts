@@ -56,6 +56,22 @@ export function calculateDocumentTotals(items: LineItemInput[], isSmallBusiness:
   };
 }
 
+/**
+ * Berechnet die Aufschlüsselung nach Steuersätzen (§14 Abs. 4 Nr. 8 UStG verlangt das
+ * "nach Steuersätzen ... aufgeschlüsselte Entgelt") aus bereits gespeicherten
+ * Beleg-Positionen (z.B. beim PDF-Erzeugen einer bestehenden Rechnung) - im Unterschied
+ * zu calculateDocumentTotals(), das beim Erstellen/Ändern eines Belegs aus rohen
+ * Eingabe-Positionen rechnet. Beide müssen bei gleichen Positionen dasselbe Ergebnis liefern.
+ */
+export function vatBreakdownFromLineItems(items: { vatRateBps: number; lineTotalCents: number }[]): Record<number, number> {
+  const breakdown: Record<number, number> = {};
+  for (const item of items) {
+    const vatForLine = roundToCents((item.lineTotalCents * item.vatRateBps) / 10000);
+    breakdown[item.vatRateBps] = (breakdown[item.vatRateBps] ?? 0) + vatForLine;
+  }
+  return breakdown;
+}
+
 export function formatCents(cents: number, currency = "EUR", locale = "de-DE"): string {
   return new Intl.NumberFormat(locale, { style: "currency", currency }).format(cents / 100);
 }

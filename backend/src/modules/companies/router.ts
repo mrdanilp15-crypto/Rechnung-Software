@@ -45,6 +45,7 @@ const updateCompanySchema = z.object({
   invoiceFooterText: z.string().nullish(),
   defaultLocale: z.enum(["de", "en"]).optional(),
   smallBusinessThresholdCents: z.number().int().min(0).optional(),
+  smallBusinessCurrentYearThresholdCents: z.number().int().min(0).optional(),
 });
 
 companiesRouter.patch("/me", requireRole("ADMIN"), async (req, res) => {

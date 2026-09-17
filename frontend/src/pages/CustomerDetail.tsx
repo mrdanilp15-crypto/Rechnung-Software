@@ -6,7 +6,7 @@ import { MobileCard, MobileField } from "../components/MobileCard";
 
 interface HistoryInvoice {
   id: string;
-  invoiceNumber: string;
+  invoiceNumber: string | null;
   status: string;
   issueDate: string;
   totalCents: number;
@@ -111,13 +111,13 @@ export default function CustomerDetail() {
           <div key={inv.id}>
             {/* Desktop */}
             <Link to={`/invoices/${inv.id}`} className="hidden md:grid items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700" style={{ gridTemplateColumns: "140px 1fr 100px 100px" }}>
-              <span className="font-medium">{inv.invoiceNumber}</span>
+              <span className="font-medium">{inv.invoiceNumber ?? "Entwurf"}</span>
               <span className="text-slate-500">{formatDate(inv.issueDate)}</span>
               <span className="text-right">{formatEuro(inv.totalCents)}</span>
               <span className="text-right text-slate-500">{inv.status}</span>
             </Link>
             {/* Mobile */}
-            <MobileCard title={inv.invoiceNumber} subtitle={formatDate(inv.issueDate)} onClick={() => navigate(`/invoices/${inv.id}`)}>
+            <MobileCard title={inv.invoiceNumber ?? "Entwurf"} subtitle={formatDate(inv.issueDate)} onClick={() => navigate(`/invoices/${inv.id}`)}>
               <MobileField label="Betrag" value={formatEuro(inv.totalCents)} />
               <MobileField label="Status" value={inv.status} />
             </MobileCard>

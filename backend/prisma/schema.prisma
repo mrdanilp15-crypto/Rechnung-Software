@@ -51,9 +51,13 @@ model Company {
   smtpFromEmail        String?
   smtpFromName         String?
 
-  // Umsatzgrenze für die Kleinunternehmerregelung (§19 UStG), Stand 2026: 22.000 € im
-  // laufenden Kalenderjahr. Konfigurierbar, falls sich der gesetzliche Wert ändert.
-  smallBusinessThresholdCents Int @default(2200000)
+  // Umsatzgrenzen für die Kleinunternehmerregelung (§19 UStG) seit der Reform zum
+  // 1.1.2025: Vorjahresumsatz darf 25.000 € nicht überschritten haben, UND der Umsatz im
+  // laufenden Kalenderjahr darf 100.000 € nicht übersteigen - wird Letzteres unterjährig
+  // überschritten, entfällt die Steuerbefreiung ab genau diesem Umsatz sofort (nicht erst
+  // im Folgejahr). Beide Werte konfigurierbar, falls sich die gesetzlichen Grenzen ändern.
+  smallBusinessThresholdCents Int @default(2500000)
+  smallBusinessCurrentYearThresholdCents Int @default(10000000)
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -260,7 +264,12 @@ model Invoice {
   companyId       String
   customer        Customer      @relation(fields: [customerId], references: [id])
   customerId      String
-  invoiceNumber   String
+  // NULL, solange die Rechnung ein Entwurf ist - die fortlaufende Nummer wird erst beim
+  // ersten Verlassen von DRAFT (Versenden/als bezahlt markieren) vergeben (siehe
+  // finalizeInvoiceNumber in modules/invoices/router.ts). So entsteht durch das Löschen
+  // eines nie versendeten Entwurfs KEINE Lücke in der Nummernfolge (GoBD-Anforderung an
+  // eine lückenlose Rechnungsnummerierung).
+  invoiceNumber   String?
   status          String        @default("DRAFT")
   issueDate       DateTime      @default(now())
   dueDate         DateTime?
@@ -275,6 +284,16 @@ model Invoice {
   footerText      String?
   sourceQuoteId   String?
   pdfPath         String?
+
+  // Storno-/Korrekturbeleg (Gutschrift): Eine bereits versendete/bezahlte Rechnung wird
+  // NIE gelöscht oder rückwirkend verändert (GoBD-Unveränderbarkeit) - stattdessen erzeugt
+  // POST /:id/cancel eine neue, eigenständige Rechnung mit negierten Beträgen, eigener
+  // fortlaufender Nummer und einem Verweis auf das Original. isCancellationDocument
+  // markiert diesen Korrekturbeleg selbst (anderer PDF-Titel, kein Materialabzug, kein QR).
+  correctsInvoiceId    String?
+  correctsInvoice      Invoice?  @relation("InvoiceCorrections", fields: [correctsInvoiceId], references: [id])
+  corrections          Invoice[] @relation("InvoiceCorrections")
+  isCancellationDocument Boolean @default(false)
 
   // E-Mail-Versand (siehe modules/email/mailer.ts). "Zustell-Status" bildet ehrlich nur ab,
   // ob die Übergabe an den SMTP-Server der Firma erfolgreich war - keine Lesebestätigung.
@@ -375,6 +394,10 @@ model DeliveryNote {
   pdfPath                   String?
   sourceOrderConfirmation   OrderConfirmation?  @relation(fields: [sourceOrderConfirmationId], references: [id])
   sourceOrderConfirmationId String?
+  // Lieferscheine sind zwar keine steuerpflichtigen Belege, aber nachvollziehbarkeits-
+  // relevante Geschäftsunterlagen (GoBD) - "Löschen" markiert sie deshalb nur als
+  // ungültig, statt den Datensatz zu entfernen (siehe modules/deliveryNotes/router.ts).
+  voidedAt                  DateTime?
   createdAt                 DateTime            @default(now())
   updatedAt                 DateTime            @updatedAt
 
@@ -413,6 +436,8 @@ model OrderConfirmation {
   totalCents    Int      @default(0)
   notes         String?
   pdfPath       String?
+  // Siehe Kommentar bei DeliveryNote.voidedAt - gleiches Prinzip.
+  voidedAt      DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

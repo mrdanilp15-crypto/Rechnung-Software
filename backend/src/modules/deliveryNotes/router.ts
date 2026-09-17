@@ -10,11 +10,14 @@ import { renderDocumentPdf } from "../pdf/documentTemplate";
 export const deliveryNotesRouter = Router();
 deliveryNotesRouter.use(requireAuth);
 
+// Lieferscheine sind nachvollziehbarkeits-relevante Geschäftsunterlagen (GoBD) - "Löschen"
+// markiert sie deshalb nur als ungültig (voidedAt), statt den Datensatz zu entfernen.
 deliveryNotesRouter.delete("/:id", async (req, res) => {
   const existing = await prisma.deliveryNote.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!existing) throw new HttpError(404, "Lieferschein nicht gefunden");
-  await prisma.deliveryNote.delete({ where: { id: existing.id } });
-  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "delivery_note.delete", entityType: "DeliveryNote", entityId: existing.id });
+  if (existing.voidedAt) throw new HttpError(409, "Lieferschein ist bereits ungültig markiert.");
+  await prisma.deliveryNote.update({ where: { id: existing.id }, data: { voidedAt: new Date() } });
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "delivery_note.void", entityType: "DeliveryNote", entityId: existing.id });
   res.status(204).send();
 });
 
@@ -30,7 +33,7 @@ const createSchema = z.object({
 
 deliveryNotesRouter.get("/", async (req, res) => {
   const notes = await prisma.deliveryNote.findMany({
-    where: { companyId: req.auth!.companyId },
+    where: { companyId: req.auth!.companyId, voidedAt: null },
     include: { customer: true, _count: { select: { items: true } } },
     orderBy: { deliveryDate: "desc" },
   });

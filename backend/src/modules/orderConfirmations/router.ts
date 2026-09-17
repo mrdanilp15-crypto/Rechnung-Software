@@ -5,17 +5,20 @@ import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { nextDocumentNumber } from "../shared/numbering";
-import { calculateDocumentTotals } from "../tax/calculator";
+import { calculateDocumentTotals, vatBreakdownFromLineItems } from "../tax/calculator";
 import { renderDocumentPdf } from "../pdf/documentTemplate";
 
 export const orderConfirmationsRouter = Router();
 orderConfirmationsRouter.use(requireAuth);
 
+// Auftragsbestätigungen sind nachvollziehbarkeits-relevante Geschäftsunterlagen (GoBD) -
+// "Löschen" markiert sie deshalb nur als ungültig (voidedAt), statt den Datensatz zu entfernen.
 orderConfirmationsRouter.delete("/:id", async (req, res) => {
   const existing = await prisma.orderConfirmation.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!existing) throw new HttpError(404, "Auftragsbestätigung nicht gefunden");
-  await prisma.orderConfirmation.delete({ where: { id: existing.id } });
-  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "order_confirmation.delete", entityType: "OrderConfirmation", entityId: existing.id });
+  if (existing.voidedAt) throw new HttpError(409, "Auftragsbestätigung ist bereits ungültig markiert.");
+  await prisma.orderConfirmation.update({ where: { id: existing.id }, data: { voidedAt: new Date() } });
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "order_confirmation.void", entityType: "OrderConfirmation", entityId: existing.id });
   res.status(204).send();
 });
 
@@ -37,7 +40,7 @@ const createSchema = z.object({
 
 orderConfirmationsRouter.get("/", async (req, res) => {
   const list = await prisma.orderConfirmation.findMany({
-    where: { companyId: req.auth!.companyId },
+    where: { companyId: req.auth!.companyId, voidedAt: null },
     include: { customer: true, _count: { select: { deliveryNotes: true } } },
     orderBy: { issueDate: "desc" },
   });
@@ -110,6 +113,7 @@ orderConfirmationsRouter.get("/:id/pdf", async (req, res) => {
     recipient: confirmation.customer,
     items: confirmation.items,
     subtotalCents: confirmation.subtotalCents,
+    vatBreakdown: vatBreakdownFromLineItems(confirmation.items),
     vatTotalCents: confirmation.vatTotalCents,
     totalCents: confirmation.totalCents,
     isSmallBusiness: confirmation.company.isSmallBusiness,

@@ -7,6 +7,7 @@ import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { nextDocumentNumber } from "../shared/numbering";
 import { calculateDocumentTotals, formatCents } from "../tax/calculator";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { emitEvent } from "../plugins/hooks";
 import { generateAndStoreInvoicePdf } from "./pdfHelper";
 import { getInvoiceComplianceWarnings } from "../tax/compliance";
@@ -53,13 +54,24 @@ invoicesRouter.get("/", async (req, res) => {
 invoicesRouter.get("/:id", async (req, res) => {
   const invoice = await prisma.invoice.findFirst({
     where: { id: req.params.id, companyId: req.auth!.companyId },
-    include: { items: true, customer: true, company: true },
+    include: { items: true, customer: true, company: true, correctsInvoice: true, corrections: true },
   });
   if (!invoice) throw new HttpError(404, "Rechnung nicht gefunden");
   const complianceWarnings = getInvoiceComplianceWarnings(invoice.company, invoice);
   const { company, ...rest } = invoice;
   res.json({ ...rest, complianceWarnings });
 });
+
+// Vergibt die endgültige, fortlaufende Rechnungsnummer erst beim ersten Verlassen von
+// DRAFT (Versenden bzw. direktes "als bezahlt markieren"). Wird ein Entwurf vorher
+// gelöscht, ohne je eine Nummer bekommen zu haben, entsteht dadurch KEINE Lücke in der
+// Nummernfolge - eine lückenlose Rechnungsnummerierung ist eine GoBD-Kernanforderung.
+async function finalizeInvoiceNumber(tx: Prisma.TransactionClient | PrismaClient, invoice: { id: string; companyId: string; invoiceNumber: string | null }) {
+  if (invoice.invoiceNumber) return invoice.invoiceNumber;
+  const invoiceNumber = await nextDocumentNumber(invoice.companyId, "INVOICE", tx);
+  await tx.invoice.update({ where: { id: invoice.id }, data: { invoiceNumber } });
+  return invoiceNumber;
+}
 
 invoicesRouter.post("/", async (req, res) => {
   const body = createInvoiceSchema.parse(req.body);
@@ -70,13 +82,12 @@ invoicesRouter.post("/", async (req, res) => {
   const totals = calculateDocumentTotals(body.items, company.isSmallBusiness);
 
   const invoice = await prisma.$transaction(async (tx) => {
-    const invoiceNumber = await nextDocumentNumber(company.id, "INVOICE", tx);
     await deductMaterialStock(tx, body.items);
     return tx.invoice.create({
       data: {
         companyId: company.id,
         customerId: customer.id,
-        invoiceNumber,
+        // Nummer wird bewusst erst bei finalizeInvoiceNumber() vergeben (siehe dort).
         issueDate: body.issueDate ?? new Date(),
         dueDate: body.dueDate,
         deliveryDate: body.deliveryDate,
@@ -181,57 +192,31 @@ invoicesRouter.delete("/:id", async (req, res) => {
   res.status(204).send();
 });
 
-// Löscht ausnahmsweise auch eine bereits versendete/bezahlte Rechnung endgültig.
-// Widerspricht der GoBD-Aufbewahrungspflicht und ist deshalb ADMIN-only - gedacht
-// für das Entfernen von Testdaten, nicht für den produktiven Betrieb.
-invoicesRouter.delete("/:id/force", requireRole("ADMIN"), async (req, res) => {
-  const existing = await prisma.invoice.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
-  if (!existing) throw new HttpError(404, "Rechnung nicht gefunden");
-  await prisma.invoice.delete({ where: { id: existing.id } });
-  await writeAuditLog({
-    req,
-    companyId: req.auth!.companyId,
-    userId: req.auth!.sub,
-    action: "invoice.force_delete",
-    entityType: "Invoice",
-    entityId: existing.id,
-    metadata: { previousStatus: existing.status },
-  });
-  res.status(204).send();
-});
-
-// Löscht mehrere Entwürfe auf einmal (Mehrfachauswahl in der Liste). Bereits
-// versendete Rechnungen werden übersprungen und in skippedIds zurückgemeldet,
-// statt die ganze Anfrage aus GoBD-Gründen abzulehnen - außer force=true wird von
-// einem Admin gesetzt (siehe DELETE /:id/force).
+// Löscht mehrere Entwürfe auf einmal (Mehrfachauswahl in der Liste). Bereits versendete/
+// bezahlte Rechnungen werden IMMER übersprungen und in skippedIds zurückgemeldet - es
+// gibt bewusst keine Möglichkeit (auch nicht für Admins), einen bereits ausgegebenen
+// Beleg endgültig zu löschen (GoBD/§147 AO). Zum Korrigieren/Stornieren siehe
+// POST /:id/cancel, das einen echten Korrekturbeleg erzeugt statt zu löschen.
 invoicesRouter.post("/bulk-delete", async (req, res) => {
-  const body = z.object({ ids: z.array(z.string()).min(1), force: z.boolean().optional() }).parse(req.body);
-  if (body.force && req.auth!.role !== "ADMIN") {
-    throw new HttpError(403, "Nur Administratoren können bereits versendete Rechnungen endgültig löschen.");
-  }
+  const body = z.object({ ids: z.array(z.string()).min(1) }).parse(req.body);
   const candidates = await prisma.invoice.findMany({
     where: { id: { in: body.ids }, companyId: req.auth!.companyId },
     select: { id: true, status: true },
   });
-  const deletableIds = (body.force ? candidates : candidates.filter((inv) => inv.status === "DRAFT")).map((inv) => inv.id);
+  const deletableIds = candidates.filter((inv) => inv.status === "DRAFT").map((inv) => inv.id);
   const skippedIds = body.ids.filter((id) => !deletableIds.includes(id));
-  // Materialbestand nur für gelöschte ENTWÜRFE zurückbuchen - bei per force gelöschten
-  // bereits versendeten Rechnungen wurde das Material schon real verbraucht/produziert.
-  const draftIdsBeingDeleted = candidates.filter((inv) => inv.status === "DRAFT" && deletableIds.includes(inv.id)).map((inv) => inv.id);
 
   if (deletableIds.length > 0) {
     await prisma.$transaction(async (tx) => {
-      if (draftIdsBeingDeleted.length > 0) {
-        const draftItems = await tx.invoiceItem.findMany({ where: { invoiceId: { in: draftIdsBeingDeleted } } });
-        await restoreMaterialStock(tx, draftItems);
-      }
+      const draftItems = await tx.invoiceItem.findMany({ where: { invoiceId: { in: deletableIds } } });
+      await restoreMaterialStock(tx, draftItems);
       await tx.invoice.deleteMany({ where: { id: { in: deletableIds } } });
     });
     await writeAuditLog({
       req,
       companyId: req.auth!.companyId,
       userId: req.auth!.sub,
-      action: body.force ? "invoice.bulk_force_delete" : "invoice.bulk_delete_draft",
+      action: "invoice.bulk_delete_draft",
       entityType: "Invoice",
       entityId: deletableIds.join(","),
       metadata: { deletedIds: deletableIds },
@@ -245,8 +230,11 @@ invoicesRouter.post("/:id/send", async (req, res) => {
   const invoice = await prisma.invoice.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!invoice) throw new HttpError(404, "Rechnung nicht gefunden");
   if (invoice.status !== "DRAFT") throw new HttpError(409, "Nur Entwürfe können versendet werden");
-  const updated = await prisma.invoice.update({ where: { id: invoice.id }, data: { status: "SENT" } });
-  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "invoice.send", entityType: "Invoice", entityId: invoice.id });
+  const updated = await prisma.$transaction(async (tx) => {
+    await finalizeInvoiceNumber(tx, invoice);
+    return tx.invoice.update({ where: { id: invoice.id }, data: { status: "SENT" } });
+  });
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "invoice.send", entityType: "Invoice", entityId: invoice.id, metadata: { invoiceNumber: updated.invoiceNumber } });
   await emitEvent("invoice.sent", { companyId: req.auth!.companyId, invoice: updated });
   res.json(updated);
 });
@@ -255,25 +243,82 @@ invoicesRouter.post("/:id/mark-paid", requireRole("ADMIN", "BUCHHALTUNG"), async
   const invoice = await prisma.invoice.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!invoice) throw new HttpError(404, "Rechnung nicht gefunden");
   if (invoice.status === "CANCELLED") throw new HttpError(409, "Stornierte Rechnung kann nicht als bezahlt markiert werden");
-  const updated = await prisma.invoice.update({ where: { id: invoice.id }, data: { status: "PAID", paidAt: new Date() } });
-  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "invoice.mark_paid", entityType: "Invoice", entityId: invoice.id });
+  const updated = await prisma.$transaction(async (tx) => {
+    // Direktes "als bezahlt markieren" aus dem Entwurf heraus (z.B. Barverkauf ohne
+    // separaten Versand-Schritt) verlässt DRAFT genauso endgültig wie ein Versand -
+    // auch hier muss also die Rechnungsnummer final vergeben werden.
+    await finalizeInvoiceNumber(tx, invoice);
+    return tx.invoice.update({ where: { id: invoice.id }, data: { status: "PAID", paidAt: new Date() } });
+  });
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "invoice.mark_paid", entityType: "Invoice", entityId: invoice.id, metadata: { invoiceNumber: updated.invoiceNumber } });
   await emitEvent("invoice.paid", { companyId: req.auth!.companyId, invoice: updated });
   res.json(updated);
 });
 
+// Storno/Rechnungskorrektur: Eine bereits versendete/bezahlte Rechnung wird NIE
+// nachträglich verändert oder gelöscht (GoBD-Unveränderbarkeit), sondern durch einen
+// eigenständigen Korrekturbeleg (Gutschrift) mit negierten Beträgen, eigener
+// fortlaufender Nummer und explizitem Verweis auf das Original ausgeglichen. Das
+// Original bleibt vollständig erhalten und wird nur als CANCELLED markiert.
 invoicesRouter.post("/:id/cancel", requireRole("ADMIN", "BUCHHALTUNG"), async (req, res) => {
-  const invoice = await prisma.invoice.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
+  const invoice = await prisma.invoice.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId }, include: { items: true, customer: true } });
   if (!invoice) throw new HttpError(404, "Rechnung nicht gefunden");
-  if (invoice.status === "PAID") throw new HttpError(409, "Bezahlte Rechnung kann nicht storniert werden (Gutschrift erforderlich)");
-  const updated = await prisma.invoice.update({ where: { id: invoice.id }, data: { status: "CANCELLED" } });
-  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "invoice.cancel", entityType: "Invoice", entityId: invoice.id });
-  res.json(updated);
+  if (invoice.status === "DRAFT") throw new HttpError(409, "Entwürfe bitte direkt löschen, nicht stornieren.");
+  if (invoice.status === "CANCELLED") throw new HttpError(409, "Rechnung ist bereits storniert.");
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: req.auth!.companyId } });
+
+  const creditNote = await prisma.$transaction(async (tx) => {
+    await restoreMaterialStock(tx, invoice.items);
+    const creditNoteNumber = await nextDocumentNumber(company.id, "INVOICE", tx);
+    const note = await tx.invoice.create({
+      data: {
+        companyId: company.id,
+        customerId: invoice.customerId,
+        invoiceNumber: creditNoteNumber,
+        status: "SENT",
+        isSmallBusiness: invoice.isSmallBusiness,
+        footerText: company.invoiceFooterText,
+        correctsInvoiceId: invoice.id,
+        isCancellationDocument: true,
+        subtotalCents: -invoice.subtotalCents,
+        vatTotalCents: -invoice.vatTotalCents,
+        totalCents: -invoice.totalCents,
+        notes: req.body?.reason ? String(req.body.reason).slice(0, 500) : undefined,
+        items: {
+          create: invoice.items.map((item) => ({
+            position: item.position,
+            productId: item.productId,
+            description: item.description,
+            quantity: -item.quantity,
+            unit: item.unit,
+            unitPriceCents: item.unitPriceCents,
+            vatRateBps: item.vatRateBps,
+            lineTotalCents: -item.lineTotalCents,
+          })),
+        },
+      },
+      include: { items: true, customer: true },
+    });
+    await tx.invoice.update({ where: { id: invoice.id }, data: { status: "CANCELLED" } });
+    return note;
+  });
+
+  await writeAuditLog({
+    req,
+    companyId: req.auth!.companyId,
+    userId: req.auth!.sub,
+    action: "invoice.cancel",
+    entityType: "Invoice",
+    entityId: invoice.id,
+    metadata: { creditNoteId: creditNote.id, creditNoteNumber: creditNote.invoiceNumber },
+  });
+  res.status(201).json(creditNote);
 });
 
 invoicesRouter.get("/:id/pdf", async (req, res) => {
   const invoice = await prisma.invoice.findFirst({
     where: { id: req.params.id, companyId: req.auth!.companyId },
-    include: { items: true, customer: true, company: true },
+    include: { items: true, customer: true, company: true, correctsInvoice: true },
   });
   if (!invoice) throw new HttpError(404, "Rechnung nicht gefunden");
   const locale = (req.query.lang as "de" | "en") || (invoice.company.defaultLocale as "de" | "en") || "de";
@@ -281,7 +326,7 @@ invoicesRouter.get("/:id/pdf", async (req, res) => {
   const pdfBuffer = await generateAndStoreInvoicePdf(invoice, locale);
 
   res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `inline; filename="${invoice.invoiceNumber}.pdf"`);
+  res.setHeader("Content-Disposition", `inline; filename="${invoice.invoiceNumber ?? "entwurf"}.pdf"`);
   res.send(pdfBuffer);
 });
 
@@ -296,7 +341,7 @@ const sendEmailSchema = z.object({
 invoicesRouter.post("/:id/send-email", async (req, res) => {
   const invoice = await prisma.invoice.findFirst({
     where: { id: req.params.id, companyId: req.auth!.companyId },
-    include: { items: true, customer: true, company: true },
+    include: { items: true, customer: true, company: true, correctsInvoice: true },
   });
   if (!invoice) throw new HttpError(404, "Rechnung nicht gefunden");
   if (invoice.status !== "DRAFT" && invoice.status !== "SENT") {
@@ -306,6 +351,13 @@ invoicesRouter.post("/:id/send-email", async (req, res) => {
   const to = body.to || invoice.customer.email;
   if (!to) throw new HttpError(400, "Keine E-Mail-Adresse hinterlegt. Bitte beim Kunden eine E-Mail-Adresse eintragen oder eine Empfängeradresse angeben.");
 
+  // Der tatsächliche Versand ist der Moment, an dem der Entwurf zur echten Rechnung
+  // wird - die fortlaufende Nummer muss also VOR PDF/E-Mail feststehen, nicht erst danach.
+  if (invoice.status === "DRAFT") {
+    invoice.invoiceNumber = await finalizeInvoiceNumber(prisma, invoice);
+  }
+  const invoiceNumber = invoice.invoiceNumber!;
+
   const locale = (invoice.company.defaultLocale as "de" | "en") || "de";
   const pdfBuffer = await generateAndStoreInvoicePdf(invoice, locale);
   const text =
@@ -314,16 +366,16 @@ invoicesRouter.post("/:id/send-email", async (req, res) => {
       customerName: invoice.customer.contactName || invoice.customer.name,
       companyName: invoice.company.name,
       documentLabel: locale === "en" ? "invoice" : "die Rechnung",
-      documentNumber: invoice.invoiceNumber,
+      documentNumber: invoiceNumber,
       locale,
     });
 
   try {
     await sendMailForCompany(invoice.company, {
       to,
-      subject: body.subject || `${locale === "en" ? "Invoice" : "Rechnung"} ${invoice.invoiceNumber}`,
+      subject: body.subject || `${locale === "en" ? "Invoice" : "Rechnung"} ${invoiceNumber}`,
       text,
-      attachments: [{ filename: `${invoice.invoiceNumber}.pdf`, content: pdfBuffer, contentType: "application/pdf" }],
+      attachments: [{ filename: `${invoiceNumber}.pdf`, content: pdfBuffer, contentType: "application/pdf" }],
     });
   } catch (err) {
     await prisma.invoice.update({
@@ -358,10 +410,14 @@ invoicesRouter.post("/:id/remind", async (req, res) => {
   }
 
   const nextLevel = invoice.reminderCount + 1;
+  // Status ist hier bereits als SENT/OVERDUE geprüft (siehe oben) - die Nummer wurde
+  // beim Verlassen von DRAFT bereits final vergeben (finalizeInvoiceNumber), ist an
+  // dieser Stelle also garantiert gesetzt.
+  const invoiceNumber = invoice.invoiceNumber!;
   const text = buildReminderEmailText({
     customerName: invoice.customer.contactName || invoice.customer.name,
     companyName: invoice.company.name,
-    invoiceNumber: invoice.invoiceNumber,
+    invoiceNumber,
     totalFormatted: formatCents(invoice.totalCents),
     dueDateFormatted: invoice.dueDate ? new Intl.DateTimeFormat("de-DE").format(invoice.dueDate) : undefined,
     reminderLevel: nextLevel,
@@ -371,7 +427,7 @@ invoicesRouter.post("/:id/remind", async (req, res) => {
   if (invoice.customer.email && isSmtpConfigured(invoice.company)) {
     await sendMailForCompany(invoice.company, {
       to: invoice.customer.email,
-      subject: `Zahlungserinnerung: Rechnung ${invoice.invoiceNumber}`,
+      subject: `Zahlungserinnerung: Rechnung ${invoiceNumber}`,
       text,
     });
     emailSent = true;

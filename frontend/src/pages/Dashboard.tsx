@@ -6,7 +6,7 @@ import { MobileCard, MobileField } from "../components/MobileCard";
 
 interface Invoice {
   id: string;
-  invoiceNumber: string;
+  invoiceNumber: string | null;
   status: string;
   totalCents: number;
   customer: { name: string };
@@ -15,10 +15,14 @@ interface Invoice {
 interface RevenueStatus {
   isSmallBusiness: boolean;
   yearRevenueCents: number;
+  priorYearRevenueCents: number;
   thresholdCents: number;
+  currentYearThresholdCents: number;
   percentUsed: number;
   isApproaching: boolean;
   isExceeded: boolean;
+  priorYearExceeded: boolean;
+  currentYearExceeded: boolean;
 }
 
 export default function Dashboard() {
@@ -55,12 +59,14 @@ export default function Dashboard() {
     <div>
       <h1 className="text-2xl font-semibold mb-6">{t("nav.dashboard")}</h1>
 
-      {revenue?.isSmallBusiness && (revenue.isApproaching || revenue.isExceeded) && (
-        <div className={`rounded-lg p-4 mb-6 text-sm ${revenue.isExceeded ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"}`}>
-          {revenue.isExceeded ? (
-            <>Umsatzgrenze für die Kleinunternehmerregelung überschritten ({format(revenue.yearRevenueCents)} von {format(revenue.thresholdCents)}). Details unter Einstellungen.</>
+      {revenue?.isSmallBusiness && (revenue.isApproaching || revenue.currentYearExceeded || revenue.priorYearExceeded) && (
+        <div className={`rounded-lg p-4 mb-6 text-sm ${revenue.currentYearExceeded || revenue.priorYearExceeded ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"}`}>
+          {revenue.priorYearExceeded ? (
+            <>Vorjahresgrenze für die Kleinunternehmerregelung überschritten ({format(revenue.priorYearRevenueCents)} von {format(revenue.thresholdCents)}). Details unter Einstellungen.</>
+          ) : revenue.currentYearExceeded ? (
+            <>Laufende Umsatzgrenze für die Kleinunternehmerregelung überschritten ({format(revenue.yearRevenueCents)} von {format(revenue.currentYearThresholdCents)}). Details unter Einstellungen.</>
           ) : (
-            <>Kleinunternehmer-Umsatzgrenze zu {revenue.percentUsed}% erreicht ({format(revenue.yearRevenueCents)} von {format(revenue.thresholdCents)}).</>
+            <>Kleinunternehmer-Umsatzgrenze zu {revenue.percentUsed}% erreicht ({format(revenue.yearRevenueCents)} von {format(revenue.currentYearThresholdCents)}).</>
           )}
         </div>
       )}
@@ -105,13 +111,13 @@ export default function Dashboard() {
               <div key={inv.id}>
                 {/* Desktop */}
                 <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "140px 1fr 120px 110px" }}>
-                  <span className="truncate">{inv.invoiceNumber}</span>
+                  <span className="truncate">{inv.invoiceNumber ?? "Entwurf"}</span>
                   <span className="truncate">{inv.customer.name}</span>
                   <span className="text-right">{format(inv.totalCents)}</span>
                   <span className="text-slate-500 text-right">{inv.status}</span>
                 </div>
                 {/* Mobile */}
-                <MobileCard title={inv.invoiceNumber} subtitle={inv.customer.name}>
+                <MobileCard title={inv.invoiceNumber ?? "Entwurf"} subtitle={inv.customer.name}>
                   <MobileField label="Betrag" value={format(inv.totalCents)} />
                   <MobileField label="Status" value={inv.status} />
                 </MobileCard>

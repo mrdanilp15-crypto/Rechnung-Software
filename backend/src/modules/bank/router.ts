@@ -83,7 +83,7 @@ bankRouter.post("/import", upload.single("file"), async (req, res) => {
     const purpose = row.purpose || row.Verwendungszweck || "";
     const counterparty = row.counterparty || row.Zahlungspflichtiger || row.Empfaenger || "";
 
-    const match = amountCents > 0 ? openInvoices.find((inv) => inv.totalCents === amountCents && purpose.includes(inv.invoiceNumber)) : undefined;
+    const match = amountCents > 0 ? openInvoices.find((inv) => inv.totalCents === amountCents && !!inv.invoiceNumber && purpose.includes(inv.invoiceNumber)) : undefined;
 
     const tx = await prisma.bankTransaction.create({
       data: {

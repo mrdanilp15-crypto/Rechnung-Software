@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
 import { MobileCard, MobileField } from "../components/MobileCard";
+import { useToast } from "../components/Toast";
 
 interface InvoiceItem {
   id: string;
@@ -15,7 +16,7 @@ interface InvoiceItem {
 }
 interface Invoice {
   id: string;
-  invoiceNumber: string;
+  invoiceNumber: string | null;
   status: string;
   issueDate: string;
   dueDate?: string;
@@ -30,6 +31,9 @@ interface Invoice {
   reminderCount: number;
   lastReminderAt?: string;
   complianceWarnings: string[];
+  isCancellationDocument: boolean;
+  correctsInvoice?: { id: string; invoiceNumber: string | null } | null;
+  corrections: { id: string; invoiceNumber: string | null }[];
 }
 
 const emailStatusLabel: Record<string, string> = {
@@ -42,6 +46,7 @@ export default function InvoiceDetail() {
   const { id } = useParams();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const showToast = useToast();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [emailForm, setEmailForm] = useState({ to: "", subject: "", message: "" });
@@ -71,9 +76,22 @@ export default function InvoiceDetail() {
 
   async function handleDelete() {
     if (!invoice) return;
-    if (!confirm(`Entwurf "${invoice.invoiceNumber}" wirklich löschen?`)) return;
+    if (!confirm("Diesen Entwurf wirklich löschen?")) return;
     await api.delete(`/invoices/${id}`);
     navigate("/invoices");
+  }
+
+  async function handleCancel() {
+    if (!invoice) return;
+    const reason = prompt("Grund für die Stornierung (optional, erscheint auf dem Korrekturbeleg):") || undefined;
+    setActionError(null);
+    try {
+      const { data } = await api.post(`/invoices/${id}/cancel`, { reason });
+      showToast(`Rechnung storniert, Korrekturbeleg ${data.invoiceNumber} erstellt`, "success");
+      navigate(`/invoices/${data.id}`);
+    } catch (err: any) {
+      setActionError(err.response?.data?.error || t("common.error"));
+    }
   }
 
   async function handleSendEmail() {
@@ -96,11 +114,12 @@ export default function InvoiceDetail() {
 
   async function handleShare() {
     if (!invoice) return;
+    const numberLabel = invoice.invoiceNumber ?? "entwurf";
     try {
       const res = await api.get(`/invoices/${id}/pdf`, { responseType: "blob" });
-      const file = new File([res.data], `${invoice.invoiceNumber}.pdf`, { type: "application/pdf" });
+      const file = new File([res.data], `${numberLabel}.pdf`, { type: "application/pdf" });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: invoice.invoiceNumber });
+        await navigator.share({ files: [file], title: numberLabel });
       } else {
         window.open(URL.createObjectURL(res.data), "_blank");
       }
@@ -121,11 +140,36 @@ export default function InvoiceDetail() {
   }
 
   if (!invoice) return <p>{t("common.loading")}</p>;
+  const numberLabel = invoice.invoiceNumber ?? "Entwurf";
 
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
-        <h1 className="text-2xl font-semibold">{invoice.invoiceNumber}</h1>
+        <div>
+          <h1 className="text-2xl font-semibold">
+            {invoice.isCancellationDocument && <span className="text-red-600">Korrekturbeleg </span>}
+            {numberLabel}
+          </h1>
+          {invoice.correctsInvoice && (
+            <p className="text-sm text-slate-500">
+              Korrektur zu Rechnung{" "}
+              <Link to={`/invoices/${invoice.correctsInvoice.id}`} className="text-brand hover:underline">
+                {invoice.correctsInvoice.invoiceNumber}
+              </Link>
+            </p>
+          )}
+          {invoice.corrections.length > 0 && (
+            <p className="text-sm text-slate-500">
+              Storniert durch:{" "}
+              {invoice.corrections.map((c, i) => (
+                <span key={c.id}>
+                  {i > 0 && ", "}
+                  <Link to={`/invoices/${c.id}`} className="text-brand hover:underline">{c.invoiceNumber}</Link>
+                </span>
+              ))}
+            </p>
+          )}
+        </div>
         <div className="flex gap-2 flex-wrap sm:justify-end">
           {invoice.status === "DRAFT" && (
             <>
@@ -136,7 +180,7 @@ export default function InvoiceDetail() {
               <button onClick={() => action("send")} className="bg-brand text-white px-3 py-1.5 rounded text-sm">{t("invoices.send")}</button>
             </>
           )}
-          {(invoice.status === "SENT" || invoice.status === "OVERDUE") && (
+          {!invoice.isCancellationDocument && (invoice.status === "SENT" || invoice.status === "OVERDUE") && (
             <>
               <button onClick={() => action("mark-paid")} className="bg-green-600 text-white px-3 py-1.5 rounded text-sm">{t("invoices.markPaid")}</button>
               <button onClick={handleRemind} className="bg-yellow-100 text-yellow-800 px-3 py-1.5 rounded text-sm">
@@ -144,15 +188,15 @@ export default function InvoiceDetail() {
               </button>
             </>
           )}
-          {invoice.status !== "DRAFT" && invoice.status !== "PAID" && invoice.status !== "CANCELLED" && (
-            <button onClick={() => action("cancel")} className="bg-red-100 text-red-700 px-3 py-1.5 rounded text-sm">{t("invoices.cancel")}</button>
+          {!invoice.isCancellationDocument && invoice.status !== "DRAFT" && invoice.status !== "CANCELLED" && (
+            <button onClick={handleCancel} className="bg-red-100 text-red-700 px-3 py-1.5 rounded text-sm">{t("invoices.cancel")}</button>
           )}
           {(invoice.status === "DRAFT" || invoice.status === "SENT") && (
             <button onClick={() => setShowEmailForm((v) => !v)} className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm">
               Per E-Mail senden
             </button>
           )}
-          <PdfLink url={`/invoices/${id}/pdf`} filename={`${invoice.invoiceNumber}.pdf`} className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm">
+          <PdfLink url={`/invoices/${id}/pdf`} filename={`${numberLabel}.pdf`} className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm">
             {t("invoices.downloadPdf")}
           </PdfLink>
           <button onClick={handleShare} className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm">

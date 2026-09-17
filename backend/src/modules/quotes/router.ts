@@ -5,7 +5,7 @@ import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { nextDocumentNumber } from "../shared/numbering";
-import { calculateDocumentTotals } from "../tax/calculator";
+import { calculateDocumentTotals, vatBreakdownFromLineItems } from "../tax/calculator";
 import { renderDocumentPdf } from "../pdf/documentTemplate";
 import { emitEvent } from "../plugins/hooks";
 
@@ -89,11 +89,17 @@ quotesRouter.post("/", async (req, res) => {
   res.status(201).json(quote);
 });
 
-// Angebote sind (anders als Rechnungen) keine GoBD-pflichtigen Belege - sie dürfen
-// unabhängig vom Status jederzeit bearbeitet oder gelöscht werden.
+// Angebote sind (anders als Rechnungen) keine GoBD-pflichtigen Steuerbelege - Entwürfe
+// dürfen daher weiterhin uneingeschränkt bearbeitet werden. Ein bereits versendetes/vom
+// Kunden beantwortetes Angebot ist aber ein nachvollziehbarkeits-relevanter Geschäfts-
+// vorgang und wird ab dann nicht mehr bearbeitet oder gelöscht, sondern nur noch per
+// PATCH /:id/status im Status fortgeschrieben (siehe unten) - analog zu Rechnungen.
 quotesRouter.patch("/:id", async (req, res) => {
   const existing = await prisma.quote.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!existing) throw new HttpError(404, "Angebot nicht gefunden");
+  if (existing.status !== "DRAFT") {
+    throw new HttpError(409, "Nur Entwürfe können bearbeitet werden. Bereits versendete Angebote bitte über den Status (Angenommen/Abgelehnt) fortschreiben.");
+  }
   const body = createQuoteSchema.partial().parse(req.body);
   const company = await prisma.company.findUniqueOrThrow({ where: { id: req.auth!.companyId } });
 
@@ -135,6 +141,9 @@ quotesRouter.patch("/:id", async (req, res) => {
 quotesRouter.delete("/:id", async (req, res) => {
   const existing = await prisma.quote.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!existing) throw new HttpError(404, "Angebot nicht gefunden");
+  if (existing.status !== "DRAFT") {
+    throw new HttpError(409, "Nur Entwürfe können gelöscht werden. Bereits versendete/beantwortete Angebote bleiben aus Nachvollziehbarkeitsgründen erhalten.");
+  }
   await prisma.quote.delete({ where: { id: existing.id } });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "quote.delete", entityType: "Quote", entityId: existing.id });
   res.status(204).send();
@@ -161,12 +170,13 @@ quotesRouter.post("/:id/convert-to-invoice", async (req, res) => {
 
   const company = await prisma.company.findUniqueOrThrow({ where: { id: req.auth!.companyId } });
   const invoice = await prisma.$transaction(async (tx) => {
-    const invoiceNumber = await nextDocumentNumber(company.id, "INVOICE", tx);
+    // Nummer wird bewusst erst beim Versenden vergeben (siehe finalizeInvoiceNumber in
+    // modules/invoices/router.ts) - die aus dem Angebot erzeugte Rechnung ist zunächst
+    // ein normaler Entwurf wie jede andere neu angelegte Rechnung auch.
     return tx.invoice.create({
       data: {
         companyId: company.id,
         customerId: quote.customerId,
-        invoiceNumber,
         isSmallBusiness: company.isSmallBusiness,
         sourceQuoteId: quote.id,
         footerText: company.invoiceFooterText,
@@ -213,6 +223,7 @@ quotesRouter.get("/:id/pdf", async (req, res) => {
     recipient: quote.customer,
     items: quote.items,
     subtotalCents: quote.subtotalCents,
+    vatBreakdown: vatBreakdownFromLineItems(quote.items),
     vatTotalCents: quote.vatTotalCents,
     totalCents: quote.totalCents,
     isSmallBusiness: quote.company.isSmallBusiness,
