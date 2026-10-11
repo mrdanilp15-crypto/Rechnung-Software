@@ -377,6 +377,7 @@ export default function Settings() {
             <input
               required
               type="password"
+              autoComplete="current-password"
               value={passwordForm.currentPassword}
               onChange={(e) => setPasswordForm((f) => ({ ...f, currentPassword: e.target.value }))}
               className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
@@ -388,6 +389,7 @@ export default function Settings() {
               required
               type="password"
               minLength={10}
+              autoComplete="new-password"
               value={passwordForm.newPassword}
               onChange={(e) => setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))}
               className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
@@ -399,6 +401,7 @@ export default function Settings() {
               required
               type="password"
               minLength={10}
+              autoComplete="new-password"
               value={passwordForm.newPasswordRepeat}
               onChange={(e) => setPasswordForm((f) => ({ ...f, newPasswordRepeat: e.target.value }))}
               className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
@@ -513,6 +516,7 @@ export default function Settings() {
                   <input
                     required
                     type="password"
+                    autoComplete="current-password"
                     value={disablePassword}
                     onChange={(e) => setDisablePassword(e.target.value)}
                     className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"

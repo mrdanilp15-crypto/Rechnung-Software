@@ -117,12 +117,12 @@ export default function Dashboard() {
                   <span className="truncate">{inv.invoiceNumber ?? "Entwurf"}</span>
                   <span className="truncate">{inv.customer.name}</span>
                   <span className="text-right">{format(inv.totalCents)}</span>
-                  <span className="text-slate-500 text-right">{inv.status}</span>
+                  <span className="text-slate-500 text-right">{inv.isCancellationDocument ? t("invoices.creditNote") : t(`invoices.${inv.status.toLowerCase()}`)}</span>
                 </div>
                 {/* Mobile */}
                 <MobileCard title={inv.invoiceNumber ?? "Entwurf"} subtitle={inv.customer.name}>
                   <MobileField label="Betrag" value={format(inv.totalCents)} />
-                  <MobileField label="Status" value={inv.status} />
+                  <MobileField label="Status" value={inv.isCancellationDocument ? t("invoices.creditNote") : t(`invoices.${inv.status.toLowerCase()}`)} />
                 </MobileCard>
               </div>
             ))}

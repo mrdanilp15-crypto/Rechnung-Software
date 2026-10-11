@@ -16,6 +16,7 @@
     "seed": "tsx prisma/seed.ts",
     "backup": "tsx src/modules/backup/runBackup.ts",
     "restore": "node dist/scripts/restoreBackup.js",
+    "reset-password": "node dist/scripts/resetPassword.js",
     "test": "vitest run",
     "lint": "eslint src --ext .ts"
   },

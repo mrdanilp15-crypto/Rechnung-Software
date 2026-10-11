@@ -48,6 +48,8 @@ export default function Register() {
             </label>
             <input
               type={type}
+              name={field}
+              autoComplete={field === "email" ? "username" : field === "password" ? "new-password" : field === "inviteCode" ? "off" : field === "name" ? "name" : "organization"}
               required={field !== "inviteCode"}
               minLength={type === "password" ? 10 : undefined}
               value={(form as any)[field]}

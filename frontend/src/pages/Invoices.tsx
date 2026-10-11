@@ -13,6 +13,7 @@ interface Invoice {
   issueDate: string;
   dueDate?: string;
   emailStatus: "NOT_SENT" | "SENT" | "FAILED";
+  isCancellationDocument?: boolean;
   customer: { name: string };
 }
 
@@ -127,7 +128,11 @@ export default function Invoices() {
             <span className="text-right">E-Mail</span>
           </div>
           {invoices.map((inv) => {
-            const statusBadge = (
+            // Korrekturbelege (Storno/Gutschrift) erhalten statt "Versendet" eine eigene Kennzeichnung -
+            // sonst sind sie in der Liste nicht von normalen Rechnungen zu unterscheiden.
+            const statusBadge = inv.isCancellationDocument ? (
+              <span className="px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800">{t("invoices.creditNote")}</span>
+            ) : (
               <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[inv.status] ?? ""}`}>
                 {t(`invoices.${inv.status.toLowerCase()}`)}
               </span>

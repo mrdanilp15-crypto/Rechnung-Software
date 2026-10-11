@@ -14,9 +14,9 @@ implementiert.
 | Kundenverwaltung (Adressen, Historie, Notizen) | ✅ | inkl. Beleghistorie und DSGVO-Endpunkten |
 | Produkt-/Leistungsverzeichnis | ✅ | |
 | Automatische Rechnungsnummern | ✅ | Lückenlos je Firma/Jahr, transaktional |
-| Steuerlogik (USt., §19 Kleinunternehmer, Reverse-Charge/Ausfuhr) | ✅ | Zentral in `modules/tax/calculator.ts`/`modules/tax/euVat.ts`; §19-Schwellenwerte an die Reform seit 1.1.2025 angepasst (25.000€/100.000€) |
+| Steuerlogik (USt., §19 Kleinunternehmer, innergemeinschaftliche Lieferung, Reverse-Charge, Ausfuhr) | ✅ | Zentral in `modules/invoices/build.ts` + `modules/tax/`; Waren an EU-Unternehmer = steuerfreie innergemeinschaftliche Lieferung, Dienstleistungen = Reverse-Charge, Drittland = Ausfuhr/nicht steuerbar (Leistungsart je Rechnung); §19-Schwellenwerte an die Reform seit 1.1.2025 angepasst (25.000€/100.000€). Komplexere Fälle (Reihen-/Dreiecksgeschäfte, OSS) nicht abgebildet |
 | E-Rechnung (XRechnung, UBL/EN16931) | 🟡 | Export je Rechnung über "XRechnung (XML)"; nach bester Kenntnis der Spezifikation erstellt, aber **nicht** gegen den offiziellen KoSIT-Validator geprüft (kein Zugriff auf das Tool in der Entwicklungsumgebung) - vor dem ersten Versand an einen (insbesondere öffentlichen) Auftraggeber unbedingt selbst validieren, siehe SECURITY.md. ZUGFeRD (Hybrid-PDF) nicht implementiert. |
-| PDF-Generierung, PDF/A-kompatibel | 🟡 | Gültiges PDF 1.7 mit Metadaten; **keine** validierte PDF/A-3b-Konformität (ICC/XMP fehlen) - siehe ARCHITECTURE.md |
+| PDF-Generierung, PDF/A-kompatibel | 🟡 | DIN-5008-Layout, eingebettete Schrift, PDF/A-3b-Kennzeichnung (ICC/XMP/Output-Intent durch pdfkit). **Nicht** mit veraPDF validiert - siehe ARCHITECTURE.md |
 | Exportfunktionen (PDF, JSON, CSV) | ✅ | |
 | Dunkelmodus/helles UI | ✅ | |
 | Mehrsprachigkeit (DE/EN) | 🟡 | Frontend vollständig; Backend-Fehlermeldungen aktuell nur Deutsch |
@@ -51,7 +51,7 @@ implementiert.
 
 | Anforderung | Status |
 |---|---|
-| PDF/A-kompatible Ausgabe | 🟡 siehe oben |
+| PDF/A-kompatible Ausgabe | 🟡 PDF/A-3b gekennzeichnet, Validierung (veraPDF) steht aus |
 | pdf-lib/WeasyPrint/Puppeteer/ReportLab | 🟡 `pdfkit` gewählt (Begründung: keine Chromium-Abhängigkeit, plattformunabhängig) |
 | Dynamische Templates (Logo, Farben, Layout) | ✅ Logo, Firmenfarbe konfigurierbar; Layout ist ein festes, aber parametrisiertes Template - kein visueller Template-Editor |
 | Automatische Seitenumbrüche | ✅ |

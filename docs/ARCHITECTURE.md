@@ -69,23 +69,38 @@ DRAFT --send--> SENT --mark-paid--> PAID
 Aus GoBD-Gründen (Grundsätze zur ordnungsmäßigen Führung und Aufbewahrung von Büchern)
 sind Rechnungspositionen nach Verlassen des `DRAFT`-Status **unveränderlich**. Korrekturen
 erfolgen durch Stornierung (`CANCELLED`) und Neuanlage - nicht durch nachträgliches
-Editieren. Die Rechnungsnummer wird bereits bei Anlage des Entwurfs vergeben (siehe
-`modules/shared/numbering.ts`), damit keine Lücken durch spätere Statusänderungen entstehen.
+Editieren. Die Rechnungsnummer wird erst beim ersten Verlassen des Entwurfs (Versenden bzw. "als bezahlt
+markieren") vergeben (siehe `finalizeInvoiceNumber` in `modules/invoices/router.ts` und
+`modules/shared/numbering.ts`), damit ein gelöschter Entwurf keine Lücke in der Nummernfolge
+hinterlässt. Stornos erzeugen einen eigenen Korrekturbeleg mit eigener Nummer.
+
+Die steuerliche Berechnung (Summen, Kleinunternehmer, innergemeinschaftliche Lieferung,
+Reverse-Charge, Ausfuhr) liegt an genau einer Stelle: `modules/invoices/build.ts`
+(`buildInvoiceFinancials`). Sie wird von `POST/PATCH /invoices` und von der Angebots→Rechnungs-
+Umwandlung genutzt. Maßgeblich für Auslandsumsätze ist die **Art der Leistung** je Rechnung
+(`supplyType`: Ware oder Dienstleistung) - siehe `modules/tax/euVat.ts`.
 
 ## PDF-Generierung & PDF/A-Konformität
 
 PDFs werden serverseitig mit `pdfkit` in `modules/pdf/documentTemplate.ts` gerendert:
-dynamisches Layout mit Firmenlogo/-farbe, automatischen Seitenumbrüchen bei langen
-Positionslisten, Seitenzahlen und optionalem SEPA-QR-Code (EPC069-12/GiroCode-Standard,
-`modules/pdf/sepaQr.ts`) für offene Rechnungen.
+dynamisches Layout nach DIN 5008 (Anschriftenfeld im Fensterumschlag), Firmenlogo/-farbe
+(zu helle Farben werden für Schrift automatisch abgedunkelt), zeilenhöhenabhängige
+Positionstabelle mit automatischen Seitenumbrüchen, Laufkopf auf Folgeseiten, Entgelt je
+Steuersatz, vierspaltiger Fußzeile (Firma, Kontakt, Bank, Register/Steuer-IDs) und optionalem
+SEPA-QR-Code (EPC069-12/GiroCode-Standard, `modules/pdf/sepaQr.ts`) für offene Rechnungen.
 
-**Ehrlicher Hinweis zu PDF/A:** `pdfkit` erzeugt gültiges, gut lesbares PDF 1.7 mit
-eingebetteten Standard-Fonts und Dokument-Metadaten. Eine **vollständige, validierte
-PDF/A-3b-Konformität** (eingebettetes ICC-Farbprofil, XMP-Metadatenschema nach ISO 19005)
-ist damit *nicht* automatisch gegeben. Für rechtssichere Langzeitarchivierung nach PDF/A
-empfiehlt sich ein zusätzlicher Konvertierungsschritt, z.B. via `ghostscript -dPDFA` oder
-Validierung mit [veraPDF](https://verapdf.org/). Dies ist als Erweiterungspunkt vorgesehen
-(siehe [STATUS.md](STATUS.md)).
+**Schriften & PDF/A:** `modules/pdf/fonts.ts` sucht eine TrueType-Schrift (Liberation Sans, im
+Docker-Image per `apk add font-liberation` installiert; lokal Arial als Ersatz). Sind Schriftdateien
+vorhanden, wird die Schrift eingebettet und das Dokument von `pdfkit` als **PDF/A-3b** erzeugt
+(ICC-Farbprofil, XMP-Metadaten, Output-Intent) - und Sonderzeichen in Kundennamen (z.B. "Ł", "ő")
+werden korrekt dargestellt. Ohne Schriftdatei fällt die Vorlage auf die Standard-Schrift Helvetica
+zurück (gültiges PDF 1.7, aber **nicht** PDF/A, da nicht eingebettet).
+
+**Ehrlicher Hinweis:** Die PDF/A-3b-Kennzeichnung stammt aus der `pdfkit`-Implementierung; ob ein
+konkretes Dokument die Norm vollständig erfüllt, belegt erst eine Prüfung mit
+[veraPDF](https://verapdf.org/) - in der Entwicklungsumgebung war dieses Prüfwerkzeug nicht
+verfügbar. Logo/Stempel/Unterschrift werden nur als PNG/JPEG unterstützt (pdfkit kann weder SVG
+noch WebP einbetten).
 
 ## Plugin-/Hook-System
 

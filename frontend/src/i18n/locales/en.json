@@ -11,7 +11,7 @@
   "invoices": {
     "title": "Invoices", "new": "New invoice", "number": "Number", "customer": "Customer", "status": "Status",
     "total": "Total", "dueDate": "Due date", "draft": "Draft", "sent": "Sent", "paid": "Paid",
-    "overdue": "Overdue", "cancelled": "Cancelled", "send": "Send", "markPaid": "Mark as paid",
+    "overdue": "Overdue", "cancelled": "Cancelled", "creditNote": "Credit note", "send": "Send", "markPaid": "Mark as paid",
     "cancel": "Cancel", "downloadPdf": "Download PDF", "addItem": "Add item"
   },
   "settings": { "title": "Settings", "company": "Company details", "smallBusiness": "Small business regulation (§19 VAT Act)", "darkMode": "Dark mode", "language": "Language", "twoFactor": "Two-factor authentication" },

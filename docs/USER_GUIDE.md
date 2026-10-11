@@ -6,10 +6,16 @@
 2. Firmenname, Ihren Namen, E-Mail-Adresse und ein Passwort (mind. 10 Zeichen, mit
    Buchstaben und Ziffern) eingeben. Sie werden automatisch als Administrator der
    neuen Firma angelegt.
-3. Unter **Einstellungen** die Firmendaten vervollständigen: Adresse, USt-IdNr.,
-   IBAN/BIC (für den SEPA-QR-Code auf Rechnungen) und ggf. die
-   **Kleinunternehmerregelung** (§19 UStG) aktivieren, falls zutreffend - dann wird auf
-   allen Belegen automatisch keine Umsatzsteuer ausgewiesen.
+3. Unter **Einstellungen → Firma** die Firmendaten vollständig ausfüllen - sie erscheinen auf
+   jedem Beleg und enthalten gesetzliche Pflichtangaben:
+   - **Anschrift** und **Steuernummer oder USt-IdNr.** (§14 UStG),
+   - bei GmbH/UG/AG/KG/e.K.: **Rechtsform, Handelsregister (Gericht + Nummer) und Geschäftsführer**
+     (§35a GmbHG, §37a HGB) - die Software weist bei fehlenden Angaben auf der Rechnung darauf hin,
+   - **Telefon/E-Mail** (Kontakt; für die XRechnung zwingend),
+   - **Bank, IBAN/BIC** (Fußzeile und SEPA-QR-Code) und das **Zahlungsziel** in Tagen (wird als
+     Fälligkeitsdatum vorbelegt),
+   - ggf. die **Kleinunternehmerregelung** (§19 UStG) - dann wird auf allen Belegen automatisch
+     keine Umsatzsteuer ausgewiesen.
 
 ## Kunden anlegen
 
@@ -34,7 +40,14 @@ aber überschrieben werden.
 2. Kunden auswählen, optional Fälligkeitsdatum setzen.
 3. Positionen hinzufügen: entweder ein hinterlegtes Produkt auswählen (füllt
    Beschreibung, Preis und USt.-Satz automatisch aus) oder eine freie Position mit
-   Beschreibung, Menge, Preis und USt.-Satz eintragen.
+   Beschreibung, Menge, Preis und USt.-Satz eintragen. Optional: Rechnungsdatum,
+   Leistungsdatum (sonst gilt das Rechnungsdatum) und eine Anmerkung für den Beleg.
+   **Auslandskunden:** Bei Kunden außerhalb Deutschlands wählen Sie zusätzlich die *Art der
+   Lieferung/Leistung*. Waren an EU-Unternehmer mit USt-IdNr. sind steuerfreie
+   innergemeinschaftliche Lieferungen, Dienstleistungen an EU-Unternehmer unterliegen dem
+   Reverse-Charge-Verfahren, Waren in Drittländer sind steuerfreie Ausfuhren. Umsatzsteuer und
+   Pflichthinweis setzt die Software automatisch - die Prüfhinweise auf der Rechnung erinnern an
+   die nötigen Nachweise (Gelangensbestätigung/Ausfuhrnachweis).
 4. Die Summenvorschau (netto/USt./brutto) aktualisiert sich live.
 5. **Speichern** legt die Rechnung als **Entwurf** mit automatisch vergebener
    Rechnungsnummer an.

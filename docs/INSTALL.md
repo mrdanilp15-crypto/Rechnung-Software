@@ -143,6 +143,20 @@ npm run dev
 Läuft auf `http://localhost:5173` und proxyt `/api`-Anfragen automatisch zum Backend
 (siehe `vite.config.ts`).
 
+## 2b. Zugang verloren? Notfall-Passwort-Reset
+
+Ist der einzige Admin ausgesperrt (Passwort vergessen, zu viele Fehlversuche), lässt sich ohne
+SQL-Handarbeit im Container-Terminal des Backend-Dienstes (Portainer: Container → *Console*) ein
+neues Zufallspasswort setzen. Der Befehl hebt außerdem eine Sperre auf und meldet alle Geräte ab:
+
+```bash
+npm run reset-password -- name@firma.de
+```
+
+Das Passwort wird einmalig ausgegeben und sollte nach dem Login unter *Einstellungen → Passwort*
+sofort durch ein eigenes ersetzt werden. Weitere Benutzer kann ein Admin in der App selbst
+zurücksetzen (*Einstellungen → Benutzer*).
+
 ## 3. Backups im Detail
 
 Automatische Backups laufen bereits im Hintergrund (siehe 1c) - zusätzlich manuell

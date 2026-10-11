@@ -162,7 +162,7 @@ export default function Users() {
           </div>
           <div>
             <label className="block text-sm mb-1">Passwort (mind. 10 Zeichen)</label>
-            <input required type="password" minLength={10} value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            <input required type="password" autoComplete="new-password" minLength={10} value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
           </div>
           <div>
             <label className="block text-sm mb-1">Rolle</label>
