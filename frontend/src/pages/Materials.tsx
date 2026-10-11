@@ -141,6 +141,7 @@ export default function Materials() {
           <div>
             <label className="block text-sm mb-1">Einheit</label>
             <input placeholder="z.B. g, kg, Stk., m" value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            <p className="text-xs text-slate-500 mt-1">Wähl die kleinste Einheit, die du beim Verbrauch pro Produkt eintippen willst - bei Filament z.B. <strong>g</strong> statt kg, da ein Druck oft nur wenige Gramm braucht.</p>
           </div>
           <div>
             <label className="block text-sm mb-1">{editingId ? "Bestand (Korrektur)" : "Aktueller Bestand"}</label>
