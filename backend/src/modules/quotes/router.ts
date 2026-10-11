@@ -8,6 +8,8 @@ import { nextDocumentNumber } from "../shared/numbering";
 import { calculateDocumentTotals, vatBreakdownFromLineItems } from "../tax/calculator";
 import { renderDocumentPdf } from "../pdf/documentTemplate";
 import { emitEvent } from "../plugins/hooks";
+import { buildInvoiceFinancials, defaultDueDate } from "../invoices/build";
+import { deductMaterialStock } from "../materials/stock";
 
 export const quotesRouter = Router();
 quotesRouter.use(requireAuth);
@@ -164,12 +166,20 @@ quotesRouter.patch("/:id/status", async (req, res) => {
 quotesRouter.post("/:id/convert-to-invoice", async (req, res) => {
   const quote = await prisma.quote.findFirst({
     where: { id: req.params.id, companyId: req.auth!.companyId },
-    include: { items: true },
+    include: { items: true, customer: true },
   });
   if (!quote) throw new HttpError(404, "Angebot nicht gefunden");
 
   const company = await prisma.company.findUniqueOrThrow({ where: { id: req.auth!.companyId } });
+  // Beträge und USt.-Behandlung werden NEU berechnet (nicht aus dem Angebot übernommen):
+  // zwischen Angebot und Rechnung kann sich die Kleinunternehmer-Einstellung geändert
+  // haben, und für EU-B2B-/Drittland-Kunden greifen Reverse-Charge bzw. Ausfuhrbefreiung.
+  const financials = buildInvoiceFinancials(company, quote.customer, quote.items);
+  const issueDate = new Date();
   const invoice = await prisma.$transaction(async (tx) => {
+    // Wie bei jeder anderen Rechnung wird der Materialbestand schon beim Anlegen abgezogen -
+    // sonst würde ein späteres Löschen/Stornieren Material gutschreiben, das nie abgezogen wurde.
+    await deductMaterialStock(tx, quote.items);
     // Nummer wird bewusst erst beim Versenden vergeben (siehe finalizeInvoiceNumber in
     // modules/invoices/router.ts) - die aus dem Angebot erzeugte Rechnung ist zunächst
     // ein normaler Entwurf wie jede andere neu angelegte Rechnung auch.
@@ -177,24 +187,16 @@ quotesRouter.post("/:id/convert-to-invoice", async (req, res) => {
       data: {
         companyId: company.id,
         customerId: quote.customerId,
-        isSmallBusiness: company.isSmallBusiness,
+        issueDate,
+        dueDate: defaultDueDate(company, issueDate),
+        isSmallBusiness: financials.isSmallBusiness,
+        vatNoticeKey: financials.vatNoticeKey,
         sourceQuoteId: quote.id,
         footerText: company.invoiceFooterText,
-        subtotalCents: quote.subtotalCents,
-        vatTotalCents: quote.vatTotalCents,
-        totalCents: quote.totalCents,
-        items: {
-          create: quote.items.map((item) => ({
-            position: item.position,
-            productId: item.productId,
-            description: item.description,
-            quantity: item.quantity,
-            unit: item.unit,
-            unitPriceCents: item.unitPriceCents,
-            vatRateBps: item.vatRateBps,
-            lineTotalCents: item.lineTotalCents,
-          })),
-        },
+        subtotalCents: financials.subtotalCents,
+        vatTotalCents: financials.vatTotalCents,
+        totalCents: financials.totalCents,
+        items: { create: financials.itemsCreate },
       },
       include: { items: true, customer: true },
     });
@@ -215,6 +217,7 @@ quotesRouter.get("/:id/pdf", async (req, res) => {
 
   const pdfBuffer = await renderDocumentPdf({
     docTypeLabel: { de: "Angebot", en: "Quote" },
+    numberLabel: { de: "Angebotsnr.", en: "Quote no." },
     documentNumber: quote.quoteNumber,
     issueDate: quote.issueDate,
     validUntil: quote.validUntil,

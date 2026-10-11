@@ -6,12 +6,12 @@ import { requireAuth, requireRole } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { nextDocumentNumber } from "../shared/numbering";
-import { calculateDocumentTotals, formatCents } from "../tax/calculator";
-import { determineVatTreatment } from "../tax/euVat";
+import { formatCents } from "../tax/calculator";
+import { buildInvoiceFinancials, defaultDueDate } from "./build";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { emitEvent } from "../plugins/hooks";
 import { generateAndStoreInvoicePdf } from "./pdfHelper";
-import { buildXRechnungXml } from "../einvoice/xrechnung";
+import { buildXRechnungXml, getXRechnungBlockers } from "../einvoice/xrechnung";
 import { getInvoiceComplianceWarnings } from "../tax/compliance";
 import { sendMailForCompany, isSmtpConfigured, buildInvoiceEmailText, buildReminderEmailText } from "../email/mailer";
 import { deductMaterialStock, restoreMaterialStock } from "../materials/stock";
@@ -34,6 +34,7 @@ const createInvoiceSchema = z.object({
   dueDate: z.coerce.date().optional(),
   deliveryDate: z.coerce.date().optional(),
   notes: z.string().optional(),
+  supplyType: z.enum(["GOODS", "SERVICE"]).optional(),
   items: z.array(lineItemSchema).min(1),
   sourceQuoteId: z.string().optional(),
 });
@@ -59,7 +60,7 @@ invoicesRouter.get("/:id", async (req, res) => {
     include: { items: true, customer: true, company: true, correctsInvoice: true, corrections: true },
   });
   if (!invoice) throw new HttpError(404, "Rechnung nicht gefunden");
-  const complianceWarnings = getInvoiceComplianceWarnings(invoice.company, invoice);
+  const complianceWarnings = getInvoiceComplianceWarnings(invoice.company, invoice, invoice.customer);
   const { company, ...rest } = invoice;
   res.json({ ...rest, complianceWarnings });
 });
@@ -81,12 +82,9 @@ invoicesRouter.post("/", async (req, res) => {
   const customer = await prisma.customer.findFirst({ where: { id: body.customerId, companyId: company.id } });
   if (!customer) throw new HttpError(404, "Kunde nicht gefunden");
 
-  // Reverse-Charge (innergemeinschaftliche B2B-Leistung) bzw. steuerfreie Ausfuhr-
-  // lieferung (Nicht-EU) erzwingen ebenfalls 0% USt., unabhängig von der Kleinunter-
-  // nehmerregelung - siehe tax/euVat.ts. Kleinunternehmer haben ohnehin nie USt.
-  const vatTreatment = company.isSmallBusiness ? { forceZeroVat: false, noticeKey: null } : determineVatTreatment(company.country, customer);
-  const forceZeroVat = company.isSmallBusiness || vatTreatment.forceZeroVat;
-  const totals = calculateDocumentTotals(body.items, forceZeroVat);
+  const supplyType = body.supplyType ?? "GOODS";
+  const financials = buildInvoiceFinancials(company, customer, body.items, supplyType);
+  const issueDate = body.issueDate ?? new Date();
 
   const invoice = await prisma.$transaction(async (tx) => {
     await deductMaterialStock(tx, body.items);
@@ -95,32 +93,21 @@ invoicesRouter.post("/", async (req, res) => {
         companyId: company.id,
         customerId: customer.id,
         // Nummer wird bewusst erst bei finalizeInvoiceNumber() vergeben (siehe dort).
-        issueDate: body.issueDate ?? new Date(),
-        dueDate: body.dueDate,
+        issueDate,
+        // Ohne ausdrückliches Fälligkeitsdatum gilt das in den Firmeneinstellungen hinterlegte
+        // Standard-Zahlungsziel - sonst fehlt auf dem PDF jede Zahlungsfrist.
+        dueDate: body.dueDate ?? defaultDueDate(company, issueDate),
         deliveryDate: body.deliveryDate,
-        isSmallBusiness: company.isSmallBusiness,
-        vatNoticeKey: vatTreatment.noticeKey,
+        isSmallBusiness: financials.isSmallBusiness,
+        vatNoticeKey: financials.vatNoticeKey,
+        supplyType,
         notes: body.notes,
         footerText: company.invoiceFooterText,
         sourceQuoteId: body.sourceQuoteId,
-        subtotalCents: totals.subtotalCents,
-        vatTotalCents: totals.vatTotalCents,
-        totalCents: totals.totalCents,
-        items: {
-          create: body.items.map((item, idx) => {
-            const effectiveVat = forceZeroVat ? 0 : item.vatRateBps;
-            return {
-              position: idx + 1,
-              productId: item.productId,
-              description: item.description,
-              quantity: item.quantity,
-              unit: item.unit,
-              unitPriceCents: item.unitPriceCents,
-              vatRateBps: effectiveVat,
-              lineTotalCents: Math.round(item.quantity * item.unitPriceCents),
-            };
-          }),
-        },
+        subtotalCents: financials.subtotalCents,
+        vatTotalCents: financials.vatTotalCents,
+        totalCents: financials.totalCents,
+        items: { create: financials.itemsCreate },
       },
       include: { items: true, customer: true },
     });
@@ -146,32 +133,27 @@ invoicesRouter.patch("/:id", async (req, res) => {
     dueDate: body.dueDate,
     deliveryDate: body.deliveryDate,
     notes: body.notes,
+    supplyType: body.supplyType,
   };
+
+  // Ein anderer Kunde kann eine andere USt.-Behandlung bedeuten (Reverse-Charge/Ausfuhr) -
+  // die Beträge lassen sich aber nur aus den ursprünglichen Positionssätzen neu berechnen,
+  // die bei 0%-Behandlung nicht mehr vorliegen. Deshalb müssen die Positionen mitgeschickt werden.
+  if (body.customerId && body.customerId !== existing.customerId && !body.items) {
+    throw new HttpError(400, "Beim Wechsel des Kunden müssen die Positionen mitgesendet werden, damit die Umsatzsteuer neu berechnet werden kann.");
+  }
 
   if (body.items) {
     const customer = await prisma.customer.findFirstOrThrow({ where: { id: body.customerId ?? existing.customerId, companyId: company.id } });
-    const vatTreatment = company.isSmallBusiness ? { forceZeroVat: false, noticeKey: null } : determineVatTreatment(company.country, customer);
-    const forceZeroVat = company.isSmallBusiness || vatTreatment.forceZeroVat;
-    const totals = calculateDocumentTotals(body.items, forceZeroVat);
+    const financials = buildInvoiceFinancials(company, customer, body.items, (body.supplyType ?? existing.supplyType) as "GOODS" | "SERVICE");
     updateData = {
       ...updateData,
-      vatNoticeKey: vatTreatment.noticeKey,
-      subtotalCents: totals.subtotalCents,
-      vatTotalCents: totals.vatTotalCents,
-      totalCents: totals.totalCents,
-      items: {
-        deleteMany: {},
-        create: body.items.map((item, idx) => ({
-          position: idx + 1,
-          productId: item.productId,
-          description: item.description,
-          quantity: item.quantity,
-          unit: item.unit,
-          unitPriceCents: item.unitPriceCents,
-          vatRateBps: forceZeroVat ? 0 : item.vatRateBps,
-          lineTotalCents: Math.round(item.quantity * item.unitPriceCents),
-        })),
-      },
+      isSmallBusiness: financials.isSmallBusiness,
+      vatNoticeKey: financials.vatNoticeKey,
+      subtotalCents: financials.subtotalCents,
+      vatTotalCents: financials.vatTotalCents,
+      totalCents: financials.totalCents,
+      items: { deleteMany: {}, create: financials.itemsCreate },
     };
   }
 
@@ -349,11 +331,15 @@ invoicesRouter.get("/:id/pdf", async (req, res) => {
 invoicesRouter.get("/:id/xrechnung", async (req, res) => {
   const invoice = await prisma.invoice.findFirst({
     where: { id: req.params.id, companyId: req.auth!.companyId },
-    include: { items: true, customer: true, company: true },
+    include: { items: true, customer: true, company: true, correctsInvoice: { select: { invoiceNumber: true } } },
   });
   if (!invoice) throw new HttpError(404, "Rechnung nicht gefunden");
   if (!invoice.invoiceNumber) {
     throw new HttpError(409, "Nur bereits versendete/finalisierte Rechnungen können als XRechnung exportiert werden.");
+  }
+  const blockers = getXRechnungBlockers(invoice);
+  if (blockers.length > 0) {
+    throw new HttpError(422, `Für die XRechnung fehlen Pflichtangaben: ${blockers.join("; ")}.`);
   }
   const xml = buildXRechnungXml(invoice);
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "invoice.xrechnung_export", entityType: "Invoice", entityId: invoice.id });

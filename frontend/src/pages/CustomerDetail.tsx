@@ -11,6 +11,7 @@ interface HistoryInvoice {
   id: string;
   invoiceNumber: string | null;
   status: string;
+  isCancellationDocument?: boolean;
   issueDate: string;
   totalCents: number;
 }
@@ -66,7 +67,7 @@ export default function CustomerDetail() {
   if (!customer) return <p>{t("common.loading")}</p>;
 
   const paidTotal = customer.history.invoices.filter((i) => i.status === "PAID").reduce((s, i) => s + i.totalCents, 0);
-  const openTotal = customer.history.invoices.filter((i) => i.status === "SENT" || i.status === "OVERDUE").reduce((s, i) => s + i.totalCents, 0);
+  const openTotal = customer.history.invoices.filter((i) => !i.isCancellationDocument && (i.status === "SENT" || i.status === "OVERDUE")).reduce((s, i) => s + i.totalCents, 0);
 
   return (
     <div>

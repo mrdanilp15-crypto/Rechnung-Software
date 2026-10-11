@@ -9,6 +9,9 @@ import { useSaveStatus } from "../hooks/useSaveStatus";
 interface Customer {
   id: string;
   name: string;
+  country?: string;
+  type?: string;
+  vatId?: string | null;
 }
 interface Product {
   id: string;
@@ -28,6 +31,10 @@ export default function InvoiceNew() {
   const [customerId, setCustomerId] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
+  const [issueDate, setIssueDate] = useState("");
+  const [notes, setNotes] = useState("");
+  const [supplyType, setSupplyType] = useState<"GOODS" | "SERVICE">("GOODS");
+  const [isSmallBusiness, setIsSmallBusiness] = useState(false);
   const [items, setItems] = useState<LineItem[]>([createEmptyLineItem()]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(isEditing);
@@ -36,6 +43,7 @@ export default function InvoiceNew() {
   useEffect(() => {
     api.get("/customers").then((res) => setCustomers(res.data));
     api.get("/products").then((res) => setProducts(res.data));
+    api.get("/companies/me").then((res) => setIsSmallBusiness(!!res.data.isSmallBusiness));
   }, []);
 
   useEffect(() => {
@@ -49,6 +57,9 @@ export default function InvoiceNew() {
       setCustomerId(inv.customerId);
       setDueDate(inv.dueDate ? inv.dueDate.slice(0, 10) : "");
       setDeliveryDate(inv.deliveryDate ? inv.deliveryDate.slice(0, 10) : "");
+      setIssueDate(inv.issueDate ? inv.issueDate.slice(0, 10) : "");
+      setNotes(inv.notes ?? "");
+      setSupplyType(inv.supplyType === "SERVICE" ? "SERVICE" : "GOODS");
       setItems(withClientKeys(inv.items.map((it: any) => ({
         productId: it.productId ?? undefined,
         description: it.description,
@@ -66,10 +77,19 @@ export default function InvoiceNew() {
     if (!customerId) return setError("Bitte einen Kunden auswählen.");
     try {
       await run(async () => {
+        const payload = {
+          customerId,
+          issueDate: issueDate || undefined,
+          dueDate: dueDate || undefined,
+          deliveryDate: deliveryDate || undefined,
+          notes,
+          supplyType,
+          items,
+        };
         if (isEditing) {
-          await api.patch(`/invoices/${id}`, { customerId, dueDate: dueDate || undefined, deliveryDate: deliveryDate || undefined, items });
+          await api.patch(`/invoices/${id}`, payload);
         } else {
-          const { data } = await api.post("/invoices", { customerId, dueDate: dueDate || undefined, deliveryDate: deliveryDate || undefined, items });
+          const { data } = await api.post("/invoices", payload);
           navigate(`/invoices/${data.id}`);
         }
       });
@@ -80,6 +100,9 @@ export default function InvoiceNew() {
   }
 
   if (loading) return <p>{t("common.loading")}</p>;
+
+  const selectedCustomer = customers.find((c) => c.id === customerId);
+  const isAbroad = !!selectedCustomer?.country && selectedCustomer.country !== "DE";
 
   return (
     <div>
@@ -105,10 +128,32 @@ export default function InvoiceNew() {
           <input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
           <p className="text-xs text-slate-500 mt-1">Leer lassen = Rechnungsdatum gilt als Leistungsdatum (§14 Abs. 4 Nr. 6 UStG verlangt i.d.R. eine explizite Angabe).</p>
         </div>
+        <div>
+          <label className="block text-sm mb-1">Rechnungsdatum</label>
+          <input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+          <p className="text-xs text-slate-500 mt-1">Leer lassen = heutiges Datum. Die Fälligkeit wird sonst aus dem Zahlungsziel in den Einstellungen berechnet.</p>
+        </div>
+        {isAbroad && (
+          <div className="sm:col-span-2">
+            <label className="block text-sm mb-1">Art der Lieferung/Leistung (Auslandskunde)</label>
+            <select value={supplyType} onChange={(e) => setSupplyType(e.target.value as "GOODS" | "SERVICE")} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+              <option value="GOODS">Lieferung von Waren (z.B. gedruckte Teile)</option>
+              <option value="SERVICE">Sonstige Leistung (Dienstleistung, Konstruktion, ...)</option>
+            </select>
+            <p className="text-xs text-slate-500 mt-1">
+              Entscheidet über die Umsatzsteuer: Waren an EU-Unternehmer mit USt-IdNr. = steuerfreie innergemeinschaftliche Lieferung, Dienstleistungen an EU-Unternehmer = Reverse-Charge,
+              Waren in Drittländer = steuerfreie Ausfuhr. Die Software setzt die passende USt. und den Pflichthinweis automatisch.
+            </p>
+          </div>
+        )}
+        <div className="sm:col-span-2">
+          <label className="block text-sm mb-1">Anmerkung auf der Rechnung (optional)</label>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="z.B. Vielen Dank für Ihren Auftrag. Lieferung frei Haus." className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+        </div>
       </div>
 
       <PricedItemsEditor items={items} onChange={setItems} products={products} />
-      <TotalsSummary items={items} />
+      <TotalsSummary items={items} isSmallBusiness={isSmallBusiness} abroadHint={isAbroad} />
 
       <SaveButton status={status} type="button" onClick={handleSubmit} className="bg-brand hover:bg-brand-dark text-white px-6 py-2 rounded" />
     </div>

@@ -97,10 +97,22 @@ async function computeEuer(companyId: string, year: number) {
   const yearStart = new Date(year, 0, 1);
   const yearEnd = new Date(year + 1, 0, 1);
 
-  const paidInvoices = await prisma.invoice.findMany({
-    where: { companyId, status: "PAID", paidAt: { gte: yearStart, lt: yearEnd } },
+  // Eine im Jahr X bezahlte Rechnung bleibt Einnahme des Jahres X, auch wenn sie später storniert
+  // wird (Status CANCELLED, paidAt bleibt erhalten) - die Rückzahlung wird als negative
+  // Einnahme im Jahr der Gutschrift verbucht. Andernfalls würde ein Storno 2026 die bereits
+  // abgegebene Steuererklärung 2025 rückwirkend verändern.
+  const paidOriginals = await prisma.invoice.findMany({
+    where: { companyId, isCancellationDocument: false, status: { in: ["PAID", "CANCELLED"] }, paidAt: { gte: yearStart, lt: yearEnd } },
     select: { invoiceNumber: true, paidAt: true, totalCents: true, customer: { select: { name: true } } },
   });
+  const refunds = await prisma.invoice.findMany({
+    where: { companyId, isCancellationDocument: true, issueDate: { gte: yearStart, lt: yearEnd }, correctsInvoice: { paidAt: { not: null } } },
+    select: { invoiceNumber: true, issueDate: true, totalCents: true, customer: { select: { name: true } } },
+  });
+  const paidInvoices = [
+    ...paidOriginals,
+    ...refunds.map((r) => ({ invoiceNumber: r.invoiceNumber, paidAt: r.issueDate as Date | null, totalCents: r.totalCents, customer: r.customer })),
+  ];
   const expenses = await prisma.expense.findMany({
     where: { companyId, date: { gte: yearStart, lt: yearEnd } },
   });

@@ -189,14 +189,23 @@ export function PricedItemsEditor({
   );
 }
 
-export function TotalsSummary({ items }: { items: LineItem[] }) {
+/** Live-Vorschau der Summen. Maßgeblich sind immer die vom Server berechneten Beträge nach
+ * dem Speichern - die Vorschau kennt nur die Kleinunternehmerregelung (keine USt.) und weist
+ * bei Auslandskunden darauf hin, dass die USt. entfallen kann (Reverse-Charge/Ausfuhr). */
+export function TotalsSummary({ items, isSmallBusiness = false, abroadHint = false }: { items: LineItem[]; isSmallBusiness?: boolean; abroadHint?: boolean }) {
   const { t } = useTranslation();
   const { netTotal, vatTotal, grossTotal } = calcTotals(items);
+  const shownVat = isSmallBusiness ? 0 : vatTotal;
+  const shownGross = netTotal + shownVat;
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 max-w-xs ml-auto text-sm">
       <div className="flex justify-between py-1"><span>Netto</span><span>{formatEuro(netTotal)}</span></div>
-      <div className="flex justify-between py-1"><span>USt.</span><span>{formatEuro(vatTotal)}</span></div>
-      <div className="flex justify-between py-1 font-semibold border-t border-slate-200 dark:border-slate-700 mt-1 pt-1"><span>{t("invoices.total")}</span><span>{formatEuro(grossTotal)}</span></div>
+      <div className="flex justify-between py-1"><span>USt.</span><span>{formatEuro(shownVat)}</span></div>
+      <div className="flex justify-between py-1 font-semibold border-t border-slate-200 dark:border-slate-700 mt-1 pt-1"><span>{t("invoices.total")}</span><span>{formatEuro(isSmallBusiness ? shownGross : grossTotal)}</span></div>
+      {isSmallBusiness && <p className="text-xs text-slate-500 mt-2">Kleinunternehmerregelung (§19 UStG): es wird keine Umsatzsteuer ausgewiesen.</p>}
+      {abroadHint && !isSmallBusiness && (
+        <p className="text-xs text-slate-500 mt-2">Auslandskunde: Die USt. kann entfallen (innergemeinschaftliche Lieferung, Reverse-Charge, Ausfuhr). Die endgültigen Beträge stehen nach dem Speichern fest.</p>
+      )}
     </div>
   );
 }

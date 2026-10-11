@@ -60,7 +60,7 @@ bankRouter.post("/import", upload.single("file"), async (req, res) => {
   if (records.length > 5000) throw new HttpError(400, "Maximal 5000 Zeilen pro Import erlaubt");
 
   const openInvoices = await prisma.invoice.findMany({
-    where: { companyId: req.auth!.companyId, status: { in: ["SENT", "OVERDUE"] } },
+    where: { companyId: req.auth!.companyId, status: { in: ["SENT", "OVERDUE"] }, isCancellationDocument: false },
   });
 
   let imported = 0;

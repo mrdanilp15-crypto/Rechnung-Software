@@ -33,7 +33,7 @@ const updateCompanySchema = z.object({
   street: z.string().nullish(),
   postalCode: z.string().nullish(),
   city: z.string().nullish(),
-  country: z.string().optional(),
+  country: z.string().trim().length(2, "Ländercode muss aus zwei Buchstaben bestehen (z.B. DE)").transform((s) => s.toUpperCase()).optional(),
   taxId: z.string().nullish(),
   vatId: z.string().nullish(),
   isSmallBusiness: z.boolean().optional(),
@@ -41,6 +41,13 @@ const updateCompanySchema = z.object({
   iban: z.string().nullish(),
   bic: z.string().nullish(),
   bankName: z.string().nullish(),
+  phone: z.string().nullish(),
+  email: z.string().nullish(),
+  website: z.string().nullish(),
+  registerCourt: z.string().nullish(),
+  registerNumber: z.string().nullish(),
+  managingDirector: z.string().nullish(),
+  paymentTermDays: z.number().int().min(0).max(365).optional(),
   primaryColor: z.string().optional(),
   invoiceFooterText: z.string().nullish(),
   defaultLocale: z.enum(["de", "en"]).optional(),
@@ -116,7 +123,9 @@ const upload = multer({
   dest: env.UPLOAD_DIR,
   limits: { fileSize: env.MAX_UPLOAD_MB * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowed = ["image/png", "image/jpeg", "image/svg+xml", "image/webp"];
+    // Nur PNG/JPEG: die PDF-Erzeugung (pdfkit) kann weder SVG noch WebP einbetten - solche
+    // Dateien würden stillschweigend auf den Belegen fehlen.
+    const allowed = ["image/png", "image/jpeg"];
     cb(null, allowed.includes(file.mimetype));
   },
 });
@@ -133,7 +142,7 @@ const ASSET_FIELDS = {
 
 for (const [assetName, field] of Object.entries(ASSET_FIELDS)) {
   companiesRouter.post(`/me/${assetName}`, requireRole("ADMIN"), upload.single(assetName), async (req, res) => {
-    if (!req.file) return res.status(400).json({ error: "Keine Datei erhalten oder Dateityp nicht erlaubt" });
+    if (!req.file) return res.status(400).json({ error: "Keine Datei erhalten oder Dateityp nicht erlaubt (nur PNG oder JPEG)" });
     const ext = path.extname(req.file.originalname) || ".png";
     const finalName = `${assetName}-${req.auth!.companyId}${ext}`;
     const finalPath = path.join(env.UPLOAD_DIR, finalName);

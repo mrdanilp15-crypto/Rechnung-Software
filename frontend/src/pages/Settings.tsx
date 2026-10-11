@@ -16,6 +16,16 @@ interface Company {
   city?: string;
   taxId?: string;
   vatId?: string;
+  legalForm?: string;
+  country?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  registerCourt?: string;
+  registerNumber?: string;
+  managingDirector?: string;
+  bankName?: string;
+  paymentTermDays?: number;
   iban?: string;
   bic?: string;
   isSmallBusiness: boolean;
@@ -235,15 +245,95 @@ export default function Settings() {
           <p className="text-xs text-slate-500 -mt-2">
             Steuernummer oder USt-IdNr. sind Pflichtangaben auf jeder Rechnung (§14 Abs. 4 Nr. 2 UStG) - mindestens eine der beiden bitte ausfüllen.
           </p>
+          <h3 className="text-sm font-semibold pt-2">Firma &amp; Anschrift</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input value={company.name} onChange={(e) => setCompany({ ...company, name: e.target.value })} placeholder="Firmenname" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <input value={company.taxId || ""} onChange={(e) => setCompany({ ...company, taxId: e.target.value })} placeholder="Steuernummer" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <input value={company.vatId || ""} onChange={(e) => setCompany({ ...company, vatId: e.target.value })} placeholder="USt-IdNr. (optional)" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <input value={company.street || ""} onChange={(e) => setCompany({ ...company, street: e.target.value })} placeholder="Straße" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <input value={company.postalCode || ""} onChange={(e) => setCompany({ ...company, postalCode: e.target.value })} placeholder="PLZ" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <input value={company.city || ""} onChange={(e) => setCompany({ ...company, city: e.target.value })} placeholder="Ort" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <input value={company.iban || ""} onChange={(e) => setCompany({ ...company, iban: e.target.value })} placeholder="IBAN" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <input value={company.bic || ""} onChange={(e) => setCompany({ ...company, bic: e.target.value })} placeholder="BIC" className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            <label className="block text-sm">
+              Firmenname
+              <input value={company.name} onChange={(e) => setCompany({ ...company, name: e.target.value })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+            <label className="block text-sm">
+              Rechtsform
+              <input type="text" value={company.legalForm || ""} onChange={(e) => setCompany({ ...company, legalForm: e.target.value })} placeholder="z.B. GmbH, e.K., Einzelunternehmen" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Wird in der Fußzeile ergänzt, falls sie nicht schon im Firmennamen steht.</span>
+            </label>
+            <label className="block text-sm">
+              Straße und Hausnummer
+              <input type="text" value={company.street || ""} onChange={(e) => setCompany({ ...company, street: e.target.value })} placeholder="" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+            <label className="block text-sm">
+              PLZ
+              <input type="text" value={company.postalCode || ""} onChange={(e) => setCompany({ ...company, postalCode: e.target.value })} placeholder="" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+            <label className="block text-sm">
+              Ort
+              <input type="text" value={company.city || ""} onChange={(e) => setCompany({ ...company, city: e.target.value })} placeholder="" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+            <label className="block text-sm">
+              Land (Ländercode)
+              <input type="text" value={company.country || ""} onChange={(e) => setCompany({ ...company, country: e.target.value })} placeholder="DE" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Zwei Buchstaben, z.B. DE, AT, CH. Bestimmt die Umsatzsteuer-Behandlung bei Auslandskunden (Reverse-Charge/Ausfuhr).</span>
+            </label>
+          </div>
+          <h3 className="text-sm font-semibold pt-2">Steuer &amp; Register (Pflichtangaben auf Rechnungen)</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="block text-sm">
+              Steuernummer
+              <input type="text" value={company.taxId || ""} onChange={(e) => setCompany({ ...company, taxId: e.target.value })} placeholder="12/345/67890" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+            <label className="block text-sm">
+              USt-IdNr.
+              <input type="text" value={company.vatId || ""} onChange={(e) => setCompany({ ...company, vatId: e.target.value })} placeholder="DE123456789" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+            <label className="block text-sm">
+              Handelsregister: Gericht
+              <input type="text" value={company.registerCourt || ""} onChange={(e) => setCompany({ ...company, registerCourt: e.target.value })} placeholder="z.B. Amtsgericht Berlin (Charlottenburg)" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Pflicht für GmbH/UG/AG/e.K. (§35a GmbHG, §37a HGB) - bei Einzelunternehmen ohne Eintrag leer lassen.</span>
+            </label>
+            <label className="block text-sm">
+              Handelsregister: Nummer
+              <input type="text" value={company.registerNumber || ""} onChange={(e) => setCompany({ ...company, registerNumber: e.target.value })} placeholder="z.B. HRB 123456" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+            <label className="block text-sm">
+              Geschäftsführer / Inhaber
+              <input type="text" value={company.managingDirector || ""} onChange={(e) => setCompany({ ...company, managingDirector: e.target.value })} placeholder="Vor- und Nachname" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Bei mehreren Geschäftsführern kommagetrennt. Pflicht bei GmbH/UG.</span>
+            </label>
+          </div>
+          <h3 className="text-sm font-semibold pt-2">Kontakt</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label className="block text-sm">
+              Telefon
+              <input type="text" value={company.phone || ""} onChange={(e) => setCompany({ ...company, phone: e.target.value })} placeholder="+49 ..." className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+            <label className="block text-sm">
+              E-Mail
+              <input type="email" value={company.email || ""} onChange={(e) => setCompany({ ...company, email: e.target.value })} placeholder="info@firma.de" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+            <label className="block text-sm">
+              Webseite
+              <input type="text" value={company.website || ""} onChange={(e) => setCompany({ ...company, website: e.target.value })} placeholder="www.firma.de" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+          </div>
+          <h3 className="text-sm font-semibold pt-2">Bank &amp; Zahlung</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="block text-sm">
+              Bank
+              <input type="text" value={company.bankName || ""} onChange={(e) => setCompany({ ...company, bankName: e.target.value })} placeholder="z.B. Commerzbank" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+            <label className="block text-sm">
+              IBAN
+              <input type="text" value={company.iban || ""} onChange={(e) => setCompany({ ...company, iban: e.target.value })} placeholder="DE00 0000 0000 0000 0000 00" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Wird auch als QR-Code (GiroCode) auf offenen Rechnungen ausgegeben.</span>
+            </label>
+            <label className="block text-sm">
+              BIC
+              <input type="text" value={company.bic || ""} onChange={(e) => setCompany({ ...company, bic: e.target.value })} placeholder="" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+            <label className="block text-sm">
+              Zahlungsziel (Tage)
+              <input type="number" min={0} max={365} value={company.paymentTermDays ?? 14} onChange={(e) => setCompany({ ...company, paymentTermDays: Math.max(0, Math.min(365, parseInt(e.target.value, 10) || 0)) })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Als Fälligkeitsdatum vorbelegt, wenn bei der Rechnung keines gewählt wird (0 = kein Standard).</span>
+            </label>
           </div>
           <textarea value={company.invoiceFooterText || ""} onChange={(e) => setCompany({ ...company, invoiceFooterText: e.target.value })} placeholder="Fußzeilentext für Rechnungen" className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
           <label className="flex items-center gap-2 text-sm">

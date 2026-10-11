@@ -81,13 +81,21 @@ export const SMALL_BUSINESS_NOTICE_DE =
 export const SMALL_BUSINESS_NOTICE_EN =
   "No VAT is charged in accordance with §19 of the German VAT Act (small business regulation).";
 
-export const VAT_NOTICES: Record<"REVERSE_CHARGE" | "EXPORT", { de: string; en: string }> = {
+export const VAT_NOTICES: Record<"INTRA_COMMUNITY_SUPPLY" | "REVERSE_CHARGE" | "EXPORT" | "NOT_TAXABLE_ABROAD", { de: string; en: string }> = {
+  INTRA_COMMUNITY_SUPPLY: {
+    de: "Steuerfreie innergemeinschaftliche Lieferung gem. §4 Nr. 1b i.V.m. §6a UStG.",
+    en: "VAT-exempt intra-community supply pursuant to §4 No. 1b in conjunction with §6a of the German VAT Act.",
+  },
   REVERSE_CHARGE: {
-    de: "Steuerschuldnerschaft des Leistungsempfängers gem. §13b UStG (innergemeinschaftliche Leistung, Reverse-Charge-Verfahren).",
-    en: "VAT liability of the recipient (reverse charge, intra-community supply) pursuant to §13b of the German VAT Act.",
+    de: "Steuerschuldnerschaft des Leistungsempfängers (Reverse-Charge) - Leistungsort im Mitgliedstaat des Empfängers (§3a Abs. 2 UStG).",
+    en: "Reverse charge - VAT to be accounted for by the recipient; place of supply in the recipient's member state (§3a(2) German VAT Act).",
   },
   EXPORT: {
-    de: "Steuerfreie Ausfuhrlieferung gem. §4 Nr. 1a UStG.",
-    en: "VAT-exempt export supply pursuant to §4 No. 1a of the German VAT Act.",
+    de: "Steuerfreie Ausfuhrlieferung gem. §4 Nr. 1a i.V.m. §6 UStG.",
+    en: "VAT-exempt export supply pursuant to §4 No. 1a in conjunction with §6 of the German VAT Act.",
+  },
+  NOT_TAXABLE_ABROAD: {
+    de: "Nicht im Inland steuerbare sonstige Leistung (Leistungsort im Drittland, §3a Abs. 2 UStG).",
+    en: "Service not taxable in Germany (place of supply outside the EU, §3a(2) German VAT Act).",
   },
 };

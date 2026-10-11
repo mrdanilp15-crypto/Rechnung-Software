@@ -81,6 +81,7 @@ deliveryNotesRouter.get("/:id/pdf", async (req, res) => {
 
   const pdfBuffer = await renderDocumentPdf({
     docTypeLabel: { de: "Lieferschein", en: "Delivery Note" },
+    numberLabel: { de: "Lieferscheinnr.", en: "Delivery note no." },
     documentNumber: note.noteNumber,
     issueDate: note.deliveryDate,
     locale,

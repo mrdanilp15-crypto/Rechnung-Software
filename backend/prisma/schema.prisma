@@ -31,6 +31,18 @@ model Company {
   iban          String?
   bic           String?
   bankName      String?
+  // Kontakt- und Registerangaben für Briefkopf/Fußzeile der PDFs. Für Kapitalgesellschaften
+  // sind Rechtsform, Sitz, Registergericht, Handelsregisternummer und Geschäftsführer auf
+  // Geschäftsbriefen und Rechnungen Pflicht (§35a GmbHG, §80 AktG, §37a HGB für e.K.).
+  phone         String?
+  email         String?
+  website       String?
+  registerCourt String? // z.B. "Amtsgericht Berlin (Charlottenburg)"
+  registerNumber String? // z.B. "HRB 123456"
+  managingDirector String? // Geschäftsführer/Inhaber, bei mehreren kommagetrennt
+  // Standard-Zahlungsziel in Tagen: wird beim Anlegen einer Rechnung als Fälligkeitsdatum
+  // vorbelegt, wenn keines angegeben wurde.
+  paymentTermDays Int     @default(14)
   logoPath      String?
   stampPath     String? // Firmenstempel, wird automatisch auf PDFs eingefügt (siehe modules/pdf)
   signaturePath String? // Unterschrift (z.B. eingescannt), wird automatisch auf PDFs eingefügt
@@ -287,6 +299,11 @@ model Invoice {
   // oder "EXPORT" (Ausfuhrlieferung in ein Nicht-EU-Land, §4 Nr. 1a UStG). NULL = normale
   // inländische Rechnung (oder Kleinunternehmer, dafür gibt es bereits isSmallBusiness).
   vatNoticeKey    String?
+  // Art des Umsatzes: "GOODS" (Warenlieferung) oder "SERVICE" (sonstige Leistung). Entscheidet
+  // bei Auslandskunden über die steuerliche Behandlung: Waren an EU-Unternehmer sind eine
+  // steuerfreie innergemeinschaftliche Lieferung, Dienstleistungen unterliegen dem Reverse-
+  // Charge-Verfahren - siehe modules/tax/euVat.ts.
+  supplyType      String        @default("GOODS")
   currency        String        @default("EUR")
   subtotalCents   Int           @default(0)
   vatTotalCents   Int           @default(0)

@@ -21,7 +21,9 @@ ENV NODE_ENV=production
 # Node-Prozess ankommt statt beim Shell-Entrypoint zu enden; su-exec lässt den
 # Entrypoint kurz als root Verzeichnisrechte reparieren und danach als nicht-root-
 # Benutzer "node" in den eigentlichen Server wechseln (siehe docker-entrypoint.sh).
-RUN apk add --no-cache openssl postgresql-client unzip dumb-init su-exec
+# font-liberation: Schriftdateien, die in die Rechnungs-PDFs eingebettet werden (Voraussetzung
+# für PDF/A-3b und korrekte Darstellung von Sonderzeichen in Kundennamen).
+RUN apk add --no-cache openssl postgresql-client unzip dumb-init su-exec font-liberation
 COPY package*.json ./
 RUN npm install --omit=dev
 COPY --from=build /app/dist ./dist

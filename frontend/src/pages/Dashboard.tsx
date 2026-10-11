@@ -8,6 +8,7 @@ interface Invoice {
   id: string;
   invoiceNumber: string | null;
   status: string;
+  isCancellationDocument?: boolean;
   totalCents: number;
   customer: { name: string };
 }
@@ -47,10 +48,12 @@ export default function Dashboard() {
     });
   }, []);
 
+  // Korrekturbelege (Storno/Gutschrift) tragen negative Beträge und stehen immer neben dem
+  // stornierten Original (Status CANCELLED) - in den offenen Posten haben sie nichts verloren.
   const openTotal = invoices
-    .filter((i) => i.status === "SENT" || i.status === "OVERDUE")
+    .filter((i) => !i.isCancellationDocument && (i.status === "SENT" || i.status === "OVERDUE"))
     .reduce((sum, i) => sum + i.totalCents, 0);
-  const overdueCount = invoices.filter((i) => i.status === "OVERDUE").length;
+  const overdueCount = invoices.filter((i) => !i.isCancellationDocument && i.status === "OVERDUE").length;
   const paidTotal = invoices.filter((i) => i.status === "PAID").reduce((sum, i) => sum + i.totalCents, 0);
 
   const format = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);

@@ -58,7 +58,7 @@ export function CompanyAssetUpload({ assetName, label, hint }: { assetName: "log
         <div className="flex flex-wrap gap-3 items-center">
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            accept="image/png,image/jpeg"
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) handleUpload(file);

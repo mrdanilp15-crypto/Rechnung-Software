@@ -106,6 +106,7 @@ orderConfirmationsRouter.get("/:id/pdf", async (req, res) => {
 
   const pdfBuffer = await renderDocumentPdf({
     docTypeLabel: { de: "Auftragsbestätigung", en: "Order Confirmation" },
+    numberLabel: { de: "Auftragsnr.", en: "Order no." },
     documentNumber: confirmation.confirmationNumber,
     issueDate: confirmation.issueDate,
     locale,
