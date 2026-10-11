@@ -76,9 +76,10 @@ In der Rechnungsdetailansicht:
   bereits versendete Rechnungen, da eine feste Nummer nötig ist) - z.B. für öffentliche
   Auftraggeber, die eine XRechnung statt eines PDFs verlangen. Bei Behörden/öffentlichen
   Auftraggebern vorher unbedingt die vom Auftraggeber mitgeteilte **Leitweg-ID** beim
-  Kunden hinterlegen (Pflichtfeld für diese Kunden). Vor dem ersten echten Versand
-  empfiehlt sich eine Prüfung der erzeugten Datei mit einem offiziellen XRechnung-
-  Validator (siehe [SECURITY.md](SECURITY.md)).
+  Kunden hinterlegen (Pflichtfeld für diese Kunden). Für den Export müssen in den Firmeneinstellungen
+  Telefon, E-Mail, IBAN und Anschrift sowie beim Kunden E-Mail und Anschrift gepflegt sein - sonst
+  nennt die Software die fehlenden Angaben. Die erzeugte Datei wurde mit dem offiziellen
+  KoSIT-Validator geprüft (siehe [STATUS.md](STATUS.md)).
 
 ## Angebote
 

@@ -7,13 +7,11 @@ import { VAT_NOTICES } from "../tax/calculator";
  * Regelfall (inländische Rechnung, Kleinunternehmerregelung, innergemeinschaftliche
  * Lieferung/Reverse-Charge, Ausfuhrlieferung) nötigen Pflichtfelder ab.
  *
- * WICHTIG - bitte vor dem produktiven Einsatz beachten:
- * Diese Implementierung wurde nach der öffentlich dokumentierten EN16931-/XRechnung-
- * Spezifikation erstellt. Sie ist nur dann als konform zu betrachten, wenn eine erzeugte
- * Beispieldatei den offiziellen KoSIT-Validator ohne Fehler durchläuft - vor dem ersten
- * Versand an einen (insbesondere öffentlichen) Auftraggeber unbedingt prüfen. Bei
- * öffentlichen Auftraggebern zusätzlich unbedingt die vom Auftraggeber mitgeteilte
- * Leitweg-ID beim Kunden hinterlegen (Pflichtfeld BT-10).
+ * Geprüft mit dem offiziellen KoSIT-Validator 1.6.3 + XRechnung-Prüfkonfiguration 3.0.2:
+ * Regelrechnung (19%/7%), Kleinunternehmer, innergemeinschaftliche Lieferung, Reverse-Charge,
+ * Ausfuhr, nicht steuerbare Leistung und Storno (CreditNote) werden ohne Fehler akzeptiert.
+ * Bei Änderungen an diesem Generator die Prüfung wiederholen. Bei öffentlichen Auftraggebern
+ * zusätzlich unbedingt die vom Auftraggeber mitgeteilte Leitweg-ID beim Kunden hinterlegen (BT-10).
  */
 
 export type InvoiceForXRechnung = Invoice & {
@@ -127,10 +125,17 @@ export function buildXRechnungXml(invoice: InvoiceForXRechnung): string {
   const taxCategory = taxCategoryFor(invoice);
   const rateGroups = groupByVatRate(invoice.items);
   const isCreditNote = invoice.isCancellationDocument;
-  const invoiceTypeCode = isCreditNote ? 381 : 380; // 380 = Rechnung, 381 = Gutschrift/Korrekturrechnung
+  // Korrekturbelege (Storno) werden als eigenes UBL-Dokument "CreditNote" (Typcode 381) ausgegeben -
+  // die Code-Liste des Elements InvoiceTypeCode erlaubt 381 nicht (BR-CL-01). Beträge sind dabei positiv.
+  const root = isCreditNote ? "CreditNote" : "Invoice";
+  const lineTag = isCreditNote ? "CreditNoteLine" : "InvoiceLine";
+  const qtyTag = isCreditNote ? "CreditedQuantity" : "InvoicedQuantity";
   // Kategorie "O" (nicht steuerbar) darf weder Steuersatz noch USt-IdNr. enthalten (BR-O-2/-5).
   const isNotSubject = taxCategory.id === "O";
-  const percentXml = (bps: number, indent: string) => (isNotSubject ? "" : `${indent}<cbc:Percent>${(bps / 100).toFixed(2)}</cbc:Percent>\n`);
+  // BR-DE-14 verlangt den Steuersatz auf Ebene der Steuer-Aufschlüsselung auch bei Kategorie "O";
+  // auf Positionsebene darf er dort dagegen nicht stehen (BR-O-05) - siehe Aufruf bei den Positionen.
+  const percentXml = (bps: number, indent: string) => `${indent}<cbc:Percent>${(bps / 100).toFixed(2)}</cbc:Percent>
+`;
 
   const taxSchemes = (vatId: string | null | undefined, taxId?: string | null) => {
     const entries: string[] = [];
@@ -141,15 +146,15 @@ export function buildXRechnungXml(invoice: InvoiceForXRechnung): string {
 
   const lines = invoice.items
     .map(
-      (item, idx) => `  <cac:InvoiceLine>
+      (item, idx) => `  <cac:${lineTag}>
     <cbc:ID>${idx + 1}</cbc:ID>
-    <cbc:InvoicedQuantity unitCode="${unitCodeFor(item.unit)}">${Math.abs(item.quantity)}</cbc:InvoicedQuantity>
+    <cbc:${qtyTag} unitCode="${unitCodeFor(item.unit)}">${Math.abs(item.quantity)}</cbc:${qtyTag}>
     <cbc:LineExtensionAmount currencyID="EUR">${euros(Math.abs(item.lineTotalCents))}</cbc:LineExtensionAmount>
     <cac:Item>
       <cbc:Name>${esc(item.description)}</cbc:Name>
       <cac:ClassifiedTaxCategory>
         <cbc:ID>${taxCategory.id}</cbc:ID>
-${percentXml(item.vatRateBps, "        ")}        <cac:TaxScheme>
+${isNotSubject ? "" : percentXml(item.vatRateBps, "        ")}        <cac:TaxScheme>
           <cbc:ID>VAT</cbc:ID>
         </cac:TaxScheme>
       </cac:ClassifiedTaxCategory>
@@ -157,7 +162,7 @@ ${percentXml(item.vatRateBps, "        ")}        <cac:TaxScheme>
     <cac:Price>
       <cbc:PriceAmount currencyID="EUR">${euros(item.unitPriceCents)}</cbc:PriceAmount>
     </cac:Price>
-  </cac:InvoiceLine>`
+  </cac:${lineTag}>`
     )
     .join("\n");
 
@@ -192,14 +197,14 @@ ${company.bic ? `      <cac:FinancialInstitutionBranch>\n        <cbc:ID>${esc(c
     : "";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+<${root} xmlns="urn:oasis:names:specification:ubl:schema:xsd:${root}-2"
          xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
          xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
-  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_3.0</cbc:CustomizationID>
+  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0</cbc:CustomizationID>
   <cbc:ProfileID>urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</cbc:ProfileID>
   <cbc:ID>${esc(invoice.invoiceNumber)}</cbc:ID>
   <cbc:IssueDate>${isoDate(invoice.issueDate)}</cbc:IssueDate>
-${invoice.dueDate ? `  <cbc:DueDate>${isoDate(invoice.dueDate)}</cbc:DueDate>\n` : ""}  <cbc:InvoiceTypeCode>${invoiceTypeCode}</cbc:InvoiceTypeCode>
+${invoice.dueDate && !isCreditNote ? `  <cbc:DueDate>${isoDate(invoice.dueDate)}</cbc:DueDate>\n` : ""}  ${isCreditNote ? "<cbc:CreditNoteTypeCode>381</cbc:CreditNoteTypeCode>" : "<cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>"}
   <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
   <cbc:BuyerReference>${esc(buyerReference)}</cbc:BuyerReference>
 ${billingReference}  <cac:AccountingSupplierParty>
@@ -249,6 +254,9 @@ ${taxSchemes(customer.vatId)}      <cac:PartyLegalEntity>
     <cbc:ActualDeliveryDate>${isoDate(deliveryDate)}</cbc:ActualDeliveryDate>
     <cac:DeliveryLocation>
       <cac:Address>
+        <cbc:StreetName>${esc(customer.street)}</cbc:StreetName>
+        <cbc:CityName>${esc(customer.city)}</cbc:CityName>
+        <cbc:PostalZone>${esc(customer.postalCode)}</cbc:PostalZone>
         <cac:Country>
           <cbc:IdentificationCode>${esc(customer.country)}</cbc:IdentificationCode>
         </cac:Country>
@@ -279,6 +287,6 @@ ${percentXml(g.rateBps, "        ")}${exemptionXml ? exemptionXml.replace(/^\n/,
     <cbc:PayableAmount currencyID="EUR">${euros(Math.abs(invoice.totalCents))}</cbc:PayableAmount>
   </cac:LegalMonetaryTotal>
 ${lines}
-</Invoice>
+</${root}>
 `;
 }

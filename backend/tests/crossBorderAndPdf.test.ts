@@ -82,7 +82,7 @@ describe("XRechnung", () => {
   });
   it("verweist bei Korrekturbelegen auf die Rechnungsnummer, nicht auf die interne ID", () => {
     const xml = buildXRechnungXml({ ...base, isCancellationDocument: true, correctsInvoiceId: "uuid-xyz", correctsInvoice: { invoiceNumber: "RE-2026-0000" } });
-    expect(xml).toContain("<cbc:InvoiceTypeCode>381</cbc:InvoiceTypeCode>");
+    expect(xml).toContain("<cbc:CreditNoteTypeCode>381</cbc:CreditNoteTypeCode>");
     expect(xml).toContain("<cbc:ID>RE-2026-0000</cbc:ID>");
     expect(xml).not.toContain("uuid-xyz");
   });

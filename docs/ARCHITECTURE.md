@@ -96,10 +96,10 @@ vorhanden, wird die Schrift eingebettet und das Dokument von `pdfkit` als **PDF/
 werden korrekt dargestellt. Ohne Schriftdatei fällt die Vorlage auf die Standard-Schrift Helvetica
 zurück (gültiges PDF 1.7, aber **nicht** PDF/A, da nicht eingebettet).
 
-**Ehrlicher Hinweis:** Die PDF/A-3b-Kennzeichnung stammt aus der `pdfkit`-Implementierung; ob ein
-konkretes Dokument die Norm vollständig erfüllt, belegt erst eine Prüfung mit
-[veraPDF](https://verapdf.org/) - in der Entwicklungsumgebung war dieses Prüfwerkzeug nicht
-verfügbar. Logo/Stempel/Unterschrift werden nur als PNG/JPEG unterstützt (pdfkit kann weder SVG
+**Validierung:** Alle Belegarten wurden mit [veraPDF](https://verapdf.org/) 1.30.3 gegen PDF/A-3b geprüft
+(Ergebnis: bestanden). Die Prüfung gilt für den Fall mit eingebetteter Schrift; in der Entwicklungsumgebung
+wurde Arial verwendet, im Docker-Image kommt Liberation Sans zum Einsatz (gleicher Mechanismus, aber nicht
+separat geprüft - bei Änderungen an der Vorlage die Prüfung wiederholen). Logo/Stempel/Unterschrift werden nur als PNG/JPEG unterstützt (pdfkit kann weder SVG
 noch WebP einbetten).
 
 ## Plugin-/Hook-System
