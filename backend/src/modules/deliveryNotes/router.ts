@@ -6,6 +6,7 @@ import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { nextDocumentNumber } from "../shared/numbering";
 import { renderDocumentPdf } from "../pdf/documentTemplate";
+import { resolvePdfLayout } from "../pdf/layout";
 
 export const deliveryNotesRouter = Router();
 deliveryNotesRouter.use(requireAuth);
@@ -89,6 +90,7 @@ deliveryNotesRouter.get("/:id/pdf", async (req, res) => {
     recipient: note.customer,
     items: note.items,
     notes: note.notes,
+    layout: resolvePdfLayout(note.company.pdfLayout, req.query.layout),
     showPrices: false,
   });
 

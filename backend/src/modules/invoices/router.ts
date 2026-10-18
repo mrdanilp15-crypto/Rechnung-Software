@@ -35,6 +35,8 @@ const createInvoiceSchema = z.object({
   deliveryDate: z.coerce.date().optional(),
   notes: z.string().optional(),
   supplyType: z.enum(["GOODS", "SERVICE"]).optional(),
+  introText: z.string().max(3000).optional(),
+  closingText: z.string().max(3000).optional(),
   items: z.array(lineItemSchema).min(1),
   sourceQuoteId: z.string().optional(),
 });
@@ -102,6 +104,9 @@ invoicesRouter.post("/", async (req, res) => {
         vatNoticeKey: financials.vatNoticeKey,
         supplyType,
         notes: body.notes,
+        // Texte werden beim Anlegen aus den Firmeneinstellungen übernommen (am Beleg änderbar, solange Entwurf)
+        introText: body.introText ?? company.invoiceIntroText,
+        closingText: body.closingText ?? company.invoiceClosingText,
         footerText: company.invoiceFooterText,
         sourceQuoteId: body.sourceQuoteId,
         subtotalCents: financials.subtotalCents,
@@ -134,6 +139,8 @@ invoicesRouter.patch("/:id", async (req, res) => {
     deliveryDate: body.deliveryDate,
     notes: body.notes,
     supplyType: body.supplyType,
+    introText: body.introText,
+    closingText: body.closingText,
   };
 
   // Ein anderer Kunde kann eine andere USt.-Behandlung bedeuten (Reverse-Charge/Ausfuhr) -
@@ -317,7 +324,7 @@ invoicesRouter.get("/:id/pdf", async (req, res) => {
   if (!invoice) throw new HttpError(404, "Rechnung nicht gefunden");
   const locale = (req.query.lang as "de" | "en") || (invoice.company.defaultLocale as "de" | "en") || "de";
 
-  const pdfBuffer = await generateAndStoreInvoicePdf(invoice, locale);
+  const pdfBuffer = await generateAndStoreInvoicePdf(invoice, locale, req.query.layout);
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `inline; filename="${invoice.invoiceNumber ?? "entwurf"}.pdf"`);

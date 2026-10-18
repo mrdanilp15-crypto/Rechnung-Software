@@ -4,6 +4,7 @@ import type { Invoice, InvoiceItem, Customer, Company } from "@prisma/client";
 import { renderDocumentPdf } from "../pdf/documentTemplate";
 import { vatBreakdownFromLineItems, VAT_NOTICES } from "../tax/calculator";
 import { env } from "../../config/env";
+import { resolvePdfLayout } from "../pdf/layout";
 import { prisma } from "../../db/prisma";
 
 type InvoiceWithRelations = Invoice & {
@@ -33,7 +34,7 @@ function buildPaymentTermsText(invoice: InvoiceWithRelations, locale: "de" | "en
   return null;
 }
 
-export async function generateAndStoreInvoicePdf(invoice: InvoiceWithRelations, locale: "de" | "en"): Promise<Buffer> {
+export async function generateAndStoreInvoicePdf(invoice: InvoiceWithRelations, locale: "de" | "en", layoutOverride?: unknown): Promise<Buffer> {
   const isDraft = invoice.status === "DRAFT";
   const pdfBuffer = await renderDocumentPdf({
     docTypeLabel: invoice.isCancellationDocument
@@ -64,6 +65,9 @@ export async function generateAndStoreInvoicePdf(invoice: InvoiceWithRelations, 
     showPrices: true,
     showSepaQr: !invoice.isCancellationDocument && invoice.status !== "PAID" && invoice.status !== "CANCELLED",
     isDraft,
+    layout: resolvePdfLayout(invoice.company.pdfLayout, layoutOverride),
+    introText: invoice.introText,
+    closingText: invoice.closingText,
     correctsDocumentNumber: invoice.correctsInvoice?.invoiceNumber ?? null,
   });
 

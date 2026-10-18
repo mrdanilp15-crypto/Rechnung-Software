@@ -138,3 +138,37 @@ describe("PDF-Erzeugung", () => {
     expect(pageCount).toBeGreaterThanOrEqual(2);
   });
 });
+
+import { fillPlaceholders } from "../src/modules/pdf/placeholders";
+import { resolvePdfLayout } from "../src/modules/pdf/layout";
+
+describe("Beleg-Texte und Layouts", () => {
+  const values = { kunde: "Müller GmbH", ansprechpartner: "Frau Müller", nummer: "RE-1", datum: "01.01.2026", faellig: "15.01.2026", betrag: "100,00 €", firma: "Muster" };
+  it("ersetzt Platzhalter (auch großgeschrieben) und lässt unbekannte stehen", () => {
+    expect(fillPlaceholders("Hallo {kunde}, zahlbar bis {FAELLIG}: {betrag} {unbekannt}", values)).toBe("Hallo Müller GmbH, zahlbar bis 15.01.2026: 100,00 € {unbekannt}");
+    expect(fillPlaceholders(null, values)).toBe("");
+    expect(fillPlaceholders("Gilt bis zum {faellig}. Ende", { ...values, faellig: "" })).toBe("Gilt. Ende");
+  });
+  it("wählt das Layout aus Einstellung bzw. Vorschau-Parameter und fällt sonst auf CLEAR zurück", () => {
+    expect(resolvePdfLayout("BAND")).toBe("BAND");
+    expect(resolvePdfLayout("BAND", "compact")).toBe("COMPACT");
+    expect(resolvePdfLayout("kaputt", "auch-kaputt")).toBe("CLEAR");
+    expect(resolvePdfLayout(null)).toBe("CLEAR");
+  });
+  it("rendert alle Layouts mit Texten, Mehrseitern und Lieferschein ohne Fehler", async () => {
+    const base = {
+      docTypeLabel: { de: "Rechnung", en: "Invoice" }, documentNumber: "RE-1", issueDate: new Date("2026-03-01"), dueDate: new Date("2026-03-15"), locale: "de" as const,
+      branding: { name: "Muster", logoPath: "/gibt/es/nicht.png", primaryColor: "#ffee00" }, recipient: { name: "Kunde", vatId: "DE1" },
+      items: Array.from({ length: 60 }, (_, i) => ({ position: i + 1, description: `Pos ${i + 1}`, quantity: 1, unit: "Stk.", unitPriceCents: 100, vatRateBps: 1900, lineTotalCents: 100 })),
+      subtotalCents: 6000, vatBreakdown: { 1900: 1140 }, vatTotalCents: 1140, totalCents: 7140, showPrices: true, showSepaQr: true,
+      introText: "Hallo {kunde}", closingText: "Danke, {firma}",
+    };
+    for (const layout of ["CLEAR", "BAND", "COMPACT"] as const) {
+      const pdf = await renderDocumentPdf({ ...base, layout });
+      expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+      expect((pdf.toString("latin1").match(/\/Type \/Page\b/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    }
+    const dn = await renderDocumentPdf({ ...base, layout: "COMPACT", showPrices: false, showSepaQr: false });
+    expect(dn.subarray(0, 5).toString()).toBe("%PDF-");
+  });
+});

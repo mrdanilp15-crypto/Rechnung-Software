@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { LineItem, PricedItemsEditor, TotalsSummary, createEmptyLineItem, withClientKeys } from "../components/PricedItemsEditor";
 import { SaveButton } from "../components/SaveButton";
+import { DocumentTexts } from "../components/DocumentTexts";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 
 interface Customer {
@@ -35,6 +36,8 @@ export default function InvoiceNew() {
   const [notes, setNotes] = useState("");
   const [supplyType, setSupplyType] = useState<"GOODS" | "SERVICE">("GOODS");
   const [isSmallBusiness, setIsSmallBusiness] = useState(false);
+  const [introText, setIntroText] = useState("");
+  const [closingText, setClosingText] = useState("");
   const [items, setItems] = useState<LineItem[]>([createEmptyLineItem()]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(isEditing);
@@ -43,7 +46,14 @@ export default function InvoiceNew() {
   useEffect(() => {
     api.get("/customers").then((res) => setCustomers(res.data));
     api.get("/products").then((res) => setProducts(res.data));
-    api.get("/companies/me").then((res) => setIsSmallBusiness(!!res.data.isSmallBusiness));
+    api.get("/companies/me").then((res) => {
+      setIsSmallBusiness(!!res.data.isSmallBusiness);
+      // Bei einer neuen Rechnung die Standardtexte aus den Einstellungen vorbelegen (beim Bearbeiten lädt der Entwurf seine eigenen)
+      if (!isEditing) {
+        setIntroText(res.data.invoiceIntroText ?? "");
+        setClosingText(res.data.invoiceClosingText ?? "");
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -59,6 +69,8 @@ export default function InvoiceNew() {
       setDeliveryDate(inv.deliveryDate ? inv.deliveryDate.slice(0, 10) : "");
       setIssueDate(inv.issueDate ? inv.issueDate.slice(0, 10) : "");
       setNotes(inv.notes ?? "");
+      setIntroText(inv.introText ?? "");
+      setClosingText(inv.closingText ?? "");
       setSupplyType(inv.supplyType === "SERVICE" ? "SERVICE" : "GOODS");
       setItems(withClientKeys(inv.items.map((it: any) => ({
         productId: it.productId ?? undefined,
@@ -84,6 +96,8 @@ export default function InvoiceNew() {
           deliveryDate: deliveryDate || undefined,
           notes,
           supplyType,
+          introText,
+          closingText,
           items,
         };
         if (isEditing) {
@@ -152,6 +166,7 @@ export default function InvoiceNew() {
         </div>
       </div>
 
+      <DocumentTexts introText={introText} closingText={closingText} onChange={(p) => { if (p.introText !== undefined) setIntroText(p.introText); if (p.closingText !== undefined) setClosingText(p.closingText); }} />
       <PricedItemsEditor items={items} onChange={setItems} products={products} />
       <TotalsSummary items={items} isSmallBusiness={isSmallBusiness} abroadHint={isAbroad} />
 

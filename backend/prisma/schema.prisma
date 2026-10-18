@@ -43,6 +43,16 @@ model Company {
   // Standard-Zahlungsziel in Tagen: wird beim Anlegen einer Rechnung als Fälligkeitsdatum
   // vorbelegt, wenn keines angegeben wurde.
   paymentTermDays Int     @default(14)
+  // Optisches Layout der PDFs: "CLEAR" (klar, viel Weiß), "BAND" (farbiges Kopfband) oder
+  // "COMPACT" (Karten, kompakt) - siehe modules/pdf/documentTemplate.ts. Rein gestalterisch.
+  pdfLayout     String   @default("CLEAR")
+  // Standard-Begrüßung/-Schlusstext für neue Rechnungen und Angebote (Platzhalter z.B. {kunde},
+  // {faellig}, {betrag}, {firma}). Wird beim Anlegen eines Belegs an diesen kopiert und kann dort
+  // geändert werden; bereits versendete Belege behalten ihren Text (Unveränderbarkeit).
+  invoiceIntroText   String @default("Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihren Auftrag. Wir berechnen Ihnen folgende Leistungen:")
+  invoiceClosingText String @default("Bitte überweisen Sie den Betrag bis zum {faellig} unter Angabe der Rechnungsnummer. Bei Fragen melden Sie sich gern.\n\nMit freundlichen Grüßen\n{firma}")
+  quoteIntroText     String @default("Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihre Anfrage. Wir unterbreiten Ihnen folgendes Angebot:")
+  quoteClosingText   String @default("Dieses Angebot gilt bis zum {faellig}. Wir freuen uns auf Ihren Auftrag.\n\nMit freundlichen Grüßen\n{firma}")
   logoPath      String?
   stampPath     String? // Firmenstempel, wird automatisch auf PDFs eingefügt (siehe modules/pdf)
   signaturePath String? // Unterschrift (z.B. eingescannt), wird automatisch auf PDFs eingefügt
@@ -310,6 +320,10 @@ model Invoice {
   totalCents      Int           @default(0)
   paidAt          DateTime?
   notes           String?
+  // Begrüßung über der Positionstabelle und Schlusstext unter den Summen (mit Platzhaltern, siehe
+  // modules/pdf/placeholders.ts) - bis zum Versand änderbar, danach wie der ganze Beleg fest.
+  introText       String?
+  closingText     String?
   footerText      String?
   sourceQuoteId   String?
   pdfPath         String?
@@ -379,6 +393,8 @@ model Quote {
   vatTotalCents Int         @default(0)
   totalCents    Int         @default(0)
   notes         String?
+  introText     String?
+  closingText   String?
   pdfPath       String?
   emailStatus   String      @default("NOT_SENT")
   emailSentAt   DateTime?

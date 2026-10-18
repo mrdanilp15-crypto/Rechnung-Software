@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { LineItem, PricedItemsEditor, TotalsSummary, createEmptyLineItem, withClientKeys } from "../components/PricedItemsEditor";
 import { SaveButton } from "../components/SaveButton";
+import { DocumentTexts } from "../components/DocumentTexts";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 
 interface Customer {
@@ -27,6 +28,8 @@ export default function QuoteForm() {
   const [products, setProducts] = useState<Product[]>([]);
   const [customerId, setCustomerId] = useState("");
   const [validUntil, setValidUntil] = useState("");
+  const [introText, setIntroText] = useState("");
+  const [closingText, setClosingText] = useState("");
   const [items, setItems] = useState<LineItem[]>([createEmptyLineItem()]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(isEditing);
@@ -35,6 +38,13 @@ export default function QuoteForm() {
   useEffect(() => {
     api.get("/customers").then((res) => setCustomers(res.data));
     api.get("/products").then((res) => setProducts(res.data));
+    if (!isEditing) {
+      api.get("/companies/me").then((res) => {
+        setIntroText(res.data.quoteIntroText ?? "");
+        setClosingText(res.data.quoteClosingText ?? "");
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -43,6 +53,8 @@ export default function QuoteForm() {
       const q = res.data;
       setCustomerId(q.customerId);
       setValidUntil(q.validUntil ? q.validUntil.slice(0, 10) : "");
+      setIntroText(q.introText ?? "");
+      setClosingText(q.closingText ?? "");
       setItems(withClientKeys(q.items.map((it: any) => ({
         productId: it.productId ?? undefined,
         description: it.description,
@@ -61,9 +73,9 @@ export default function QuoteForm() {
     try {
       await run(async () => {
         if (isEditing) {
-          await api.patch(`/quotes/${id}`, { customerId, validUntil: validUntil || undefined, items });
+          await api.patch(`/quotes/${id}`, { customerId, validUntil: validUntil || undefined, introText, closingText, items });
         } else {
-          await api.post("/quotes", { customerId, validUntil: validUntil || undefined, items });
+          await api.post("/quotes", { customerId, validUntil: validUntil || undefined, introText, closingText, items });
         }
       });
       navigate("/quotes");
@@ -95,6 +107,7 @@ export default function QuoteForm() {
         </div>
       </div>
 
+      <DocumentTexts introText={introText} closingText={closingText} onChange={(p) => { if (p.introText !== undefined) setIntroText(p.introText); if (p.closingText !== undefined) setClosingText(p.closingText); }} />
       <PricedItemsEditor items={items} onChange={setItems} products={products} />
       <TotalsSummary items={items} />
 

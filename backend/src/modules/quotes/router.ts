@@ -7,6 +7,7 @@ import { writeAuditLog } from "../audit/auditLog";
 import { nextDocumentNumber } from "../shared/numbering";
 import { calculateDocumentTotals, vatBreakdownFromLineItems } from "../tax/calculator";
 import { renderDocumentPdf } from "../pdf/documentTemplate";
+import { resolvePdfLayout } from "../pdf/layout";
 import { emitEvent } from "../plugins/hooks";
 import { buildInvoiceFinancials, defaultDueDate } from "../invoices/build";
 import { deductMaterialStock } from "../materials/stock";
@@ -28,6 +29,8 @@ const createQuoteSchema = z.object({
   issueDate: z.coerce.date().optional(),
   validUntil: z.coerce.date().optional(),
   notes: z.string().optional(),
+  introText: z.string().max(3000).optional(),
+  closingText: z.string().max(3000).optional(),
   items: z.array(lineItemSchema).min(1),
 });
 
@@ -64,8 +67,11 @@ quotesRouter.post("/", async (req, res) => {
         customerId: customer.id,
         quoteNumber,
         issueDate: body.issueDate ?? new Date(),
-        validUntil: body.validUntil,
+        // Ein Angebot ohne Befristung ist ungünstig - Standard: 30 Tage ab Angebotsdatum
+        validUntil: body.validUntil ?? new Date((body.issueDate ?? new Date()).getTime() + 30 * 86_400_000),
         notes: body.notes,
+        introText: body.introText ?? company.quoteIntroText,
+        closingText: body.closingText ?? company.quoteClosingText,
         subtotalCents: totals.subtotalCents,
         vatTotalCents: totals.vatTotalCents,
         totalCents: totals.totalCents,
@@ -110,6 +116,8 @@ quotesRouter.patch("/:id", async (req, res) => {
     issueDate: body.issueDate,
     validUntil: body.validUntil,
     notes: body.notes,
+    introText: body.introText,
+    closingText: body.closingText,
   };
 
   if (body.items) {
@@ -192,6 +200,8 @@ quotesRouter.post("/:id/convert-to-invoice", async (req, res) => {
         isSmallBusiness: financials.isSmallBusiness,
         vatNoticeKey: financials.vatNoticeKey,
         sourceQuoteId: quote.id,
+        introText: company.invoiceIntroText,
+        closingText: company.invoiceClosingText,
         footerText: company.invoiceFooterText,
         subtotalCents: financials.subtotalCents,
         vatTotalCents: financials.vatTotalCents,
@@ -231,6 +241,9 @@ quotesRouter.get("/:id/pdf", async (req, res) => {
     totalCents: quote.totalCents,
     isSmallBusiness: quote.company.isSmallBusiness,
     notes: quote.notes,
+    layout: resolvePdfLayout(quote.company.pdfLayout, req.query.layout),
+    introText: quote.introText,
+    closingText: quote.closingText,
     showPrices: true,
     showSepaQr: false,
   });

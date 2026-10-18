@@ -7,6 +7,7 @@ import { writeAuditLog } from "../audit/auditLog";
 import { nextDocumentNumber } from "../shared/numbering";
 import { calculateDocumentTotals, vatBreakdownFromLineItems } from "../tax/calculator";
 import { renderDocumentPdf } from "../pdf/documentTemplate";
+import { resolvePdfLayout } from "../pdf/layout";
 
 export const orderConfirmationsRouter = Router();
 orderConfirmationsRouter.use(requireAuth);
@@ -119,6 +120,7 @@ orderConfirmationsRouter.get("/:id/pdf", async (req, res) => {
     totalCents: confirmation.totalCents,
     isSmallBusiness: confirmation.company.isSmallBusiness,
     notes: confirmation.notes,
+    layout: resolvePdfLayout(confirmation.company.pdfLayout, req.query.layout),
     showPrices: true,
     showSepaQr: false,
   });

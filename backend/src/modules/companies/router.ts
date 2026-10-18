@@ -11,6 +11,9 @@ import { encryptField } from "../../utils/crypto";
 import { sendMailForCompany, isSmtpConfigured } from "../email/mailer";
 import { HttpError } from "../../middleware/errorHandler";
 import { getRevenueThresholdStatus } from "../tax/compliance";
+import { calculateDocumentTotals } from "../tax/calculator";
+import { renderDocumentPdf } from "../pdf/documentTemplate";
+import { resolvePdfLayout } from "../pdf/layout";
 
 export const companiesRouter = Router();
 companiesRouter.use(requireAuth);
@@ -48,6 +51,11 @@ const updateCompanySchema = z.object({
   registerNumber: z.string().nullish(),
   managingDirector: z.string().nullish(),
   paymentTermDays: z.number().int().min(0).max(365).optional(),
+  pdfLayout: z.enum(["CLEAR", "BAND", "COMPACT"]).optional(),
+  invoiceIntroText: z.string().max(3000).optional(),
+  invoiceClosingText: z.string().max(3000).optional(),
+  quoteIntroText: z.string().max(3000).optional(),
+  quoteClosingText: z.string().max(3000).optional(),
   primaryColor: z.string().optional(),
   invoiceFooterText: z.string().nullish(),
   defaultLocale: z.enum(["de", "en"]).optional(),
@@ -170,4 +178,50 @@ companiesRouter.get("/me/:asset(logo|stamp|signature)", async (req, res) => {
   const filePath = (company as any)[field] as string | null;
   if (!filePath || !fs.existsSync(filePath)) return res.status(404).json({ error: "Kein Bild hinterlegt" });
   res.sendFile(path.resolve(filePath));
+});
+
+// Vorschau des gewählten Belegdesigns mit Beispieldaten und den echten Firmenangaben/Texten -
+// ?layout=CLEAR|BAND|COMPACT zeigt ein anderes Layout, ohne es zu speichern.
+companiesRouter.get("/me/pdf-preview", async (req, res) => {
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: req.auth!.companyId } });
+  const rawItems = [
+    { description: "Gehäuse klein, PETG schwarz, inkl. Nachbearbeitung", quantity: 12, unit: "Stk.", unitPriceCents: 1850, vatRateBps: 1900 },
+    { description: "Anpassung Halterung", quantity: 1, unit: "Std.", unitPriceCents: 4500, vatRateBps: 1900 },
+    { description: "Fachbuch Konstruktion", quantity: 1, unit: "Stk.", unitPriceCents: 3990, vatRateBps: 700 },
+  ];
+  const totals = calculateDocumentTotals(rawItems, company.isSmallBusiness);
+  const items = rawItems.map((item, idx) => ({
+    position: idx + 1,
+    ...item,
+    vatRateBps: company.isSmallBusiness ? 0 : item.vatRateBps,
+    lineTotalCents: Math.round(item.quantity * item.unitPriceCents),
+  }));
+  const issueDate = new Date();
+  const dueDate = new Date(issueDate.getTime() + Math.max(company.paymentTermDays, 14) * 86_400_000);
+  const pdf = await renderDocumentPdf({
+    docTypeLabel: { de: "Rechnung", en: "Invoice" },
+    numberLabel: { de: "Rechnungsnr.", en: "Invoice no." },
+    documentNumber: "RE-2026-0001",
+    issueDate,
+    dueDate,
+    deliveryDate: issueDate,
+    locale: "de",
+    branding: company,
+    recipient: { customerNumber: "K-0001", name: "Beispiel GmbH", contactName: "Frau Beispiel", street: "Beispielstraße 1", postalCode: "10115", city: "Berlin", country: "DE" },
+    items,
+    subtotalCents: totals.subtotalCents,
+    vatBreakdown: totals.vatBreakdown,
+    vatTotalCents: totals.vatTotalCents,
+    totalCents: totals.totalCents,
+    isSmallBusiness: company.isSmallBusiness,
+    showPrices: true,
+    showSepaQr: !!company.iban,
+    paymentTermsText: `Bitte überweisen Sie den Gesamtbetrag bis zum ${new Intl.DateTimeFormat("de-DE").format(dueDate)} unter Angabe der Rechnungsnummer.`,
+    layout: resolvePdfLayout(company.pdfLayout, req.query.layout),
+    introText: company.invoiceIntroText,
+    closingText: company.invoiceClosingText,
+  });
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", 'inline; filename="vorschau.pdf"');
+  res.send(pdf);
 });

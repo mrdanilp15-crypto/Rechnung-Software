@@ -8,6 +8,7 @@ import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import Users from "./Users";
 import { useToast } from "../components/Toast";
+import { PlaceholderHint } from "../components/DocumentTexts";
 
 interface Company {
   name: string;
@@ -26,6 +27,11 @@ interface Company {
   managingDirector?: string;
   bankName?: string;
   paymentTermDays?: number;
+  pdfLayout?: "CLEAR" | "BAND" | "COMPACT";
+  invoiceIntroText?: string;
+  invoiceClosingText?: string;
+  quoteIntroText?: string;
+  quoteClosingText?: string;
   iban?: string;
   bic?: string;
   isSmallBusiness: boolean;
@@ -55,6 +61,7 @@ const TABS = [
   { key: "password", label: "Passwort" },
   { key: "users", label: "Benutzer" },
   { key: "branding", label: "Logo & Stempel" },
+  { key: "design", label: "Beleg-Design" },
   { key: "email", label: "E-Mail-Versand" },
   { key: "security", label: "Sicherheit" },
   { key: "data", label: "Daten" },
@@ -427,6 +434,58 @@ export default function Settings() {
       )}
 
       {tab === "users" && user?.role === "ADMIN" && <Users />}
+
+      {tab === "design" && user?.role === "ADMIN" && (
+        <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-5">
+          <h2 className="font-medium">Beleg-Design</h2>
+          <p className="text-sm text-slate-500 -mt-3">
+            Gilt für alle PDFs (Rechnung, Angebot, Auftragsbestätigung, Lieferschein). Alle gesetzlichen Pflichtangaben stehen in jedem Layout. Die Farbe stellen Sie unter "Logo &amp; Stempel" ein.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {(
+              [
+                ["CLEAR", "Klar", "Viel Weiß, feine Linien, zarte Summenfläche. Wirkt hochwertig und spart Tinte."],
+                ["BAND", "Akzentband", "Farbiges Kopfband mit Belegnummer, Summe als Kapsel. Sehr markant."],
+                ["COMPACT", "Kompakt", "Karten für Empfänger und Details, große Summe. Modern und platzsparend."],
+              ] as const
+            ).map(([key, title, text]) => (
+              <div key={key} className={`rounded-lg border p-3 ${(company.pdfLayout ?? "CLEAR") === key ? "border-brand ring-1 ring-brand" : "border-slate-200 dark:border-slate-600"}`}>
+                <label className="flex items-center gap-2 font-medium text-sm cursor-pointer">
+                  <input type="radio" name="pdfLayout" checked={(company.pdfLayout ?? "CLEAR") === key} onChange={() => setCompany({ ...company, pdfLayout: key })} />
+                  {title}
+                </label>
+                <p className="text-xs text-slate-500 mt-1 mb-2">{text}</p>
+                <PdfLink url={`/companies/me/pdf-preview?layout=${key}`} filename={`vorschau-${key}.pdf`} className="text-xs text-brand hover:underline">
+                  Vorschau ansehen
+                </PdfLink>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold mb-2">Standardtexte für Rechnungen</h3>
+            <label className="block text-sm mb-1">Begrüßung</label>
+            <textarea rows={3} value={company.invoiceIntroText ?? ""} onChange={(e) => setCompany({ ...company, invoiceIntroText: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
+            <label className="block text-sm mb-1 mt-3">Schlusstext</label>
+            <textarea rows={4} value={company.invoiceClosingText ?? ""} onChange={(e) => setCompany({ ...company, invoiceClosingText: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold mb-2">Standardtexte für Angebote</h3>
+            <label className="block text-sm mb-1">Begrüßung</label>
+            <textarea rows={3} value={company.quoteIntroText ?? ""} onChange={(e) => setCompany({ ...company, quoteIntroText: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
+            <label className="block text-sm mb-1 mt-3">Schlusstext</label>
+            <textarea rows={4} value={company.quoteClosingText ?? ""} onChange={(e) => setCompany({ ...company, quoteClosingText: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
+            <PlaceholderHint />
+            <p className="text-xs text-slate-500 mt-1">
+              Diese Texte werden beim Anlegen eines neuen Belegs übernommen und können dort für den einzelnen Beleg geändert werden. Bereits versendete Belege behalten ihren Text.
+            </p>
+          </div>
+          {companyError && <p className="text-red-600 text-sm">{companyError}</p>}
+          <SaveButton status={companySave.status} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
+            {t("common.save")}
+          </SaveButton>
+        </form>
+      )}
 
       {tab === "branding" && user?.role === "ADMIN" && (
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-5">

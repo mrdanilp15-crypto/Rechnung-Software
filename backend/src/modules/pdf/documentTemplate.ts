@@ -4,6 +4,7 @@ import fs from "fs";
 import { formatCents, SMALL_BUSINESS_NOTICE_DE, SMALL_BUSINESS_NOTICE_EN } from "../tax/calculator";
 import { buildSepaQrPayload } from "./sepaQr";
 import { resolvePdfFonts } from "./fonts";
+import { fillPlaceholders } from "./placeholders";
 
 export interface BrandingInput {
   name: string;
@@ -83,12 +84,22 @@ export interface DocumentPdfInput {
   isDraft?: boolean;
   // Stornorechnung/Korrekturbeleg: ersetzt nicht das Original, sondern verweist darauf.
   correctsDocumentNumber?: string | null;
+  // Optisches Layout (siehe PDF_LAYOUTS) - rein gestalterisch, alle Pflichtangaben stehen in jedem Layout.
+  layout?: PdfLayout | null;
+  // Frei änderbare Begrüßung (über der Positionstabelle) und Schlusstext (unter den Summen).
+  // Platzhalter wie {kunde} oder {faellig} werden beim Rendern ersetzt (siehe pdf/placeholders.ts).
+  introText?: string | null;
+  closingText?: string | null;
 }
+
+export type PdfLayout = "CLEAR" | "BAND" | "COMPACT";
+export const PDF_LAYOUTS: PdfLayout[] = ["CLEAR", "BAND", "COMPACT"];
 
 const LABELS = {
   de: {
     number: "Nr.",
     date: "Datum",
+    details: "Details",
     dueDate: "Fällig am",
     validUntil: "Gültig bis",
     deliveryDate: "Leistungsdatum",
@@ -125,6 +136,7 @@ const LABELS = {
   en: {
     number: "No.",
     date: "Date",
+    details: "Details",
     dueDate: "Due date",
     validUntil: "Valid until",
     deliveryDate: "Delivery/service date",
@@ -200,6 +212,12 @@ function accentOnWhite(hex: string): string {
   return `#${mix(1)}${mix(3)}${mix(5)}`;
 }
 
+/** Mischt eine Farbe mit Weiß (strength 1 = volle Farbe, 0 = Weiß) - für zarte Flächen aus der Firmenfarbe. */
+function tint(hex: string, strength: number): string {
+  const ch = (i: number) => Math.round(255 - (255 - parseInt(hex.slice(i, i + 2), 16)) * strength).toString(16).padStart(2, "0");
+  return `#${ch(1)}${ch(3)}${ch(5)}`;
+}
+
 function countryName(code: string, intl: string): string {
   try {
     return new Intl.DisplayNames([intl], { type: "region" }).of(code.toUpperCase()) ?? code;
@@ -250,38 +268,85 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
 
   const setFont = (bold: boolean) => doc.font(bold ? fonts.bold : fonts.regular);
 
-  // ---------- Kopfbereich: Logo bzw. Firmenname links, Titel + Eckdaten rechts ----------
-  let hasLogo = false;
-  if (input.branding.logoPath && fs.existsSync(input.branding.logoPath)) {
-    try {
-      doc.image(input.branding.logoPath, PAGE_MARGIN, PAGE_MARGIN, { fit: [170, 60] });
-      hasLogo = true;
-    } catch {
-      // beschädigte/nicht unterstützte Bilddatei (pdfkit kann nur PNG/JPEG): Logo auslassen
-    }
-  }
-  if (!hasLogo) {
-    setFont(true);
-    doc.fillColor(accent).fontSize(16).text(input.branding.name, PAGE_MARGIN, PAGE_MARGIN + 4, { width: 240 });
-  }
+  // ---------- Kopfbereich (je nach Layout) ----------
+  const layout: PdfLayout = input.layout && PDF_LAYOUTS.includes(input.layout) ? input.layout : "CLEAR";
+  const numberLabelText = (input.numberLabel ?? { de: t.number, en: t.number })[input.locale];
+  const docTitle = input.docTypeLabel[input.locale];
 
-  setFont(true);
-  doc.fillColor(accent).fontSize(20).text(input.docTypeLabel[input.locale], 300, PAGE_MARGIN, { width: 245, align: "right" });
-
-  const metaRows: [string, string][] = [[(input.numberLabel ?? { de: t.number, en: t.number })[input.locale], input.documentNumber]];
-  metaRows.push([t.date, formatDate(input.issueDate, intl)]);
+  const metaRows: [string, string][] = [[t.date, formatDate(input.issueDate, intl)]];
   if (input.deliveryDate) metaRows.push([t.deliveryDate, formatDate(input.deliveryDate, intl)]);
   if (input.recipient.customerNumber) metaRows.push([t.customerNumber, input.recipient.customerNumber]);
   if (input.dueDate) metaRows.push([t.dueDate, formatDate(input.dueDate, intl)]);
   if (input.validUntil) metaRows.push([t.validUntil, formatDate(input.validUntil, intl)]);
 
-  let metaY = PAGE_MARGIN + 34;
-  for (const [label, value] of metaRows) {
+  const drawLogo = (x: number, y: number, w: number, h: number): boolean => {
+    if (!input.branding.logoPath || !fs.existsSync(input.branding.logoPath)) return false;
+    try {
+      doc.image(input.branding.logoPath, x, y, { fit: [w, h] });
+      return true;
+    } catch {
+      // beschädigte/nicht unterstützte Bilddatei (pdfkit kann nur PNG/JPEG): Logo auslassen
+      return false;
+    }
+  };
+  const drawMetaRows = (labelX: number, labelW: number, valueX: number, valueW: number, startY: number) => {
+    let y = startY;
+    for (const [label, value] of metaRows) {
+      setFont(false);
+      doc.fontSize(9).fillColor("#6b7280").text(label, labelX, y, { width: labelW, lineBreak: false });
+      setFont(true);
+      doc.fillColor("#111827").text(value, valueX, y, { width: valueW, align: "right", lineBreak: false });
+      y += 13;
+    }
+  };
+
+  // Anschriftenfeld: DIN 5008 Form B (Fensterumschlag) - im Layout "COMPACT" liegt es in einer Karte.
+  const addrX = layout === "COMPACT" ? PAGE_MARGIN + 12 : PAGE_MARGIN;
+  const addrW = layout === "COMPACT" ? 226 : 250;
+
+  if (layout === "CLEAR") {
+    if (!drawLogo(PAGE_MARGIN, PAGE_MARGIN, 170, 60)) {
+      doc.roundedRect(PAGE_MARGIN, PAGE_MARGIN, 30, 30, 7).fill(color);
+      setFont(true);
+      doc.fillColor(onColor).fontSize(15).text((input.branding.name.trim()[0] ?? "R").toUpperCase(), PAGE_MARGIN, PAGE_MARGIN + 8, { width: 30, align: "center", lineBreak: false });
+      doc.fillColor("#111827").fontSize(10).text(input.branding.name, PAGE_MARGIN, PAGE_MARGIN + 38, { width: 240 });
+    }
     setFont(false);
-    doc.fontSize(9).fillColor("#6b7280").text(label, 335, metaY, { width: 100, lineBreak: false });
+    doc.fillColor("#111827").fontSize(22).text(docTitle, 300, PAGE_MARGIN, { width: 245, align: "right", lineBreak: false });
+    doc.fillColor("#6b7280").fontSize(10).text(`${numberLabelText} ${input.documentNumber}`, 300, PAGE_MARGIN + 28, { width: 245, align: "right", lineBreak: false });
+    const boxH = metaRows.length * 13 + 14;
+    doc.roundedRect(345, 128, 200, boxH, 6).fill("#f3f4f6");
+    drawMetaRows(355, 85, 440, 95, 135);
+  } else if (layout === "BAND") {
+    doc.rect(0, 0, 595.28, 72).fill(color);
+    if (input.branding.logoPath && fs.existsSync(input.branding.logoPath)) {
+      doc.roundedRect(44, 12, 168, 48, 6).fill("#ffffff");
+    }
+    if (!drawLogo(49, 17, 158, 38)) {
+      setFont(true);
+      doc.fillColor(onColor).fontSize(16).text(input.branding.name, PAGE_MARGIN, 26, { width: 240, lineBreak: false });
+    }
+    setFont(false);
+    doc.fillColor(onColor).fontSize(9).text(`${docTitle} · ${numberLabelText}`, 300, 20, { width: 245, align: "right", lineBreak: false });
     setFont(true);
-    doc.fillColor("#111827").text(value, 435, metaY, { width: 110, align: "right", lineBreak: false });
-    metaY += 13;
+    doc.fontSize(17).text(input.documentNumber, 300, 33, { width: 245, align: "right", lineBreak: false });
+    drawMetaRows(335, 100, 435, 110, 96);
+  } else {
+    if (!drawLogo(PAGE_MARGIN, PAGE_MARGIN, 150, 50)) {
+      setFont(true);
+      doc.fillColor(accent).fontSize(14).text(input.branding.name, PAGE_MARGIN, PAGE_MARGIN + 4, { width: 250, lineBreak: false });
+    }
+    setFont(true);
+    doc.fontSize(10);
+    const pillText = `${docTitle} ${input.documentNumber}`;
+    const pillW = Math.min(doc.widthOfString(pillText) + 24, 245);
+    doc.roundedRect(PAGE_MARGIN + CONTENT_WIDTH - pillW, 48, pillW, 22, 11).fill(tint(color, 0.15));
+    doc.fillColor(accent).text(pillText, PAGE_MARGIN + CONTENT_WIDTH - pillW + 12, 54, { width: pillW - 24, lineBreak: false });
+    doc.roundedRect(PAGE_MARGIN, 124, 250, 100, 8).lineWidth(0.6).fillAndStroke("#ffffff", "#e5e7eb");
+    doc.roundedRect(312, 124, 233, 100, 8).lineWidth(0.6).fillAndStroke("#ffffff", "#e5e7eb");
+    setFont(false);
+    doc.fontSize(8).fillColor("#9ca3af").text(t.details, 324, 131, { width: 200, lineBreak: false });
+    drawMetaRows(324, 85, 409, 124, 146);
   }
 
   // ---------- Anschriftenfeld (DIN 5008 Form B, passt in Fensterumschläge) ----------
@@ -295,22 +360,22 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
     .filter(Boolean)
     .join(" · ");
   setFont(false);
-  doc.fontSize(7).fillColor("#6b7280").text(returnLine, PAGE_MARGIN, 132, { width: 250, lineBreak: false });
-  doc.moveTo(PAGE_MARGIN, 142).lineTo(PAGE_MARGIN + 250, 142).lineWidth(0.4).strokeColor("#9ca3af").stroke();
+  doc.fontSize(7).fillColor("#6b7280").text(returnLine, addrX, 132, { width: addrW, lineBreak: false });
+  doc.moveTo(addrX, 142).lineTo(addrX + addrW, 142).lineWidth(0.4).strokeColor("#9ca3af").stroke();
 
   let addressY = 150;
   setFont(true);
-  doc.fillColor("#111827").fontSize(11).text(input.recipient.name, PAGE_MARGIN, addressY, { width: 250 });
+  doc.fillColor("#111827").fontSize(11).text(input.recipient.name, addrX, addressY, { width: addrW });
   setFont(false);
-  if (input.recipient.contactName) doc.text(input.recipient.contactName, { width: 250 });
-  if (input.recipient.street) doc.text(input.recipient.street, { width: 250 });
+  if (input.recipient.contactName) doc.text(input.recipient.contactName, { width: addrW });
+  if (input.recipient.street) doc.text(input.recipient.street, { width: addrW });
   const recipientCity = [input.recipient.postalCode, input.recipient.city].filter(Boolean).join(" ");
-  if (recipientCity) doc.text(recipientCity, { width: 250 });
-  if (input.recipient.country && input.recipient.country !== "DE") doc.text(countryName(input.recipient.country, intl), { width: 250 });
+  if (recipientCity) doc.text(recipientCity, { width: addrW });
+  if (input.recipient.country && input.recipient.country !== "DE") doc.text(countryName(input.recipient.country, intl), { width: addrW });
   // USt-IdNr. des Leistungsempfängers: bei Reverse-Charge/innergemeinschaftlichen Leistungen
   // zwingend auf der Rechnung (§14a UStG), bei Geschäftskunden generell üblich.
   if (input.recipient.vatId) {
-    doc.fontSize(9).fillColor("#4b5563").text(`${t.vatId}: ${input.recipient.vatId}`, { width: 250 });
+    doc.fontSize(9).fillColor("#4b5563").text(`${t.vatId}: ${input.recipient.vatId}`, { width: addrW });
   }
   addressY = doc.y;
 
@@ -320,6 +385,24 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
   if (input.correctsDocumentNumber) {
     setFont(true);
     doc.fontSize(10).fillColor("#b91c1c").text(t.corrects(input.correctsDocumentNumber), PAGE_MARGIN, cursorY - 16, { width: CONTENT_WIDTH });
+    cursorY = doc.y + 12;
+  }
+
+  // Begrüßung (frei änderbar, Platzhalter siehe pdf/placeholders.ts)
+  const placeholderValues = {
+    kunde: input.recipient.name,
+    ansprechpartner: input.recipient.contactName || input.recipient.name,
+    nummer: input.documentNumber,
+    datum: formatDate(input.issueDate, intl),
+    faellig: input.dueDate ? formatDate(input.dueDate, intl) : input.validUntil ? formatDate(input.validUntil, intl) : "",
+    betrag: money(input.totalCents ?? 0),
+    firma: input.branding.name,
+  };
+  const introText = fillPlaceholders(input.introText, placeholderValues).trim();
+  const closingText = fillPlaceholders(input.closingText, placeholderValues).trim();
+  if (introText) {
+    setFont(false);
+    doc.fontSize(9.5).fillColor("#111827").text(introText, PAGE_MARGIN, cursorY, { width: CONTENT_WIDTH });
     cursorY = doc.y + 12;
   }
 
@@ -344,16 +427,29 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
       };
 
   function drawTableHeader(y: number) {
-    doc.fillColor(color).rect(PAGE_MARGIN, y, CONTENT_WIDTH, 20).fill();
+    let textColor: string = onColor;
+    let textY = y + 6;
+    if (layout === "BAND") {
+      doc.roundedRect(PAGE_MARGIN, y, CONTENT_WIDTH, 20, 3).fill(tint(color, 0.14));
+      textColor = accent;
+    } else if (layout === "CLEAR") {
+      doc.moveTo(PAGE_MARGIN, y + 18).lineTo(PAGE_MARGIN + CONTENT_WIDTH, y + 18).lineWidth(1.2).strokeColor(accent).stroke();
+      textColor = accent;
+      textY = y + 4;
+    } else {
+      doc.moveTo(PAGE_MARGIN, y + 18).lineTo(PAGE_MARGIN + CONTENT_WIDTH, y + 18).lineWidth(0.6).strokeColor("#d1d5db").stroke();
+      textColor = "#6b7280";
+      textY = y + 4;
+    }
     setFont(true);
-    doc.fillColor(onColor).fontSize(8.5);
-    doc.text(t.position, col.pos.x, y + 6, { width: col.pos.w, lineBreak: false });
-    doc.text(t.description, col.desc.x, y + 6, { width: col.desc.w, lineBreak: false });
-    doc.text(t.quantity, col.qty.x, y + 6, { width: col.qty.w, align: "right", lineBreak: false });
+    doc.fillColor(textColor).fontSize(8.5);
+    doc.text(t.position, col.pos.x, textY, { width: col.pos.w, lineBreak: false });
+    doc.text(t.description, col.desc.x, textY, { width: col.desc.w, lineBreak: false });
+    doc.text(t.quantity, col.qty.x, textY, { width: col.qty.w, align: "right", lineBreak: false });
     if (input.showPrices) {
-      doc.text(t.unitPrice, col.unitPrice.x, y + 6, { width: col.unitPrice.w, align: "right", lineBreak: false });
-      if (showVatColumn) doc.text(t.vat, col.vat.x, y + 6, { width: col.vat.w, align: "right", lineBreak: false });
-      doc.text(t.total, col.total.x, y + 6, { width: col.total.w, align: "right", lineBreak: false });
+      doc.text(t.unitPrice, col.unitPrice.x, textY, { width: col.unitPrice.w, align: "right", lineBreak: false });
+      if (showVatColumn) doc.text(t.vat, col.vat.x, textY, { width: col.vat.w, align: "right", lineBreak: false });
+      doc.text(t.total, col.total.x, textY, { width: col.total.w, align: "right", lineBreak: false });
     }
     doc.fillColor("#111827");
     return y + 24;
@@ -374,8 +470,8 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
       cursorY = drawTableHeader(PAGE_MARGIN);
     }
 
-    if (index % 2 === 1) {
-      doc.save().fillColor("#f3f4f6").rect(PAGE_MARGIN, cursorY - 3, CONTENT_WIDTH, rowHeight).fill().restore();
+    if (layout === "BAND" && index % 2 === 1) {
+      doc.save().fillColor("#f9fafb").rect(PAGE_MARGIN, cursorY - 3, CONTENT_WIDTH, rowHeight).fill().restore();
     }
     doc.fillColor("#111827").fontSize(9);
     setFont(false);
@@ -447,11 +543,23 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
     }
 
     cursorY += 3;
-    doc.fillColor(color).rect(labelX - 6, cursorY, PAGE_MARGIN + CONTENT_WIDTH - (labelX - 6), 22).fill();
-    setFont(true);
-    doc.fillColor(onColor).fontSize(11).text(t.grandTotal, labelX, cursorY + 6, { width: labelW, lineBreak: false });
-    doc.text(money(input.totalCents ?? 0), valueX, cursorY + 6, { width: valueW, align: "right", lineBreak: false });
-    cursorY += 22 + 10;
+    const barX = labelX - 6;
+    const barW = PAGE_MARGIN + CONTENT_WIDTH - barX;
+    if (layout === "COMPACT") {
+      doc.roundedRect(PAGE_MARGIN, cursorY, CONTENT_WIDTH, 30, 8).fill(tint(color, 0.1));
+      setFont(true);
+      doc.fillColor("#4b5563").fontSize(9).text(t.grandTotal, PAGE_MARGIN + 14, cursorY + 11, { width: 150, lineBreak: false });
+      doc.fillColor(accent).fontSize(15).text(money(input.totalCents ?? 0), valueX - 60, cursorY + 8, { width: valueW + 60, align: "right", lineBreak: false });
+      cursorY += 30 + 10;
+    } else {
+      const isBand = layout === "BAND";
+      doc.roundedRect(barX, cursorY, barW, 22, isBand ? 11 : 4).fill(isBand ? color : tint(color, 0.1));
+      const totalColor = isBand ? onColor : accent;
+      setFont(true);
+      doc.fillColor(totalColor).fontSize(11).text(t.grandTotal, labelX + (isBand ? 6 : 0), cursorY + 6, { width: labelW, lineBreak: false });
+      doc.text(money(input.totalCents ?? 0), valueX, cursorY + 6, { width: valueW - (isBand ? 6 : 0), align: "right", lineBreak: false });
+      cursorY += 22 + 10;
+    }
 
     if (noticeText) {
       setFont(false);
@@ -466,6 +574,15 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
     setFont(false);
     doc.fontSize(8).fillColor("#6b7280").text(t.receipt, PAGE_MARGIN, cursorY + 32, { width: 300 });
     cursorY = doc.y + 10;
+  }
+
+  // Schlusstext (frei änderbar)
+  if (closingText) {
+    setFont(false);
+    doc.fontSize(9.5);
+    ensureSpace(doc.heightOfString(closingText, { width: CONTENT_WIDTH }) + 12);
+    doc.fillColor("#111827").text(closingText, PAGE_MARGIN, cursorY, { width: CONTENT_WIDTH });
+    cursorY = doc.y + 12;
   }
 
   // ---------- Hinweise / Anmerkungen ----------

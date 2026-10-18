@@ -34,6 +34,20 @@ Tippfehlern werden passende Treffer gefunden).
 hinterlegte USt.-Satz wird bei Rechnungen automatisch vorausgefüllt, kann pro Position
 aber überschrieben werden.
 
+## Belegdesign und Texte
+
+Unter **Einstellungen → Beleg-Design** wählen Sie das Aussehen aller PDFs (Rechnung, Angebot,
+Auftragsbestätigung, Lieferschein): **Klar** (viel Weiß, feine Linien), **Akzentband** (farbiges Kopfband)
+oder **Kompakt** (Karten, große Summe). Über *Vorschau ansehen* öffnen Sie ein Beispiel-PDF mit Ihren
+echten Firmenangaben. Die Farbe stellen Sie unter *Logo & Stempel* ein. Alle gesetzlichen Pflichtangaben
+stehen in jedem Layout.
+
+Ebenfalls dort stehen die **Standardtexte** (Begrüßung über den Positionen, Schlusstext unter den Summen) für
+Rechnungen und Angebote. Platzhalter wie `{kunde}`, `{ansprechpartner}`, `{nummer}`, `{datum}`, `{faellig}`,
+`{betrag}` und `{firma}` werden im PDF automatisch gefüllt. Beim Anlegen eines Belegs wird der Standardtext
+übernommen und kann im Beleg für diesen einen Fall geändert werden - solange er ein Entwurf ist. Versendete
+Belege behalten ihren Text.
+
 ## Eine Rechnung erstellen
 
 1. **Rechnungen** → **Neue Rechnung**.
