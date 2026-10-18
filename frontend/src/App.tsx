@@ -12,13 +12,9 @@ import Products from "./pages/Products";
 import Materials from "./pages/Materials";
 import Invoices from "./pages/Invoices";
 import InvoiceDetail from "./pages/InvoiceDetail";
-import InvoiceNew from "./pages/InvoiceNew";
-import Quotes from "./pages/Quotes";
-import QuoteForm from "./pages/QuoteForm";
-import DeliveryNotes from "./pages/DeliveryNotes";
-import DeliveryNoteNew from "./pages/DeliveryNoteNew";
-import OrderConfirmations from "./pages/OrderConfirmations";
-import OrderConfirmationNew from "./pages/OrderConfirmationNew";
+import DocumentEditor from "./pages/DocumentEditor";
+import Documents from "./pages/Documents";
+import Catalog from "./pages/Catalog";
 import Finance from "./pages/Finance";
 import AuditLog from "./pages/AuditLog";
 import Settings from "./pages/Settings";
@@ -66,16 +62,20 @@ export default function App() {
         <Route path="/products" element={<Products />} />
         <Route path="/materials" element={<Materials />} />
         <Route path="/invoices" element={<Invoices />} />
-        <Route path="/invoices/new" element={<InvoiceNew />} />
+        <Route path="/documents" element={<Documents />} />
+        <Route path="/catalog" element={<Catalog />} />
+        <Route path="/invoices/new" element={<DocumentEditor kind="invoice" />} />
         <Route path="/invoices/:id" element={<InvoiceDetail />} />
-        <Route path="/invoices/:id/edit" element={<InvoiceNew />} />
-        <Route path="/quotes" element={<Quotes />} />
-        <Route path="/quotes/new" element={<QuoteForm />} />
-        <Route path="/quotes/:id/edit" element={<QuoteForm />} />
-        <Route path="/delivery-notes" element={<DeliveryNotes />} />
-        <Route path="/delivery-notes/new" element={<DeliveryNoteNew />} />
-        <Route path="/order-confirmations" element={<OrderConfirmations />} />
-        <Route path="/order-confirmations/new" element={<OrderConfirmationNew />} />
+        <Route path="/invoices/:id/edit" element={<DocumentEditor kind="invoice" />} />
+        <Route path="/quotes" element={<Navigate to="/documents?type=QUOTE" replace />} />
+        <Route path="/quotes/new" element={<DocumentEditor kind="quote" />} />
+        <Route path="/quotes/:id/edit" element={<DocumentEditor kind="quote" />} />
+        <Route path="/delivery-notes" element={<Navigate to="/documents?type=DELIVERY_NOTE" replace />} />
+        <Route path="/delivery-notes/new" element={<DocumentEditor kind="deliveryNote" />} />
+        <Route path="/delivery-notes/:id/edit" element={<DocumentEditor kind="deliveryNote" />} />
+        <Route path="/order-confirmations" element={<Navigate to="/documents?type=ORDER_CONFIRMATION" replace />} />
+        <Route path="/order-confirmations/new" element={<DocumentEditor kind="confirmation" />} />
+        <Route path="/order-confirmations/:id/edit" element={<DocumentEditor kind="confirmation" />} />
         <Route path="/finance" element={<Finance />} />
         <Route path="/audit-log" element={<AuditLog />} />
         <Route path="/settings" element={<Settings />} />

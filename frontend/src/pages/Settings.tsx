@@ -9,6 +9,7 @@ import { useSaveStatus } from "../hooks/useSaveStatus";
 import Users from "./Users";
 import { useToast } from "../components/Toast";
 import { PlaceholderHint } from "../components/DocumentTexts";
+import AuditLog from "./AuditLog";
 
 interface Company {
   name: string;
@@ -32,6 +33,10 @@ interface Company {
   invoiceClosingText?: string;
   quoteIntroText?: string;
   quoteClosingText?: string;
+  orderConfirmationIntroText?: string;
+  orderConfirmationClosingText?: string;
+  deliveryNoteIntroText?: string;
+  deliveryNoteClosingText?: string;
   iban?: string;
   bic?: string;
   isSmallBusiness: boolean;
@@ -64,6 +69,7 @@ const TABS = [
   { key: "design", label: "Beleg-Design" },
   { key: "email", label: "E-Mail-Versand" },
   { key: "security", label: "Sicherheit" },
+  { key: "audit", label: "Protokoll" },
   { key: "data", label: "Daten" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
@@ -435,6 +441,8 @@ export default function Settings() {
 
       {tab === "users" && user?.role === "ADMIN" && <Users />}
 
+      {tab === "audit" && user?.role === "ADMIN" && <AuditLog />}
+
       {tab === "design" && user?.role === "ADMIN" && (
         <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-5">
           <h2 className="font-medium">Beleg-Design</h2>
@@ -469,12 +477,22 @@ export default function Settings() {
             <label className="block text-sm mb-1 mt-3">Schlusstext</label>
             <textarea rows={4} value={company.invoiceClosingText ?? ""} onChange={(e) => setCompany({ ...company, invoiceClosingText: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
           </div>
+          {(
+            [
+              ["Angebote", "quoteIntroText", "quoteClosingText"],
+              ["Auftragsbestätigungen", "orderConfirmationIntroText", "orderConfirmationClosingText"],
+              ["Lieferscheine", "deliveryNoteIntroText", "deliveryNoteClosingText"],
+            ] as const
+          ).map(([title, introKey, closingKey]) => (
+            <div key={introKey}>
+              <h3 className="text-sm font-semibold mb-2">Standardtexte für {title}</h3>
+              <label className="block text-sm mb-1">Begrüßung</label>
+              <textarea rows={3} value={company[introKey] ?? ""} onChange={(e) => setCompany({ ...company, [introKey]: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
+              <label className="block text-sm mb-1 mt-3">Schlusstext</label>
+              <textarea rows={4} value={company[closingKey] ?? ""} onChange={(e) => setCompany({ ...company, [closingKey]: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
+            </div>
+          ))}
           <div>
-            <h3 className="text-sm font-semibold mb-2">Standardtexte für Angebote</h3>
-            <label className="block text-sm mb-1">Begrüßung</label>
-            <textarea rows={3} value={company.quoteIntroText ?? ""} onChange={(e) => setCompany({ ...company, quoteIntroText: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
-            <label className="block text-sm mb-1 mt-3">Schlusstext</label>
-            <textarea rows={4} value={company.quoteClosingText ?? ""} onChange={(e) => setCompany({ ...company, quoteClosingText: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
             <PlaceholderHint />
             <p className="text-xs text-slate-500 mt-1">
               Diese Texte werden beim Anlegen eines neuen Belegs übernommen und können dort für den einzelnen Beleg geändert werden. Bereits versendete Belege behalten ihren Text.

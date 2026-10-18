@@ -57,6 +57,7 @@ export function PricedItemsEditor({
   products,
   onProductCreated,
   compact = false,
+  showPrices = true,
 }: {
   items: LineItem[];
   onChange: (items: LineItem[]) => void;
@@ -65,6 +66,8 @@ export function PricedItemsEditor({
   onProductCreated?: (product: Product) => void;
   /** Schmale Spalte (z.B. neben einer Live-Vorschau): jede Position als eigene Karte statt als breite Tabellenzeile. */
   compact?: boolean;
+  /** false z.B. beim Lieferschein: nur Menge und Einheit, keine Preise/USt. */
+  showPrices?: boolean;
 }) {
   const { t } = useTranslation();
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -144,7 +147,7 @@ export function PricedItemsEditor({
                   <input list="pe-products" placeholder="Beschreibung oder Produkt eintippen" value={item.description} onChange={(e) => onDescription(item, e.target.value)} className={inputClass} />
                   {productHint(item)}
                 </div>
-                <select value={item.productId || ""} onChange={(e) => applyProduct(item._key, e.target.value)} className={`${inputClass} !w-28 shrink-0`} aria-label="Aus Katalog wählen">
+                <select value={item.productId || ""} onChange={(e) => applyProduct(item._key, e.target.value)} className={`${inputClass} !w-28 shrink-0 ${products.length ? "" : "hidden"}`} aria-label="Aus Katalog wählen">
                   <option value="">Katalog</option>
                   {products.map((pr) => (
                     <option key={pr.id} value={pr.id}>{pr.name}</option>
@@ -152,7 +155,7 @@ export function PricedItemsEditor({
                 </select>
                 <button type="button" onClick={() => onChange(items.filter((it) => it._key !== item._key))} className="text-red-500 px-1 pt-1" aria-label="Position entfernen">✕</button>
               </div>
-              <div className="grid grid-cols-[1fr_0.8fr_1.2fr_0.9fr_1.1fr] gap-2 items-end pl-6">
+              <div className={`grid ${showPrices ? "grid-cols-[1fr_0.8fr_1.2fr_0.9fr_1.1fr]" : "grid-cols-[1fr_1fr]"} gap-2 items-end pl-6`}>
                 <div>
                   <label className="block text-[11px] text-slate-500 mb-0.5">Menge</label>
                   <input type="number" min={0} step="any" value={item.quantity} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { quantity: parseFloat(e.target.value) || 0 })} className={inputClass} />
@@ -161,11 +164,11 @@ export function PricedItemsEditor({
                   <label className="block text-[11px] text-slate-500 mb-0.5">Einheit</label>
                   <input value={item.unit} onChange={(e) => updateItem(item._key, { unit: e.target.value })} className={inputClass} />
                 </div>
-                <div>
+                <div className={showPrices ? undefined : "hidden"}>
                   <label className="block text-[11px] text-slate-500 mb-0.5">Preis (€)</label>
                   <input type="number" min={0} step="0.01" value={item.unitPriceCents / 100} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { unitPriceCents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className={inputClass} />
                 </div>
-                <div>
+                <div className={showPrices ? undefined : "hidden"}>
                   <label className="block text-[11px] text-slate-500 mb-0.5">USt.</label>
                   <select value={item.vatRateBps} onChange={(e) => updateItem(item._key, { vatRateBps: Number(e.target.value) })} className={inputClass}>
                     <option value={1900}>19%</option>
@@ -173,7 +176,7 @@ export function PricedItemsEditor({
                     <option value={0}>0%</option>
                   </select>
                 </div>
-                <div className="text-right text-sm font-medium pb-1">{formatEuro(item.quantity * item.unitPriceCents)}</div>
+                <div className={`text-right text-sm font-medium pb-1 ${showPrices ? "" : "hidden"}`}>{formatEuro(item.quantity * item.unitPriceCents)}</div>
               </div>
             </div>
           ))}

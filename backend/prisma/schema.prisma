@@ -53,6 +53,10 @@ model Company {
   invoiceClosingText String @default("Bitte überweisen Sie den Betrag bis zum {faellig} unter Angabe der Rechnungsnummer. Bei Fragen melden Sie sich gern.\n\nMit freundlichen Grüßen\n{firma}")
   quoteIntroText     String @default("Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihre Anfrage. Wir unterbreiten Ihnen folgendes Angebot:")
   quoteClosingText   String @default("Dieses Angebot gilt bis zum {faellig}. Wir freuen uns auf Ihren Auftrag.\n\nMit freundlichen Grüßen\n{firma}")
+  orderConfirmationIntroText   String @default("Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihren Auftrag. Wir bestätigen Ihnen folgende Positionen:")
+  orderConfirmationClosingText String @default("Wir kümmern uns um die Ausführung und melden uns bei Rückfragen.\n\nMit freundlichen Grüßen\n{firma}")
+  deliveryNoteIntroText        String @default("Sehr geehrte Damen und Herren,\n\nwir liefern Ihnen folgende Positionen:")
+  deliveryNoteClosingText      String @default("Bitte prüfen Sie die Lieferung auf Vollständigkeit und Unversehrtheit.\n\nMit freundlichen Grüßen\n{firma}")
   logoPath      String?
   stampPath     String? // Firmenstempel, wird automatisch auf PDFs eingefügt (siehe modules/pdf)
   signaturePath String? // Unterschrift (z.B. eingescannt), wird automatisch auf PDFs eingefügt
@@ -326,6 +330,7 @@ model Invoice {
   closingText     String?
   footerText      String?
   sourceQuoteId   String?
+  sourceOrderConfirmationId String?
   pdfPath         String?
 
   // Storno-/Korrekturbeleg (Gutschrift): Eine bereits versendete/bezahlte Rechnung wird
@@ -436,6 +441,10 @@ model DeliveryNote {
   noteNumber                String
   deliveryDate              DateTime            @default(now())
   notes                     String?
+  // "DRAFT" (wird noch bearbeitet, PDF mit Entwurfs-Wasserzeichen) oder "SENT" (fertiggestellt)
+  status                    String              @default("DRAFT")
+  introText                 String?
+  closingText               String?
   pdfPath                   String?
   sourceOrderConfirmation   OrderConfirmation?  @relation(fields: [sourceOrderConfirmationId], references: [id])
   sourceOrderConfirmationId String?
@@ -480,6 +489,11 @@ model OrderConfirmation {
   vatTotalCents Int      @default(0)
   totalCents    Int      @default(0)
   notes         String?
+  // "DRAFT" oder "SENT" - siehe DeliveryNote.status
+  status        String   @default("DRAFT")
+  introText     String?
+  closingText   String?
+  sourceQuoteId String?
   pdfPath       String?
   // Siehe Kommentar bei DeliveryNote.voidedAt - gleiches Prinzip.
   voidedAt      DateTime?

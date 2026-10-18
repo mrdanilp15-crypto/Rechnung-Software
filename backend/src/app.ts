@@ -17,6 +17,7 @@ import { apiRateLimiter, authRateLimiter } from "./middleware/rateLimit";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 import { authRouter } from "./modules/auth/router";
+import { documentsRouter } from "./modules/documents/router";
 import { usersRouter } from "./modules/users/router";
 import { companiesRouter } from "./modules/companies/router";
 import { customersRouter } from "./modules/customers/router";
@@ -99,6 +100,7 @@ export function createApp() {
   app.use("/api/bank", bankRouter);
   app.use("/api/materials", materialsRouter);
   app.use("/api/audit-logs", auditRouter);
+  app.use("/api/documents", documentsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

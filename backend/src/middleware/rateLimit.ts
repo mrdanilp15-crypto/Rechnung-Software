@@ -8,7 +8,7 @@ export const apiRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   // Die Live-Vorschau im Rechnungseditor sendet beim Tippen viele Anfragen - sie hat ein eigenes Limit
-  skip: (req) => req.path.endsWith("/invoices/preview-pdf"),
+  skip: (req) => req.path.endsWith("/preview-pdf"),
   message: { error: "Zu viele Anfragen. Bitte später erneut versuchen." },
 });
 

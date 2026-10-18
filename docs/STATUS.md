@@ -18,6 +18,7 @@ implementiert.
 | E-Rechnung (XRechnung, UBL/EN16931) | ✅ | Export je Rechnung über "XRechnung (XML)" (Storno als UBL-CreditNote). **Mit dem offiziellen KoSIT-Validator 1.6.3 und der XRechnung-Prüfkonfiguration 3.0.2 (Stand 31.08.2026) geprüft:** Regelrechnung, Kleinunternehmer, innergemeinschaftliche Lieferung, Reverse-Charge, Ausfuhr, nicht steuerbare Leistung und Storno werden ohne Fehler akzeptiert. Bei öffentlichen Auftraggebern zusätzlich die Leitweg-ID hinterlegen. ZUGFeRD (Hybrid-PDF) nicht implementiert. |
 | PDF-Generierung, PDF/A-kompatibel | ✅ | DIN-5008-Layout, eingebettete Schrift, **PDF/A-3b - mit veraPDF 1.30.3 für alle Belegarten (Rechnung, Entwurf, Storno, Kleinunternehmer, Angebot, Lieferschein, Auftragsbestätigung, Mehrseiter) fehlerfrei validiert.** Gilt nur mit eingebetteter Schrift (Docker-Image: Liberation Sans); ohne Schriftdatei Fallback auf Helvetica (kein PDF/A) |
 | Exportfunktionen (PDF, JSON, CSV) | ✅ | |
+| Beleg-Ablauf (Angebot → Auftrag → Lieferschein → Rechnung), gemeinsamer Editor mit Auto-Speichern und Live-Vorschau für alle Belegarten, Belege-Seite | ✅ | Entwürfe je Belegart, Weiterführen mit einem Klick, Folgebeleg-Markierung; Menü auf sechs Punkte reduziert |
 | Belegdesign (3 Layouts) und änderbare Begrüßungs-/Schlusstexte | ✅ | Klar / Akzentband / Kompakt, mit veraPDF (PDF/A-3b) geprüft; Texte mit Platzhaltern, je Beleg änderbar bis zum Versand |
 | Dunkelmodus/helles UI | ✅ | |
 | Mehrsprachigkeit (DE/EN) | 🟡 | Frontend vollständig; Backend-Fehlermeldungen aktuell nur Deutsch |

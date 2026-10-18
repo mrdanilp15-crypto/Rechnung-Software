@@ -7,6 +7,8 @@ import { writeAuditLog } from "../audit/auditLog";
 import { nextDocumentNumber } from "../shared/numbering";
 import { renderDocumentPdf } from "../pdf/documentTemplate";
 import { resolvePdfLayout } from "../pdf/layout";
+import { renderSimplePreview, simplePreviewSchema } from "../pdf/docPreview";
+import { previewRateLimiter } from "../../middleware/rateLimit";
 
 export const deliveryNotesRouter = Router();
 deliveryNotesRouter.use(requireAuth);
@@ -26,6 +28,8 @@ const createSchema = z.object({
   customerId: z.string(),
   deliveryDate: z.coerce.date().optional(),
   notes: z.string().optional(),
+  introText: z.string().max(3000).optional(),
+  closingText: z.string().max(3000).optional(),
   sourceOrderConfirmationId: z.string().optional(),
   items: z.array(
     z.object({ description: z.string().min(1), quantity: z.number().positive(), unit: z.string().default("Stk.") })
@@ -61,6 +65,8 @@ deliveryNotesRouter.post("/", async (req, res) => {
         noteNumber,
         deliveryDate: body.deliveryDate ?? new Date(),
         notes: body.notes,
+        introText: body.introText ?? company.deliveryNoteIntroText,
+        closingText: body.closingText ?? company.deliveryNoteClosingText,
         sourceOrderConfirmationId: body.sourceOrderConfirmationId,
         items: { create: body.items.map((item, idx) => ({ position: idx + 1, ...item })) },
       },
@@ -91,10 +97,56 @@ deliveryNotesRouter.get("/:id/pdf", async (req, res) => {
     items: note.items,
     notes: note.notes,
     layout: resolvePdfLayout(note.company.pdfLayout, req.query.layout),
+    isDraft: note.status === "DRAFT",
+    introText: note.introText,
+    closingText: note.closingText,
     showPrices: false,
   });
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `inline; filename="${note.noteNumber}.pdf"`);
   res.send(pdfBuffer);
+});
+
+// ---------- Entwürfe, Vorschau ----------
+
+deliveryNotesRouter.get("/:id", async (req, res) => {
+  const note = await prisma.deliveryNote.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId, voidedAt: null }, include: { items: true, customer: true } });
+  if (!note) throw new HttpError(404, "Lieferschein nicht gefunden");
+  res.json(note);
+});
+
+deliveryNotesRouter.post("/preview-pdf", previewRateLimiter, async (req, res) => {
+  const body = simplePreviewSchema.parse(req.body);
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: req.auth!.companyId } });
+  const customer = body.customerId ? await prisma.customer.findFirst({ where: { id: body.customerId, companyId: company.id } }) : null;
+  const pdf = await renderSimplePreview("deliveryNote", company, customer, body);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Cache-Control", "no-store");
+  res.send(pdf);
+});
+
+deliveryNotesRouter.patch("/:id", async (req, res) => {
+  const existing = await prisma.deliveryNote.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId, voidedAt: null } });
+  if (!existing) throw new HttpError(404, "Lieferschein nicht gefunden");
+  if (existing.status !== "DRAFT") throw new HttpError(409, "Nur Entwürfe können bearbeitet werden.");
+  const body = createSchema.partial().parse(req.body);
+  if (body.customerId) {
+    const customer = await prisma.customer.findFirst({ where: { id: body.customerId, companyId: req.auth!.companyId } });
+    if (!customer) throw new HttpError(404, "Kunde nicht gefunden");
+  }
+  const data: any = { customerId: body.customerId, deliveryDate: body.deliveryDate, notes: body.notes, introText: body.introText, closingText: body.closingText };
+  if (body.items) data.items = { deleteMany: {}, create: body.items.map((item, idx) => ({ position: idx + 1, description: item.description, quantity: item.quantity, unit: item.unit })) };
+  const updated = await prisma.deliveryNote.update({ where: { id: existing.id }, data, include: { items: true, customer: true } });
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "delivery_note.update", entityType: "DeliveryNote", entityId: existing.id });
+  res.json(updated);
+});
+
+deliveryNotesRouter.post("/:id/finalize", async (req, res) => {
+  const existing = await prisma.deliveryNote.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId, voidedAt: null }, include: { items: true } });
+  if (!existing) throw new HttpError(404, "Lieferschein nicht gefunden");
+  if (existing.items.length === 0) throw new HttpError(400, "Bitte mindestens eine Position eintragen.");
+  const updated = existing.status === "DRAFT" ? await prisma.deliveryNote.update({ where: { id: existing.id }, data: { status: "SENT" } }) : existing;
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "delivery_note.finalize", entityType: "DeliveryNote", entityId: existing.id });
+  res.json(updated);
 });

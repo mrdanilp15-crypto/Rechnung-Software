@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
-import { MobileCard, MobileField } from "../components/MobileCard";
 
-interface Invoice {
+interface DocRow {
+  kind: "INVOICE" | "QUOTE" | "ORDER_CONFIRMATION" | "DELIVERY_NOTE";
   id: string;
-  invoiceNumber: string | null;
+  number: string | null;
+  customerName: string;
+  date: string;
+  totalCents: number | null;
   status: string;
-  isCancellationDocument?: boolean;
-  totalCents: number;
-  customer: { name: string };
+  isCancellationDocument: boolean;
 }
 
 interface RevenueStatus {
@@ -21,46 +21,45 @@ interface RevenueStatus {
   currentYearThresholdCents: number;
   percentUsed: number;
   isApproaching: boolean;
-  isExceeded: boolean;
   priorYearExceeded: boolean;
   currentYearExceeded: boolean;
 }
 
+const KIND_LABEL = { INVOICE: "Rechnung", QUOTE: "Angebot", ORDER_CONFIRMATION: "Auftrag", DELIVERY_NOTE: "Lieferschein" } as const;
+const KIND_BASE = { INVOICE: "/invoices", QUOTE: "/quotes", ORDER_CONFIRMATION: "/order-confirmations", DELIVERY_NOTE: "/delivery-notes" } as const;
+const format = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
+
+/** Startseite: Schnellaktionen, die drei wichtigsten Kennzahlen und offene Entwürfe. */
 export default function Dashboard() {
-  const { t } = useTranslation();
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [rows, setRows] = useState<DocRow[]>([]);
   const [revenue, setRevenue] = useState<RevenueStatus | null>(null);
-  const [counts, setCounts] = useState({ customers: 0, products: 0, openQuotes: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api
-      .get("/invoices")
-      .then((res) => setInvoices(res.data))
-      .finally(() => setLoading(false));
+    api.get("/documents").then((res) => setRows(res.data)).finally(() => setLoading(false));
     api.get("/companies/me/revenue-status").then((res) => setRevenue(res.data));
-    Promise.all([api.get("/customers"), api.get("/products"), api.get("/quotes")]).then(([customers, products, quotes]) => {
-      setCounts({
-        customers: customers.data.length,
-        products: products.data.length,
-        openQuotes: quotes.data.filter((q: { status: string }) => q.status === "SENT" || q.status === "DRAFT").length,
-      });
-    });
   }, []);
 
-  // Korrekturbelege (Storno/Gutschrift) tragen negative Beträge und stehen immer neben dem
-  // stornierten Original (Status CANCELLED) - in den offenen Posten haben sie nichts verloren.
-  const openTotal = invoices
-    .filter((i) => !i.isCancellationDocument && (i.status === "SENT" || i.status === "OVERDUE"))
-    .reduce((sum, i) => sum + i.totalCents, 0);
-  const overdueCount = invoices.filter((i) => !i.isCancellationDocument && i.status === "OVERDUE").length;
-  const paidTotal = invoices.filter((i) => i.status === "PAID").reduce((sum, i) => sum + i.totalCents, 0);
+  // Korrekturbelege (Storno/Gutschrift) tragen negative Beträge und stehen neben dem stornierten Original -
+  // in den offenen Posten haben sie nichts verloren.
+  const invoices = rows.filter((r) => r.kind === "INVOICE" && !r.isCancellationDocument);
+  const open = invoices.filter((r) => r.status === "SENT" || r.status === "OVERDUE");
+  const openTotal = open.reduce((sum, r) => sum + (r.totalCents ?? 0), 0);
+  const overdue = invoices.filter((r) => r.status === "OVERDUE");
+  const drafts = rows.filter((r) => r.status === "DRAFT");
+  const recent = rows.filter((r) => r.status !== "DRAFT").slice(0, 6);
 
-  const format = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
+  const card = "bg-white dark:bg-slate-800 rounded-lg p-4 shadow";
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-6">{t("nav.dashboard")}</h1>
+      <h1 className="text-2xl font-semibold mb-4">Start</h1>
+
+      <div className="flex flex-wrap gap-2 mb-6">
+        <Link to="/invoices/new" className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">+ Neue Rechnung</Link>
+        <Link to="/quotes/new" className="px-4 py-2 rounded text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">Neues Angebot</Link>
+        <Link to="/customers" className="px-4 py-2 rounded text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">Kunden</Link>
+      </div>
 
       {revenue?.isSmallBusiness && (revenue.isApproaching || revenue.currentYearExceeded || revenue.priorYearExceeded) && (
         <div className={`rounded-lg p-4 mb-6 text-sm ${revenue.currentYearExceeded || revenue.priorYearExceeded ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"}`}>
@@ -75,58 +74,52 @@ export default function Dashboard() {
       )}
 
       {loading ? (
-        <p>{t("common.loading")}</p>
+        <p>Wird geladen ...</p>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-white dark:bg-slate-800 rounded-lg p-5 shadow">
-              <p className="text-sm text-slate-500">Offene Forderungen</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <Link to="/documents?type=INVOICE" className={`${card} hover:shadow-md transition-shadow`}>
+              <p className="text-sm text-slate-500">Offen</p>
               <p className="text-2xl font-semibold">{format(openTotal)}</p>
-            </div>
-            <div className="bg-white dark:bg-slate-800 rounded-lg p-5 shadow">
-              <p className="text-sm text-slate-500">Überfällige Rechnungen</p>
-              <p className="text-2xl font-semibold text-red-600">{overdueCount}</p>
-            </div>
-            <div className="bg-white dark:bg-slate-800 rounded-lg p-5 shadow">
-              <p className="text-sm text-slate-500">Bezahlt (gesamt)</p>
-              <p className="text-2xl font-semibold text-green-600">{format(paidTotal)}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <Link to="/customers" className="bg-white dark:bg-slate-800 rounded-lg p-5 shadow hover:shadow-md transition-shadow">
-              <p className="text-sm text-slate-500">Kunden</p>
-              <p className="text-2xl font-semibold">{counts.customers}</p>
+              <p className="text-xs text-slate-500 mt-1">{open.length} Rechnung{open.length === 1 ? "" : "en"}</p>
             </Link>
-            <Link to="/products" className="bg-white dark:bg-slate-800 rounded-lg p-5 shadow hover:shadow-md transition-shadow">
-              <p className="text-sm text-slate-500">Produkte &amp; Leistungen</p>
-              <p className="text-2xl font-semibold">{counts.products}</p>
+            <Link to="/documents?type=INVOICE" className={`${card} hover:shadow-md transition-shadow`}>
+              <p className="text-sm text-slate-500">Überfällig</p>
+              <p className={`text-2xl font-semibold ${overdue.length ? "text-red-600" : ""}`}>{overdue.length}</p>
+              <p className="text-xs text-slate-500 mt-1">{overdue.length ? format(overdue.reduce((s, r) => s + (r.totalCents ?? 0), 0)) : "alles im Rahmen"}</p>
             </Link>
-            <Link to="/quotes" className="bg-white dark:bg-slate-800 rounded-lg p-5 shadow hover:shadow-md transition-shadow">
-              <p className="text-sm text-slate-500">Offene Angebote</p>
-              <p className="text-2xl font-semibold">{counts.openQuotes}</p>
+            <Link to="/documents?type=DRAFT" className={`${card} hover:shadow-md transition-shadow`}>
+              <p className="text-sm text-slate-500">Entwürfe</p>
+              <p className="text-2xl font-semibold">{drafts.length}</p>
+              <p className="text-xs text-slate-500 mt-1">noch nicht fertiggestellt</p>
             </Link>
           </div>
 
-          <h2 className="text-lg font-medium mb-3">Letzte Rechnungen</h2>
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
-            {invoices.slice(0, 8).map((inv) => (
-              <div key={inv.id}>
-                {/* Desktop */}
-                <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "140px 1fr 120px 110px" }}>
-                  <span className="truncate">{inv.invoiceNumber ?? "Entwurf"}</span>
-                  <span className="truncate">{inv.customer.name}</span>
-                  <span className="text-right">{format(inv.totalCents)}</span>
-                  <span className="text-slate-500 text-right">{inv.isCancellationDocument ? t("invoices.creditNote") : t(`invoices.${inv.status.toLowerCase()}`)}</span>
-                </div>
-                {/* Mobile */}
-                <MobileCard title={inv.invoiceNumber ?? "Entwurf"} subtitle={inv.customer.name}>
-                  <MobileField label="Betrag" value={format(inv.totalCents)} />
-                  <MobileField label="Status" value={inv.isCancellationDocument ? t("invoices.creditNote") : t(`invoices.${inv.status.toLowerCase()}`)} />
-                </MobileCard>
+          {drafts.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-sm font-medium text-slate-500 mb-2">Zuletzt angefangen</h2>
+              <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+                {drafts.slice(0, 4).map((r) => (
+                  <Link key={`${r.kind}-${r.id}`} to={`${KIND_BASE[r.kind]}/${r.id}/edit`} className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700">
+                    <span className="truncate"><span className="text-slate-500">{KIND_LABEL[r.kind]}</span> · {r.customerName}</span>
+                    <span className="shrink-0 text-slate-500">{r.totalCents === null ? "" : format(r.totalCents)} <span className="text-brand ml-2">Weiter →</span></span>
+                  </Link>
+                ))}
               </div>
+            </div>
+          )}
+
+          <h2 className="text-sm font-medium text-slate-500 mb-2">Zuletzt ausgestellt</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+            {recent.map((r) => (
+              <Link key={`${r.kind}-${r.id}`} to={r.kind === "INVOICE" ? `/invoices/${r.id}` : `/documents?type=${r.kind}`} className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700">
+                <span className="truncate"><span className="text-slate-500">{KIND_LABEL[r.kind]}</span> {r.number} · {r.customerName}</span>
+                <span className="shrink-0">{r.totalCents === null ? "" : format(r.totalCents)}</span>
+              </Link>
             ))}
+            {recent.length === 0 && <p className="px-4 py-6 text-center text-slate-500 text-sm">Noch nichts ausgestellt. Starten Sie mit "Neue Rechnung".</p>}
           </div>
+          <p className="text-sm mt-3"><Link to="/documents" className="text-brand hover:underline">Alle Belege ansehen →</Link></p>
         </>
       )}
     </div>

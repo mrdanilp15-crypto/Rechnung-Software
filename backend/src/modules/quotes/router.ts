@@ -8,6 +8,8 @@ import { nextDocumentNumber } from "../shared/numbering";
 import { calculateDocumentTotals, vatBreakdownFromLineItems } from "../tax/calculator";
 import { renderDocumentPdf } from "../pdf/documentTemplate";
 import { resolvePdfLayout } from "../pdf/layout";
+import { renderSimplePreview, simplePreviewSchema } from "../pdf/docPreview";
+import { previewRateLimiter } from "../../middleware/rateLimit";
 import { emitEvent } from "../plugins/hooks";
 import { buildInvoiceFinancials, defaultDueDate } from "../invoices/build";
 import { deductMaterialStock } from "../materials/stock";
@@ -242,6 +244,7 @@ quotesRouter.get("/:id/pdf", async (req, res) => {
     isSmallBusiness: quote.company.isSmallBusiness,
     notes: quote.notes,
     layout: resolvePdfLayout(quote.company.pdfLayout, req.query.layout),
+    isDraft: quote.status === "DRAFT",
     introText: quote.introText,
     closingText: quote.closingText,
     showPrices: true,
@@ -251,4 +254,53 @@ quotesRouter.get("/:id/pdf", async (req, res) => {
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `inline; filename="${quote.quoteNumber}.pdf"`);
   res.send(pdfBuffer);
+});
+
+// ---------- Vorschau und Weiterführen ----------
+
+quotesRouter.post("/preview-pdf", previewRateLimiter, async (req, res) => {
+  const body = simplePreviewSchema.parse(req.body);
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: req.auth!.companyId } });
+  const customer = body.customerId ? await prisma.customer.findFirst({ where: { id: body.customerId, companyId: company.id } }) : null;
+  const pdf = await renderSimplePreview("quote", company, customer, body);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Cache-Control", "no-store");
+  res.send(pdf);
+});
+
+// Weiter im Ablauf: Angebot -> Auftragsbestätigung (Entwurf mit den Positionen des Angebots)
+quotesRouter.post("/:id/convert-to-order-confirmation", async (req, res) => {
+  const quote = await prisma.quote.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId }, include: { items: true } });
+  if (!quote) throw new HttpError(404, "Angebot nicht gefunden");
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: quote.companyId } });
+  const confirmation = await prisma.$transaction(async (tx) => {
+    const confirmationNumber = await nextDocumentNumber(company.id, "ORDER_CONFIRMATION", tx);
+    return tx.orderConfirmation.create({
+      data: {
+        companyId: company.id,
+        customerId: quote.customerId,
+        confirmationNumber,
+        sourceQuoteId: quote.id,
+        subtotalCents: quote.subtotalCents,
+        vatTotalCents: quote.vatTotalCents,
+        totalCents: quote.totalCents,
+        introText: company.orderConfirmationIntroText,
+        closingText: company.orderConfirmationClosingText,
+        items: {
+          create: quote.items.map((i) => ({
+            position: i.position,
+            description: i.description,
+            quantity: i.quantity,
+            unit: i.unit,
+            unitPriceCents: i.unitPriceCents,
+            vatRateBps: i.vatRateBps,
+            lineTotalCents: i.lineTotalCents,
+          })),
+        },
+      },
+      include: { items: true, customer: true },
+    });
+  });
+  await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "quote.convert_to_order_confirmation", entityType: "Quote", entityId: quote.id, metadata: { orderConfirmationId: confirmation.id } });
+  res.status(201).json(confirmation);
 });

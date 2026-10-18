@@ -34,6 +34,23 @@ Tippfehlern werden passende Treffer gefunden).
 hinterlegte USt.-Satz wird bei Rechnungen automatisch vorausgefüllt, kann pro Position
 aber überschrieben werden.
 
+## Navigation und Belege
+
+Das Menü hat sechs Punkte: **Start** (Schnellaktionen, offene Posten, angefangene Entwürfe), **Belege**,
+**Kunden**, **Katalog** (Produkte/Leistungen und Material), **Finanzen** und **Einstellungen** (inkl. Protokoll).
+
+Unter **Belege** stehen Rechnungen, Angebote, Auftragsbestätigungen und Lieferscheine in einer Liste -
+Entwürfe zuerst, Filter nach Belegart, Suche nach Nummer oder Kunde. **+ Neuer Beleg** legt jede Belegart
+neu an. Alle vier Belegarten nutzen denselben Editor (Kunde direkt anlegen, Auto-Speichern als Entwurf,
+Live-Vorschau, siehe unten); auf Lieferscheinen entfallen Preise.
+
+Der übliche Ablauf ist **Angebot → Auftrag → Lieferschein → Rechnung**. Im Menü (⋮) eines Belegs
+führen Sie ihn mit einem Klick zum nächsten weiter: Kunde und Positionen werden übernommen, der Folgebeleg
+öffnet sich als Entwurf. Bei Angeboten setzen Sie dort auch "angenommen/abgelehnt". Ein "✓ weitergeführt" in
+der Liste zeigt, dass daraus bereits ein Folgebeleg entstanden ist. Entwürfe von Angebot, Auftrag und
+Lieferschein tragen im PDF ein "ENTWURF"-Wasserzeichen, bis sie fertiggestellt sind. Die klassische
+Rechnungsliste mit Mehrfachauswahl und E-Mail-Status erreichen Sie über "Rechnungen verwalten".
+
 ## Belegdesign und Texte
 
 Unter **Einstellungen → Beleg-Design** wählen Sie das Aussehen aller PDFs (Rechnung, Angebot,

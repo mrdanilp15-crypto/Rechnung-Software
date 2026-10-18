@@ -6,18 +6,15 @@ import { useDarkMode } from "../theme/useDarkMode";
 import { setLocale } from "../i18n";
 import { api } from "../api/client";
 
+// Sechs Hauptpunkte statt zwölf: alle Belegarten stehen unter "Belege", Produkte und Material unter "Katalog".
+// "match" bestimmt, welche Unterseiten den Menüpunkt hervorheben.
 const navItems = [
-  { to: "/", key: "dashboard" },
-  { to: "/customers", key: "customers" },
-  { to: "/products", key: "products" },
-  { to: "/materials", key: "materials" },
-  { to: "/invoices", key: "invoices" },
-  { to: "/quotes", key: "quotes" },
-  { to: "/delivery-notes", key: "deliveryNotes" },
-  { to: "/order-confirmations", key: "orderConfirmations" },
-  { to: "/finance", key: "finance" },
-  { to: "/audit-log", key: "auditLog", adminOnly: true },
-  { to: "/settings", key: "settings" },
+  { to: "/", key: "start", match: [] as string[] },
+  { to: "/documents", key: "documents", match: ["/documents", "/invoices", "/quotes", "/order-confirmations", "/delivery-notes"] },
+  { to: "/customers", key: "customers", match: ["/customers"] },
+  { to: "/catalog", key: "catalog", match: ["/catalog", "/products", "/materials"] },
+  { to: "/finance", key: "finance", match: ["/finance"] },
+  { to: "/settings", key: "settings", match: ["/settings", "/audit-log"] },
 ] as const;
 
 export default function Layout() {
@@ -29,8 +26,14 @@ export default function Layout() {
   // Sidebar ist auf dem Handy standardmäßig eingeklappt (Overlay statt fest verankert),
   // auf Desktop-Breiten (md+) immer sichtbar - siehe md:translate-x-0 unten.
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
 
-  useEffect(() => setMobileNavOpen(false), [location.pathname]);
+  useEffect(() => {
+    setMobileNavOpen(false);
+    setQuickOpen(false);
+  }, [location.pathname]);
+  // Die Editoren haben eigene Aktionsleisten - dort stört der Schnellzugriff-Knopf
+  const inEditor = /\/(new|edit)$/.test(location.pathname);
 
   const sidebarContent = (
     <>
@@ -45,20 +48,19 @@ export default function Layout() {
         </button>
       </div>
       <nav className="flex flex-col gap-1 flex-1">
-        {navItems
-          .filter((item) => !("adminOnly" in item && item.adminOnly) || user?.role === "ADMIN")
-          .map((item) => (
+        {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === "/"}
-            className={({ isActive }) =>
-              `px-3 py-2 rounded-md text-sm ${
-                isActive
+            className={({ isActive }) => {
+              const active = isActive || item.match.some((m) => location.pathname === m || location.pathname.startsWith(`${m}/`));
+              return `px-3 py-2 rounded-md text-sm ${
+                active
                   ? "bg-brand text-white"
                   : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
-              }`
-            }
+              }`;
+            }}
           >
             {t(`nav.${item.key}`)}
           </NavLink>
@@ -134,6 +136,26 @@ export default function Layout() {
       <main className="flex-1 p-4 pt-20 md:p-6 md:pt-6 overflow-auto min-w-0">
         <Outlet />
       </main>
+
+      {/* Mobil: "+"-Knopf für die häufigsten Aktionen */}
+      {!inEditor && (
+        <div className="md:hidden fixed bottom-5 right-5 z-20">
+          {quickOpen && (
+            <div className="absolute bottom-14 right-0 w-52 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 text-sm">
+              <button onClick={() => navigate("/invoices/new")} className="block w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700">Neue Rechnung</button>
+              <button onClick={() => navigate("/quotes/new")} className="block w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700">Neues Angebot</button>
+              <button onClick={() => navigate("/customers")} className="block w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700">Neuer Kunde</button>
+            </div>
+          )}
+          <button
+            onClick={() => setQuickOpen((v) => !v)}
+            className="w-12 h-12 rounded-full bg-brand text-white text-2xl shadow-lg flex items-center justify-center"
+            aria-label="Neu anlegen"
+          >
+            {quickOpen ? "×" : "+"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

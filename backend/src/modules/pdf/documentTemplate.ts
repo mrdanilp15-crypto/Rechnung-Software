@@ -60,6 +60,7 @@ export interface DocumentPdfInput {
   dueDate?: Date | null;
   validUntil?: Date | null;
   deliveryDate?: Date | null; // Leistungs-/Lieferdatum, §14 Abs. 4 Nr. 6 UStG
+  deliveryDateLabel?: { de: string; en: string }; // z.B. "Voraussichtl. Lieferung" bei der Auftragsbestätigung
   locale: "de" | "en";
   branding: BrandingInput;
   recipient: RecipientInput;
@@ -274,7 +275,7 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
   const docTitle = input.docTypeLabel[input.locale];
 
   const metaRows: [string, string][] = [[t.date, formatDate(input.issueDate, intl)]];
-  if (input.deliveryDate) metaRows.push([t.deliveryDate, formatDate(input.deliveryDate, intl)]);
+  if (input.deliveryDate) metaRows.push([input.deliveryDateLabel?.[input.locale] ?? t.deliveryDate, formatDate(input.deliveryDate, intl)]);
   if (input.recipient.customerNumber) metaRows.push([t.customerNumber, input.recipient.customerNumber]);
   if (input.dueDate) metaRows.push([t.dueDate, formatDate(input.dueDate, intl)]);
   if (input.validUntil) metaRows.push([t.validUntil, formatDate(input.validUntil, intl)]);
