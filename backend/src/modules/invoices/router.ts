@@ -8,6 +8,8 @@ import { writeAuditLog } from "../audit/auditLog";
 import { nextDocumentNumber } from "../shared/numbering";
 import { formatCents } from "../tax/calculator";
 import { buildInvoiceFinancials, defaultDueDate } from "./build";
+import { previewSchema, renderInvoicePreview } from "./preview";
+import { previewRateLimiter } from "../../middleware/rateLimit";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { emitEvent } from "../plugins/hooks";
 import { generateAndStoreInvoicePdf } from "./pdfHelper";
@@ -121,6 +123,17 @@ invoicesRouter.post("/", async (req, res) => {
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "invoice.create", entityType: "Invoice", entityId: invoice.id });
   await emitEvent("invoice.created", { companyId: company.id, invoice });
   res.status(201).json(invoice);
+});
+
+// Live-Vorschau des (noch nicht gespeicherten) Formularstands als Entwurfs-PDF - speichert nichts.
+invoicesRouter.post("/preview-pdf", previewRateLimiter, async (req, res) => {
+  const body = previewSchema.parse(req.body);
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: req.auth!.companyId } });
+  const customer = body.customerId ? await prisma.customer.findFirst({ where: { id: body.customerId, companyId: company.id } }) : null;
+  const pdf = await renderInvoicePreview(company, customer, body);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Cache-Control", "no-store");
+  res.send(pdf);
 });
 
 invoicesRouter.patch("/:id", async (req, res) => {

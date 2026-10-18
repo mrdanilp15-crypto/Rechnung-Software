@@ -16,7 +16,7 @@ type InvoiceWithRelations = Invoice & {
 
 /** Gemeinsam von GET /:id/pdf und POST /:id/send-email genutzt, damit das PDF nicht an
  * zwei Stellen unterschiedlich zusammengebaut wird. */
-function buildPaymentTermsText(invoice: InvoiceWithRelations, locale: "de" | "en"): string | null {
+export function buildPaymentTermsText(invoice: { isCancellationDocument: boolean; status: string; dueDate: Date | null }, locale: "de" | "en"): string | null {
   const fmt = (d: Date) => new Intl.DateTimeFormat(locale === "de" ? "de-DE" : "en-US", { day: "2-digit", month: "2-digit", year: "numeric" }).format(d);
   if (invoice.isCancellationDocument) {
     return locale === "de"

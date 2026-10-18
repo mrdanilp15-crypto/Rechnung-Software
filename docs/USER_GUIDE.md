@@ -50,6 +50,21 @@ Belege behalten ihren Text.
 
 ## Eine Rechnung erstellen
 
+Der Rechnungseditor zeigt links das Formular und rechts eine **Live-Vorschau** des echten PDFs im gewählten
+Belegdesign. Die Rechnung **speichert sich automatisch als Entwurf**, sobald ein Kunde und eine vollständige
+Position eingetragen sind (oben steht "Automatisch gespeichert"). Ein Neuladen oder späteres Öffnen aus der
+Rechnungsliste bringt den Entwurf zurück; "Verwerfen" löscht ihn. Erst **Fertigstellen** vergibt die
+fortlaufende Rechnungsnummer und sperrt die Rechnung.
+
+- **Kunde direkt anlegen:** Im Kundenfeld einfach den Namen tippen. Gibt es keinen Treffer, bietet der letzte
+  Eintrag "als neuen Kunden anlegen" - nur der Name ist Pflicht, Adresse, E-Mail und USt-IdNr. lassen sich
+  sofort oder später ergänzen.
+- **Positionen frei tippen:** Beschreibung, Menge, Einheit, Preis und USt. direkt eintragen. Tippen Sie den
+  Namen eines Katalogprodukts, werden Preis und Einheit übernommen. Mit **"+ Als Produkt merken"** speichern
+  Sie eine frei getippte Position mit einem Klick im Produktkatalog - ohne Umweg über die Produktseite.
+
+(Die folgenden Schritte beschreiben die einzelnen Felder.)
+
 1. **Rechnungen** → **Neue Rechnung**.
 2. Kunden auswählen, optional Fälligkeitsdatum setzen.
 3. Positionen hinzufügen: entweder ein hinterlegtes Produkt auswählen (füllt
