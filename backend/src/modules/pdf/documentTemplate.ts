@@ -662,22 +662,25 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
     const blockHeight = 90;
     ensureSpace(blockHeight + 10);
     const signatureX = PAGE_MARGIN;
-    const stampX = PAGE_MARGIN + 220;
+    const stampX = PAGE_MARGIN + 175; // direkt rechts neben der Unterschriftslinie
+    const lineY = cursorY + 62;
 
     if (input.branding.signaturePath && fs.existsSync(input.branding.signaturePath)) {
       try {
-        doc.image(input.branding.signaturePath, signatureX, cursorY, { fit: [160, 60] });
+        // unten an der Linie ausrichten - sonst schwebt eine (zugeschnittene) flache Unterschrift mit Abstand darüber
+        doc.image(input.branding.signaturePath, signatureX, cursorY, { fit: [160, 60], valign: "bottom" });
       } catch {
         // beschädigte/nicht unterstützte Bilddatei: Unterschrift einfach auslassen
       }
-      doc.moveTo(signatureX, cursorY + 62).lineTo(signatureX + 160, cursorY + 62).lineWidth(0.5).strokeColor("#9ca3af").stroke();
+      doc.moveTo(signatureX, lineY).lineTo(signatureX + 160, lineY).lineWidth(0.5).strokeColor("#9ca3af").stroke();
       setFont(false);
       doc.fontSize(8).fillColor("#6b7280").text(t.signature, signatureX, cursorY + 66, { width: 160 });
     }
 
     if (input.branding.stampPath && fs.existsSync(input.branding.stampPath)) {
       try {
-        doc.image(input.branding.stampPath, stampX, cursorY, { fit: [90, 90] });
+        // Stempel steht auf Höhe der Beschriftung "Unterschrift" (Unterkante), direkt neben der Linie
+        doc.image(input.branding.stampPath, stampX, cursorY, { fit: [80, 76], valign: "bottom" });
       } catch {
         // beschädigte/nicht unterstützte Bilddatei: Stempel einfach auslassen
       }
