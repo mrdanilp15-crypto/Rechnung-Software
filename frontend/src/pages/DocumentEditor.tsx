@@ -128,7 +128,12 @@ export default function DocumentEditor({ kind }: { kind: DocKind }) {
   const [ready, setReady] = useState(false);
   const [finishing, setFinishing] = useState(false);
 
-  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [saveState, setSaveStateRaw] = useState<SaveState>("idle");
+  const saveStateRef = useRef<SaveState>("idle");
+  const setSaveState = (v: SaveState) => {
+    saveStateRef.current = v;
+    setSaveStateRaw(v);
+  };
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [savedKey, setSavedKey] = useState("");
 
@@ -321,8 +326,20 @@ export default function DocumentEditor({ kind }: { kind: DocKind }) {
 
   // ---------- Aktionen ----------
   async function closeAsDraft() {
-    await saveNow();
-    navigate("/documents");
+    if (savable) {
+      await saveNow();
+      // Schlug das Speichern fehl, bleibt der Editor offen und zeigt die Fehlermeldung
+      if (saveStateRef.current === "error") return;
+      return navigate("/documents");
+    }
+    // Noch nicht speicherbar (Kunde oder vollständige Position fehlt): nicht stillschweigend schließen
+    const hasInput = !!customerId || cleanItems.length > 0 || !!notes.trim();
+    if (!hasInput) return navigate("/documents");
+    const missing = [!customerId && "einen Kunden", (cleanItems.length === 0 || !cleanItems.every((i) => i.description.trim() && i.quantity > 0)) && "mindestens eine Position mit Beschreibung und Menge"].filter(Boolean).join(" und ");
+    if (confirm(`Der Entwurf kann noch nicht gespeichert werden - es fehlt ${missing}.
+
+OK = trotzdem schließen (Eingaben gehen verloren)
+Abbrechen = weiter bearbeiten`)) navigate("/documents");
   }
 
   async function discardDraft() {
