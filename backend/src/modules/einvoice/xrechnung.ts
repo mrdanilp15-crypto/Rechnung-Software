@@ -19,6 +19,8 @@ export type InvoiceForXRechnung = Invoice & {
   customer: Customer;
   company: Company;
   correctsInvoice?: { invoiceNumber: string | null } | null;
+  // Nummern der in einer Schlussrechnung abgezogenen Anzahlungsrechnungen (BG-3 "Vorausgehende Rechnung")
+  precedingInvoiceNumbers?: string[];
 };
 
 function esc(value: string | number | null | undefined): string {
@@ -123,7 +125,15 @@ export function buildXRechnungXml(invoice: InvoiceForXRechnung): string {
   if (!invoice.invoiceNumber) throw new Error("XRechnung kann nur für eine bereits finalisierte Rechnung (mit Nummer) erzeugt werden");
   const { company, customer } = invoice;
   const taxCategory = taxCategoryFor(invoice);
-  const rateGroups = groupByVatRate(invoice.items);
+  // Abzugspositionen einer Schlussrechnung (bereits berechnete Anzahlungen) sind in der XRechnung keine negativen
+  // Positionen (BR-27), sondern der "bereits gezahlte Betrag" (BT-113): Positionen, Steuer und Brutto beziehen sich auf die
+  // volle Leistung, der Zahlbetrag ergibt sich nach Abzug der Anzahlungen.
+  const regularItems = invoice.items.filter((i) => !i.isDownPaymentDeduction);
+  const rateGroups = groupByVatRate(regularItems);
+  const fullNetCents = rateGroups.reduce((s, g) => s + g.netCents, 0);
+  const fullVatCents = rateGroups.reduce((s, g) => s + g.vatCents, 0);
+  const fullGrossCents = fullNetCents + fullVatCents;
+  const prepaidCents = invoice.items.some((i) => i.isDownPaymentDeduction) ? Math.max(0, fullGrossCents - Math.abs(invoice.totalCents)) : 0;
   const isCreditNote = invoice.isCancellationDocument;
   // Korrekturbelege (Storno) werden als eigenes UBL-Dokument "CreditNote" (Typcode 381) ausgegeben -
   // die Code-Liste des Elements InvoiceTypeCode erlaubt 381 nicht (BR-CL-01). Beträge sind dabei positiv.
@@ -144,7 +154,7 @@ export function buildXRechnungXml(invoice: InvoiceForXRechnung): string {
     return entries.join("");
   };
 
-  const lines = invoice.items
+  const lines = regularItems
     .map(
       (item, idx) => `  <cac:${lineTag}>
     <cbc:ID>${idx + 1}</cbc:ID>
@@ -192,9 +202,10 @@ ${company.bic ? `      <cac:FinancialInstitutionBranch>\n        <cbc:ID>${esc(c
   const deliveryDate = invoice.deliveryDate ?? invoice.issueDate;
 
   // BT-25 verweist auf die NUMMER der korrigierten Rechnung (nicht auf eine interne ID).
-  const billingReference = invoice.correctsInvoice?.invoiceNumber
-    ? `  <cac:BillingReference>\n    <cac:InvoiceDocumentReference>\n      <cbc:ID>${esc(invoice.correctsInvoice.invoiceNumber)}</cbc:ID>\n    </cac:InvoiceDocumentReference>\n  </cac:BillingReference>\n`
-    : "";
+  const referencedNumbers = [invoice.correctsInvoice?.invoiceNumber, ...(invoice.precedingInvoiceNumbers ?? [])].filter((n): n is string => !!n);
+  const billingReference = referencedNumbers
+    .map((n) => `  <cac:BillingReference>\n    <cac:InvoiceDocumentReference>\n      <cbc:ID>${esc(n)}</cbc:ID>\n    </cac:InvoiceDocumentReference>\n  </cac:BillingReference>\n`)
+    .join("");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <${root} xmlns="urn:oasis:names:specification:ubl:schema:xsd:${root}-2"
@@ -204,7 +215,7 @@ ${company.bic ? `      <cac:FinancialInstitutionBranch>\n        <cbc:ID>${esc(c
   <cbc:ProfileID>urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</cbc:ProfileID>
   <cbc:ID>${esc(invoice.invoiceNumber)}</cbc:ID>
   <cbc:IssueDate>${isoDate(invoice.issueDate)}</cbc:IssueDate>
-${invoice.dueDate && !isCreditNote ? `  <cbc:DueDate>${isoDate(invoice.dueDate)}</cbc:DueDate>\n` : ""}  ${isCreditNote ? "<cbc:CreditNoteTypeCode>381</cbc:CreditNoteTypeCode>" : "<cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>"}
+${invoice.dueDate && !isCreditNote ? `  <cbc:DueDate>${isoDate(invoice.dueDate)}</cbc:DueDate>\n` : ""}  ${isCreditNote ? "<cbc:CreditNoteTypeCode>381</cbc:CreditNoteTypeCode>" : `<cbc:InvoiceTypeCode>${invoice.kind === "DOWN_PAYMENT" ? 326 : 380}</cbc:InvoiceTypeCode>`}
   <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
   <cbc:BuyerReference>${esc(buyerReference)}</cbc:BuyerReference>
 ${billingReference}  <cac:AccountingSupplierParty>
@@ -264,7 +275,7 @@ ${taxSchemes(customer.vatId)}      <cac:PartyLegalEntity>
     </cac:DeliveryLocation>
   </cac:Delivery>
 ${paymentMeans}  <cac:TaxTotal>
-    <cbc:TaxAmount currencyID="EUR">${euros(Math.abs(invoice.vatTotalCents))}</cbc:TaxAmount>
+    <cbc:TaxAmount currencyID="EUR">${euros(fullVatCents)}</cbc:TaxAmount>
 ${rateGroups
   .map(
     (g) => `    <cac:TaxSubtotal>
@@ -281,10 +292,10 @@ ${percentXml(g.rateBps, "        ")}${exemptionXml ? exemptionXml.replace(/^\n/,
   .join("\n")}
   </cac:TaxTotal>
   <cac:LegalMonetaryTotal>
-    <cbc:LineExtensionAmount currencyID="EUR">${euros(Math.abs(invoice.subtotalCents))}</cbc:LineExtensionAmount>
-    <cbc:TaxExclusiveAmount currencyID="EUR">${euros(Math.abs(invoice.subtotalCents))}</cbc:TaxExclusiveAmount>
-    <cbc:TaxInclusiveAmount currencyID="EUR">${euros(Math.abs(invoice.totalCents))}</cbc:TaxInclusiveAmount>
-    <cbc:PayableAmount currencyID="EUR">${euros(Math.abs(invoice.totalCents))}</cbc:PayableAmount>
+    <cbc:LineExtensionAmount currencyID="EUR">${euros(fullNetCents)}</cbc:LineExtensionAmount>
+    <cbc:TaxExclusiveAmount currencyID="EUR">${euros(fullNetCents)}</cbc:TaxExclusiveAmount>
+    <cbc:TaxInclusiveAmount currencyID="EUR">${euros(fullGrossCents)}</cbc:TaxInclusiveAmount>
+${prepaidCents > 0 ? `    <cbc:PrepaidAmount currencyID="EUR">${euros(prepaidCents)}</cbc:PrepaidAmount>\n` : ""}    <cbc:PayableAmount currencyID="EUR">${euros(Math.abs(invoice.totalCents))}</cbc:PayableAmount>
   </cac:LegalMonetaryTotal>
 ${lines}
 </${root}>

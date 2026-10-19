@@ -18,6 +18,7 @@ export interface DocumentRow {
   status: string; // DRAFT | SENT | PAID | OVERDUE | CANCELLED | ACCEPTED | DECLINED | EXPIRED
   isCancellationDocument: boolean;
   hasNext: boolean; // wurde daraus bereits ein Folgebeleg erstellt?
+  invoiceKind?: string; // STANDARD | DOWN_PAYMENT | FINAL (nur Rechnungen)
 }
 
 /**
@@ -48,7 +49,7 @@ documentsRouter.get("/", async (req, res) => {
   const rows: DocumentRow[] = [
     ...invoices.map((i): DocumentRow => ({
       kind: "INVOICE", id: i.id, number: i.invoiceNumber, customerName: i.customer.name, date: i.issueDate.toISOString(), dueDate: i.dueDate?.toISOString() ?? null,
-      totalCents: i.totalCents, status: i.status, isCancellationDocument: i.isCancellationDocument, hasNext: false,
+      totalCents: i.totalCents, status: i.status, isCancellationDocument: i.isCancellationDocument, hasNext: !!i.finalInvoiceId, invoiceKind: i.kind,
     })),
     ...quotes.map((q): DocumentRow => ({
       kind: "QUOTE", id: q.id, number: q.quoteNumber, customerName: q.customer.name, date: q.issueDate.toISOString(), dueDate: q.validUntil?.toISOString() ?? null,

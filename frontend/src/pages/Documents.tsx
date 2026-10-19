@@ -19,6 +19,7 @@ interface DocRow {
   status: string;
   isCancellationDocument: boolean;
   hasNext: boolean;
+  invoiceKind?: string;
 }
 
 const KIND_INFO: Record<Kind, { label: string; plural: string; base: string; newPath: string }> = {
@@ -30,6 +31,9 @@ const KIND_INFO: Record<Kind, { label: string; plural: string; base: string; new
 
 // Reihenfolge entspricht dem üblichen Ablauf: Angebot -> Auftrag -> Lieferschein -> Rechnung
 const KIND_ORDER: Kind[] = ["QUOTE", "ORDER_CONFIRMATION", "DELIVERY_NOTE", "INVOICE"];
+
+const kindLabel = (row: { kind: Kind; invoiceKind?: string }) =>
+  row.kind === "INVOICE" && row.invoiceKind === "DOWN_PAYMENT" ? "Anzahlung" : row.kind === "INVOICE" && row.invoiceKind === "FINAL" ? "Schlussrechn." : KIND_INFO[row.kind].label;
 
 const money = (cents: number | null) => (cents === null ? "-" : new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100));
 const formatDate = (iso?: string | null) => (iso ? new Intl.DateTimeFormat("de-DE").format(new Date(iso)) : "-");
@@ -61,6 +65,8 @@ export default function Documents() {
   const [loaded, setLoaded] = useState(false);
   const [q, setQ] = useState("");
   const [newOpen, setNewOpen] = useState(false);
+  const [dpRow, setDpRow] = useState<DocRow | null>(null);
+  const [dpPercent, setDpPercent] = useState("30");
   const newRef = useRef<HTMLDivElement>(null);
 
   function load() {
@@ -113,6 +119,20 @@ export default function Documents() {
     }
   }
 
+  async function createDownPayment() {
+    if (!dpRow) return;
+    const percent = parseFloat(dpPercent.replace(",", "."));
+    if (!(percent > 0 && percent <= 100)) return showToast("Bitte einen Prozentsatz zwischen 1 und 100 eingeben", "error");
+    try {
+      const { data } = await api.post(`${KIND_INFO[dpRow.kind].base}/${dpRow.id}/down-payment`, { percent });
+      setDpRow(null);
+      showToast("Anzahlungsrechnung als Entwurf angelegt", "success");
+      navigate(`/invoices/${data.id}/edit`);
+    } catch (err: any) {
+      showToast(err.response?.data?.error || "Anzahlungsrechnung konnte nicht angelegt werden", "error");
+    }
+  }
+
   async function setQuoteStatus(row: DocRow, status: string, label: string) {
     await api.patch(`/quotes/${row.id}/status`, { status });
     showToast(`${row.number}: ${label}`, "success");
@@ -157,6 +177,7 @@ export default function Documents() {
       list.push({ label: "→ Auftragsbestätigung", onClick: () => convert(row, "convert-to-order-confirmation", "/order-confirmations", "Auftragsbestätigung als Entwurf angelegt") });
     }
     if ((row.kind === "QUOTE" && row.status !== "DRAFT" && row.status !== "DECLINED") || (row.kind === "ORDER_CONFIRMATION" && row.status !== "DRAFT")) {
+      list.push({ label: "→ Anzahlungsrechnung", onClick: () => { setDpPercent("30"); setDpRow(row); } });
       list.push({ label: "→ Rechnung", onClick: () => convert(row, "convert-to-invoice", "/invoices", "Rechnung als Entwurf angelegt") });
     }
     if (row.kind === "ORDER_CONFIRMATION" && row.status !== "DRAFT") {
@@ -243,7 +264,7 @@ export default function Documents() {
           return (
             <div key={`${row.kind}-${row.id}`}>
               <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
-                <span className="text-slate-500">{KIND_INFO[row.kind].label}</span>
+                <span className="text-slate-500">{kindLabel(row)}</span>
                 <span className={`font-medium truncate ${row.number ? "" : "italic text-slate-500"}`}>{row.number ?? "Entwurf"}</span>
                 <span className="truncate">{row.customerName}</span>
                 <span className="text-right text-slate-500">{formatDate(row.date)}</span>
@@ -251,7 +272,7 @@ export default function Documents() {
                 <span className="text-right">{badge}</span>
                 {actions}
               </div>
-              <MobileCard title={`${KIND_INFO[row.kind].label} ${row.number ?? "(Entwurf)"}`} subtitle={row.customerName}>
+              <MobileCard title={`${kindLabel(row)} ${row.number ?? "(Entwurf)"}`} subtitle={row.customerName}>
                 <MobileField label="Datum" value={formatDate(row.date)} />
                 <MobileField label="Betrag" value={money(row.totalCents)} />
                 <MobileField label="Status" value={badge} />
@@ -267,6 +288,23 @@ export default function Documents() {
           </div>
         )}
       </div>
+
+      {dpRow && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4" onMouseDown={() => setDpRow(null)}>
+          <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-5 space-y-3" onMouseDown={(e) => e.stopPropagation()}>
+            <h2 className="font-medium">Anzahlungsrechnung zu {KIND_INFO[dpRow.kind].label} {dpRow.number}</h2>
+            <p className="text-sm text-slate-500">Welcher Anteil des Nettobetrags soll jetzt abgerechnet werden? Bei der Schlussrechnung wird die Anzahlung automatisch abgezogen.</p>
+            <div className="flex items-center gap-2">
+              <input autoFocus type="number" min={1} max={100} step="any" value={dpPercent} onChange={(e) => setDpPercent(e.target.value)} onKeyDown={(e) => e.key === "Enter" && createDownPayment()} className="w-24 px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900" />
+              <span className="text-sm">% des Nettobetrags</span>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setDpRow(null)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700 text-sm">Abbrechen</button>
+              <button onClick={createDownPayment} className="px-4 py-2 rounded bg-brand hover:bg-brand-dark text-white text-sm">Entwurf anlegen</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <p className="text-xs text-slate-500 mt-3">
         Der übliche Ablauf: Angebot → Auftrag → Lieferschein → Rechnung. Über das Menü (⋮) führen Sie einen Beleg mit allen Positionen zum nächsten weiter.{" "}

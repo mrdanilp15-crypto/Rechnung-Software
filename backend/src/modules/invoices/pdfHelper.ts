@@ -39,6 +39,10 @@ export async function generateAndStoreInvoicePdf(invoice: InvoiceWithRelations, 
   const pdfBuffer = await renderDocumentPdf({
     docTypeLabel: invoice.isCancellationDocument
       ? { de: "Rechnungskorrektur", en: "Invoice correction" }
+      : invoice.kind === "DOWN_PAYMENT"
+      ? { de: "Anzahlungsrechnung", en: "Down payment invoice" }
+      : invoice.kind === "FINAL"
+      ? { de: "Schlussrechnung", en: "Final invoice" }
       : { de: "Rechnung", en: "Invoice" },
     numberLabel: invoice.isCancellationDocument ? { de: "Beleg-Nr.", en: "Document no." } : { de: "Rechnungsnr.", en: "Invoice no." },
     // Entwürfe haben noch keine feste Nummer (siehe Invoice.invoiceNumber-Kommentar in

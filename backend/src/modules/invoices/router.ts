@@ -28,6 +28,8 @@ const lineItemSchema = z.object({
   unit: z.string().default("Stk."),
   unitPriceCents: z.number().int(),
   vatRateBps: z.number().int().min(0).max(10000),
+  isDownPaymentDeduction: z.boolean().optional(),
+  deductsInvoiceId: z.string().optional(),
 });
 
 const createInvoiceSchema = z.object({
@@ -200,6 +202,8 @@ invoicesRouter.delete("/:id", async (req, res) => {
   }
   await prisma.$transaction(async (tx) => {
     await restoreMaterialStock(tx, existing.items);
+    // Anzahlungen, die in diesem Entwurf abgezogen werden sollten, stehen für eine neue Schlussrechnung wieder bereit
+    await tx.invoice.updateMany({ where: { finalInvoiceId: existing.id }, data: { finalInvoiceId: null } });
     await tx.invoice.delete({ where: { id: existing.id } });
   });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "invoice.delete_draft", entityType: "Invoice", entityId: existing.id });
@@ -224,6 +228,7 @@ invoicesRouter.post("/bulk-delete", async (req, res) => {
     await prisma.$transaction(async (tx) => {
       const draftItems = await tx.invoiceItem.findMany({ where: { invoiceId: { in: deletableIds } } });
       await restoreMaterialStock(tx, draftItems);
+      await tx.invoice.updateMany({ where: { finalInvoiceId: { in: deletableIds } }, data: { finalInvoiceId: null } });
       await tx.invoice.deleteMany({ where: { id: { in: deletableIds } } });
     });
     await writeAuditLog({
@@ -283,6 +288,8 @@ invoicesRouter.post("/:id/cancel", requireRole("ADMIN", "BUCHHALTUNG"), async (r
 
   const creditNote = await prisma.$transaction(async (tx) => {
     await restoreMaterialStock(tx, invoice.items);
+    // In dieser Rechnung abgezogene Anzahlungen werden wieder frei - eine neue Schlussrechnung muss sie erneut abziehen
+    await tx.invoice.updateMany({ where: { finalInvoiceId: invoice.id }, data: { finalInvoiceId: null } });
     const creditNoteNumber = await nextDocumentNumber(company.id, "INVOICE", tx);
     const note = await tx.invoice.create({
       data: {
@@ -298,6 +305,7 @@ invoicesRouter.post("/:id/cancel", requireRole("ADMIN", "BUCHHALTUNG"), async (r
         footerText: company.invoiceFooterText,
         correctsInvoiceId: invoice.id,
         isCancellationDocument: true,
+        kind: invoice.kind,
         subtotalCents: -invoice.subtotalCents,
         vatTotalCents: -invoice.vatTotalCents,
         totalCents: -invoice.totalCents,
@@ -312,6 +320,8 @@ invoicesRouter.post("/:id/cancel", requireRole("ADMIN", "BUCHHALTUNG"), async (r
             unitPriceCents: item.unitPriceCents,
             vatRateBps: item.vatRateBps,
             lineTotalCents: -item.lineTotalCents,
+            isDownPaymentDeduction: item.isDownPaymentDeduction,
+            deductsInvoiceId: item.deductsInvoiceId,
           })),
         },
       },
@@ -361,11 +371,13 @@ invoicesRouter.get("/:id/xrechnung", async (req, res) => {
   if (!invoice.invoiceNumber) {
     throw new HttpError(409, "Nur bereits versendete/finalisierte Rechnungen können als XRechnung exportiert werden.");
   }
+  const deductedIds = [...new Set(invoice.items.map((i) => i.deductsInvoiceId).filter((x): x is string => !!x))];
+  const preceding = deductedIds.length ? await prisma.invoice.findMany({ where: { id: { in: deductedIds } }, select: { invoiceNumber: true } }) : [];
   const blockers = getXRechnungBlockers(invoice);
   if (blockers.length > 0) {
     throw new HttpError(422, `Für die XRechnung fehlen Pflichtangaben: ${blockers.join("; ")}.`);
   }
-  const xml = buildXRechnungXml(invoice);
+  const xml = buildXRechnungXml({ ...invoice, precedingInvoiceNumbers: preceding.map((p) => p.invoiceNumber).filter((n): n is string => !!n) });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "invoice.xrechnung_export", entityType: "Invoice", entityId: invoice.id });
   res.setHeader("Content-Type", "application/xml");
   res.setHeader("Content-Disposition", `attachment; filename="${invoice.invoiceNumber}.xml"`);

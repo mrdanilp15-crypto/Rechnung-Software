@@ -9,6 +9,8 @@ export interface InvoiceItemInput {
   unit: string;
   unitPriceCents: number;
   vatRateBps: number;
+  isDownPaymentDeduction?: boolean;
+  deductsInvoiceId?: string | null;
 }
 
 /**
@@ -40,6 +42,8 @@ export function buildInvoiceFinancials(company: Pick<Company, "isSmallBusiness" 
       unitPriceCents: item.unitPriceCents,
       vatRateBps: forceZeroVat ? 0 : item.vatRateBps,
       lineTotalCents: Math.round(item.quantity * item.unitPriceCents),
+      isDownPaymentDeduction: item.isDownPaymentDeduction ?? false,
+      deductsInvoiceId: item.deductsInvoiceId ?? undefined,
     })),
   };
 }

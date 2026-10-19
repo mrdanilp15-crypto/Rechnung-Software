@@ -350,6 +350,10 @@ model Invoice {
   footerText      String?
   sourceQuoteId   String?
   sourceOrderConfirmationId String?
+  // "STANDARD", "DOWN_PAYMENT" (Anzahlungs-/Abschlagsrechnung) oder "FINAL" (Schlussrechnung mit Abzug der Anzahlungen).
+  // finalInvoiceId an einer Anzahlungsrechnung verweist auf die Schlussrechnung, in der sie bereits abgezogen wurde.
+  kind            String        @default("STANDARD")
+  finalInvoiceId  String?
   pdfPath         String?
 
   // Storno-/Korrekturbeleg (Gutschrift): Eine bereits versendete/bezahlte Rechnung wird
@@ -396,6 +400,10 @@ model InvoiceItem {
   unitPriceCents Int
   vatRateBps     Int
   lineTotalCents Int
+  // Abzugsposition einer Schlussrechnung (negativer Betrag): bereits berechnete Anzahlung. In der XRechnung wird sie als
+  // "bereits gezahlter Betrag" statt als negative Position übermittelt.
+  isDownPaymentDeduction Boolean @default(false)
+  deductsInvoiceId       String?
 
   @@index([invoiceId])
 }

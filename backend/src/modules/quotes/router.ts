@@ -12,6 +12,7 @@ import { renderSimplePreview, simplePreviewSchema } from "../pdf/docPreview";
 import { previewRateLimiter } from "../../middleware/rateLimit";
 import { emitEvent } from "../plugins/hooks";
 import { buildInvoiceFinancials, defaultDueDate } from "../invoices/build";
+import { createDownPaymentInvoice, deductionLinesFor } from "../invoices/downPayments";
 import { deductMaterialStock } from "../materials/stock";
 
 export const quotesRouter = Router();
@@ -184,7 +185,9 @@ quotesRouter.post("/:id/convert-to-invoice", async (req, res) => {
   // Beträge und USt.-Behandlung werden NEU berechnet (nicht aus dem Angebot übernommen):
   // zwischen Angebot und Rechnung kann sich die Kleinunternehmer-Einstellung geändert
   // haben, und für EU-B2B-/Drittland-Kunden greifen Reverse-Charge bzw. Ausfuhrbefreiung.
-  const financials = buildInvoiceFinancials(company, quote.customer, quote.items);
+  // Bereits abgerechnete Anzahlungen werden als Abzugspositionen in die Schlussrechnung übernommen
+  const deductions = await deductionLinesFor(prisma, company.id, { quoteId: quote.id });
+  const financials = buildInvoiceFinancials(company, quote.customer, [...quote.items, ...deductions.items]);
   const issueDate = new Date();
   const invoice = await prisma.$transaction(async (tx) => {
     // Wie bei jeder anderen Rechnung wird der Materialbestand schon beim Anlegen abgezogen -
@@ -193,7 +196,7 @@ quotesRouter.post("/:id/convert-to-invoice", async (req, res) => {
     // Nummer wird bewusst erst beim Versenden vergeben (siehe finalizeInvoiceNumber in
     // modules/invoices/router.ts) - die aus dem Angebot erzeugte Rechnung ist zunächst
     // ein normaler Entwurf wie jede andere neu angelegte Rechnung auch.
-    return tx.invoice.create({
+    const created = await tx.invoice.create({
       data: {
         companyId: company.id,
         customerId: quote.customerId,
@@ -202,6 +205,7 @@ quotesRouter.post("/:id/convert-to-invoice", async (req, res) => {
         isSmallBusiness: financials.isSmallBusiness,
         vatNoticeKey: financials.vatNoticeKey,
         sourceQuoteId: quote.id,
+        kind: deductions.items.length > 0 ? "FINAL" : "STANDARD",
         introText: company.invoiceIntroText,
         closingText: company.invoiceClosingText,
         footerText: company.invoiceFooterText,
@@ -212,6 +216,10 @@ quotesRouter.post("/:id/convert-to-invoice", async (req, res) => {
       },
       include: { items: true, customer: true },
     });
+    if (deductions.downPaymentIds.length > 0) {
+      await tx.invoice.updateMany({ where: { id: { in: deductions.downPaymentIds } }, data: { finalInvoiceId: created.id } });
+    }
+    return created;
   });
 
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "quote.convert_to_invoice", entityType: "Quote", entityId: quote.id, metadata: { invoiceId: invoice.id } });
@@ -344,4 +352,16 @@ quotesRouter.post("/:id/duplicate", async (req, res) => {
   });
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "quote.duplicate", entityType: "Quote", entityId: source.id, metadata: { newQuoteId: copy.id } });
   res.status(201).json(copy);
+});
+
+// Anzahlungsrechnung (Entwurf) zu einem Angebot: Prozentsatz ODER fester Nettobetrag
+quotesRouter.post("/:id/down-payment", async (req, res) => {
+  const body = z.object({ percent: z.number().optional(), netAmountCents: z.number().int().optional() }).parse(req.body);
+  const quote = await prisma.quote.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId }, include: { items: true, customer: true } });
+  if (!quote) throw new HttpError(404, "Angebot nicht gefunden");
+  if (quote.status === "DRAFT") throw new HttpError(409, "Bitte das Angebot zuerst fertigstellen.");
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: quote.companyId } });
+  const invoice = await createDownPaymentInvoice(prisma, { company, customer: quote.customer, sourceItems: quote.items, percent: body.percent, netAmountCents: body.netAmountCents, sourceLabel: `Angebot ${quote.quoteNumber}`, sourceQuoteId: quote.id });
+  await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "quote.down_payment", entityType: "Quote", entityId: quote.id, metadata: { invoiceId: invoice.id } });
+  res.status(201).json(invoice);
 });

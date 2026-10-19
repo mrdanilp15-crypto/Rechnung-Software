@@ -10,6 +10,7 @@ import { renderDocumentPdf } from "../pdf/documentTemplate";
 import { resolvePdfLayout } from "../pdf/layout";
 import { renderSimplePreview, simplePreviewSchema } from "../pdf/docPreview";
 import { buildInvoiceFinancials, defaultDueDate } from "../invoices/build";
+import { createDownPaymentInvoice, deductionLinesFor } from "../invoices/downPayments";
 import { previewRateLimiter } from "../../middleware/rateLimit";
 
 export const orderConfirmationsRouter = Router();
@@ -239,10 +240,14 @@ orderConfirmationsRouter.post("/:id/convert-to-invoice", async (req, res) => {
   const source = await prisma.orderConfirmation.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId, voidedAt: null }, include: { items: true, customer: true } });
   if (!source) throw new HttpError(404, "Auftragsbestätigung nicht gefunden");
   const company = await prisma.company.findUniqueOrThrow({ where: { id: source.companyId } });
-  const financials = buildInvoiceFinancials(company, source.customer, source.items, "GOODS");
+  // Bereits abgerechnete Anzahlungen (zu dieser AB oder dem zugrunde liegenden Angebot) werden abgezogen
+  const deductions = await deductionLinesFor(prisma, company.id, { orderConfirmationId: source.id, quoteId: source.sourceQuoteId });
+  const financials = buildInvoiceFinancials(company, source.customer, [...source.items, ...deductions.items], "GOODS");
   const issueDate = new Date();
-  const invoice = await prisma.invoice.create({
+  const invoice = await prisma.$transaction(async (tx) => {
+    const created = await tx.invoice.create({
     data: {
+      kind: deductions.items.length > 0 ? "FINAL" : "STANDARD",
       companyId: company.id,
       customerId: source.customerId,
       issueDate,
@@ -260,6 +265,11 @@ orderConfirmationsRouter.post("/:id/convert-to-invoice", async (req, res) => {
       items: { create: financials.itemsCreate },
     },
     include: { items: true, customer: true },
+    });
+    if (deductions.downPaymentIds.length > 0) {
+      await tx.invoice.updateMany({ where: { id: { in: deductions.downPaymentIds } }, data: { finalInvoiceId: created.id } });
+    }
+    return created;
   });
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "order_confirmation.convert_to_invoice", entityType: "OrderConfirmation", entityId: source.id, metadata: { invoiceId: invoice.id } });
   res.status(201).json(invoice);
@@ -300,4 +310,16 @@ orderConfirmationsRouter.post("/:id/duplicate", async (req, res) => {
   });
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "order_confirmation.duplicate", entityType: "OrderConfirmation", entityId: source.id, metadata: { newId: copy.id } });
   res.status(201).json(copy);
+});
+
+// Anzahlungsrechnung (Entwurf) zu einer Auftragsbestätigung: Prozentsatz ODER fester Nettobetrag
+orderConfirmationsRouter.post("/:id/down-payment", async (req, res) => {
+  const body = z.object({ percent: z.number().optional(), netAmountCents: z.number().int().optional() }).parse(req.body);
+  const source = await prisma.orderConfirmation.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId, voidedAt: null }, include: { items: true, customer: true } });
+  if (!source) throw new HttpError(404, "Auftragsbestätigung nicht gefunden");
+  if (source.status === "DRAFT") throw new HttpError(409, "Bitte die Auftragsbestätigung zuerst fertigstellen.");
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: source.companyId } });
+  const invoice = await createDownPaymentInvoice(prisma, { company, customer: source.customer, sourceItems: source.items, percent: body.percent, netAmountCents: body.netAmountCents, sourceLabel: `Auftragsbestätigung ${source.confirmationNumber}`, sourceQuoteId: source.sourceQuoteId, sourceOrderConfirmationId: source.id });
+  await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "order_confirmation.down_payment", entityType: "OrderConfirmation", entityId: source.id, metadata: { invoiceId: invoice.id } });
+  res.status(201).json(invoice);
 });

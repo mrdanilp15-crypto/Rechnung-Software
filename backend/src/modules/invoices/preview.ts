@@ -10,6 +10,7 @@ import { buildPaymentTermsText } from "./pdfHelper";
  * Menge 0, noch kein Kunde) sind beim Tippen normal und dürfen die Vorschau nicht abbrechen. */
 export const previewSchema = z.object({
   customerId: z.string().optional(),
+  kind: z.enum(["STANDARD", "DOWN_PAYMENT", "FINAL"]).optional(),
   issueDate: z.coerce.date().optional(),
   dueDate: z.coerce.date().optional(),
   deliveryDate: z.coerce.date().optional(),
@@ -25,6 +26,8 @@ export const previewSchema = z.object({
         unit: z.string().max(30).default("Stk."),
         unitPriceCents: z.number().int(),
         vatRateBps: z.number().int().min(0).max(10000),
+        isDownPaymentDeduction: z.boolean().optional(),
+        deductsInvoiceId: z.string().optional(),
       })
     )
     .max(200),
@@ -53,7 +56,7 @@ export async function renderInvoicePreview(company: Company, customer: Customer 
   const locale = company.defaultLocale === "en" ? "en" : "de";
 
   return renderDocumentPdf({
-    docTypeLabel: { de: "Rechnung", en: "Invoice" },
+    docTypeLabel: body.kind === "DOWN_PAYMENT" ? { de: "Anzahlungsrechnung", en: "Down payment invoice" } : body.kind === "FINAL" ? { de: "Schlussrechnung", en: "Final invoice" } : { de: "Rechnung", en: "Invoice" },
     numberLabel: { de: "Rechnungsnr.", en: "Invoice no." },
     documentNumber: "ENTWURF",
     issueDate,

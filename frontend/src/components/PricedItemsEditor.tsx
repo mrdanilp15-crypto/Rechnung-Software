@@ -12,6 +12,9 @@ export interface LineItem {
   unit: string;
   unitPriceCents: number;
   vatRateBps: number;
+  // Abzugsposition einer Schlussrechnung (bereits berechnete Anzahlung, negativer Betrag)
+  isDownPaymentDeduction?: boolean;
+  deductsInvoiceId?: string;
 }
 
 function newKey(): string {
@@ -143,6 +146,7 @@ export function PricedItemsEditor({
             <div key={item._key} className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2">
               <div className="flex gap-2 items-start">
                 <span className="text-xs text-slate-400 pt-2 w-4 shrink-0">{idx + 1}</span>
+                {item.isDownPaymentDeduction && <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 shrink-0 mt-1.5">Abzug</span>}
                 <div className="flex-1 min-w-0">
                   <input list="pe-products" placeholder="Beschreibung oder Produkt eintippen" value={item.description} onChange={(e) => onDescription(item, e.target.value)} className={inputClass} />
                   {productHint(item)}

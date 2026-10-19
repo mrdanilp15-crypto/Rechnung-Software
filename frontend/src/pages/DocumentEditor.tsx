@@ -119,6 +119,7 @@ export default function DocumentEditor({ kind }: { kind: DocKind }) {
   const [dates, setDates] = useState<Partial<Record<DateField, string>>>({});
   const [notes, setNotes] = useState("");
   const [supplyType, setSupplyType] = useState<"GOODS" | "SERVICE">("GOODS");
+  const [invoiceKind, setInvoiceKind] = useState<"STANDARD" | "DOWN_PAYMENT" | "FINAL">("STANDARD");
   const [isSmallBusiness, setIsSmallBusiness] = useState(false);
   const [introText, setIntroText] = useState("");
   const [closingText, setClosingText] = useState("");
@@ -170,7 +171,10 @@ export default function DocumentEditor({ kind }: { kind: DocKind }) {
         setNotes(doc.notes ?? "");
         setIntroText(doc.introText ?? "");
         setClosingText(doc.closingText ?? "");
-        if (kind === "invoice") setSupplyType(doc.supplyType === "SERVICE" ? "SERVICE" : "GOODS");
+        if (kind === "invoice") {
+          setSupplyType(doc.supplyType === "SERVICE" ? "SERVICE" : "GOODS");
+          setInvoiceKind(doc.kind === "DOWN_PAYMENT" || doc.kind === "FINAL" ? doc.kind : "STANDARD");
+        }
         setItems(
           withClientKeys(
             doc.items.map((it: any) => ({
@@ -180,6 +184,8 @@ export default function DocumentEditor({ kind }: { kind: DocKind }) {
               unit: it.unit,
               unitPriceCents: it.unitPriceCents ?? 0,
               vatRateBps: it.vatRateBps ?? 0,
+              isDownPaymentDeduction: it.isDownPaymentDeduction || undefined,
+              deductsInvoiceId: it.deductsInvoiceId ?? undefined,
             }))
           )
         );
@@ -207,7 +213,7 @@ export default function DocumentEditor({ kind }: { kind: DocKind }) {
     customerId: customerId || undefined,
     ...dateFields,
     notes,
-    ...(kind === "invoice" ? { supplyType } : {}),
+    ...(kind === "invoice" ? { supplyType, kind: invoiceKind } : {}),
     introText,
     closingText,
   };
@@ -394,7 +400,7 @@ export default function DocumentEditor({ kind }: { kind: DocKind }) {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">
           <Link to="/documents" className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 text-sm" aria-label="Zurück zu den Belegen">← Belege</Link>
-          <h1 className="text-xl font-semibold truncate">{draftId ? cfg.editTitle : cfg.newTitle}</h1>
+          <h1 className="text-xl font-semibold truncate">{kind === "invoice" && invoiceKind === "DOWN_PAYMENT" ? "Anzahlungsrechnung" : kind === "invoice" && invoiceKind === "FINAL" ? "Schlussrechnung" : draftId ? cfg.editTitle : cfg.newTitle}</h1>
           <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 shrink-0">Entwurf</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
