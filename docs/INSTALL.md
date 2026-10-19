@@ -159,6 +159,9 @@ zurücksetzen (*Einstellungen → Benutzer*). Mit eingerichtetem E-Mail-Versand 
 `PUBLIC_APP_URL` können Benutzer ihr Passwort außerdem selbst über "Passwort vergessen?" auf der Anmeldeseite zurücksetzen
 (Link per E-Mail, eine Stunde gültig).
 
+Die Funktion "Testdaten zurücksetzen" (*Einstellungen → Daten*) lässt sich auf dem Server mit der Umgebungsvariable
+`DISABLE_DATA_RESET=true` fest abschalten - empfohlen, sobald echte Rechnungen erstellt werden.
+
 ## 3. Backups im Detail
 
 Automatische Backups laufen bereits im Hintergrund (siehe 1c) - zusätzlich manuell

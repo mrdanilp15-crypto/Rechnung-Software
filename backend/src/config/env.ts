@@ -47,6 +47,8 @@ const envSchema = z.object({
   // aber immer als String an, "false" muss also wirklich false ergeben.
   BACKUP_AUTO_ENABLED: z.string().default("true").transform((v) => v.toLowerCase() !== "false" && v !== "0"),
   BACKUP_INTERVAL_HOURS: z.coerce.number().default(24),
+  // "true" sperrt die Funktion "Testdaten zurücksetzen" serverseitig (empfohlen, sobald echte Rechnungen existieren)
+  DISABLE_DATA_RESET: z.string().default("false").transform((v) => v.toLowerCase() === "true" || v === "1"),
 
   S3_ENDPOINT: z.string().optional().default(""),
   S3_BUCKET: z.string().optional().default(""),

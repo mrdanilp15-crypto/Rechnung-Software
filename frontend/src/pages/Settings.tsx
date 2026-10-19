@@ -1,3 +1,4 @@
+import { DataResetPanel } from "../components/DataResetPanel";
 import { FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
@@ -731,6 +732,8 @@ export default function Settings() {
             />
             {importSave.status === "saving" && <p className="text-sm text-slate-500">Wird importiert...</p>}
           </div>
+
+          <DataResetPanel />
         </div>
       )}
     </div>

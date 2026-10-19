@@ -187,6 +187,12 @@ exportieren** liefert Kontodaten und das eigene Aktivitätsprotokoll als JSON-Da
   hinterlegt ist; sonst setzt ein Admin das Passwort unter *Benutzer* zurück oder Sie nutzen den Notfall-Befehl (INSTALL.md).
 - **Logo, Stempel, Unterschrift**: beim Hochladen werden Bilder automatisch umgewandelt, überstehende Ränder abgeschnitten und
   ein weißer/gekachelter Hintergrund transparent gemacht.
+- **Testdaten zurücksetzen** (*Einstellungen → Daten → Gefahrenbereich*, nur Admin): löscht alle Belege, Ausgaben und Bankbuchungen
+  (auf Wunsch auch Kunden, Produkte und Material) und lässt die Nummern wieder bei 1 beginnen - **nur gedacht für den Moment vor dem
+  echten Start**, denn echte Rechnungen dürfen Sie gesetzlich nicht löschen. Der Ablauf ist absichtlich umständlich: vier
+  Verständnis-Häkchen, Passwort (und 2FA-Code), 30 Sekunden Bedenkzeit, Firmenname und Bestätigungssatz abtippen, zwei Rückfragen.
+  Vorher wird automatisch ein Backup erstellt; schlägt es fehl, wird nichts gelöscht. Sobald echte Rechnungen existieren, sperren Sie die
+  Funktion dauerhaft (Knopf im selben Bereich, oder `DISABLE_DATA_RESET=true` in der Server-Konfiguration).
 - **Backup jetzt erstellen**: erstellt sofort ein ZIP-Backup (zusätzlich zu
   automatisierten, geplanten Backups, siehe [INSTALL.md](INSTALL.md)).
 - **Kunden importieren**: CSV-Datei mit Bestandskunden hochladen (z.B. beim Wechsel von
