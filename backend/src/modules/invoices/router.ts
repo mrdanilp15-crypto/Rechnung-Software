@@ -14,6 +14,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { emitEvent } from "../plugins/hooks";
 import { generateAndStoreInvoicePdf } from "./pdfHelper";
 import { buildXRechnungXml, getXRechnungBlockers } from "../einvoice/xrechnung";
+import { buildFacturXml, FACTURX_XMP } from "../einvoice/facturx";
 import { getInvoiceComplianceWarnings } from "../tax/compliance";
 import { sendMailForCompany, isSmtpConfigured, buildInvoiceEmailText, buildReminderEmailText } from "../email/mailer";
 import { deductMaterialStock, restoreMaterialStock } from "../materials/stock";
@@ -382,6 +383,33 @@ invoicesRouter.get("/:id/xrechnung", async (req, res) => {
   res.setHeader("Content-Type", "application/xml");
   res.setHeader("Content-Disposition", `attachment; filename="${invoice.invoiceNumber}.xml"`);
   res.send(xml);
+});
+
+// ZUGFeRD / Factur-X (Profil EN 16931): normales PDF (PDF/A-3) mit eingebetteter strukturierter Rechnung (CII-XML).
+// Wie die XRechnung nur für finalisierte Rechnungen; die archivierte Standard-PDF bleibt unverändert.
+invoicesRouter.get("/:id/zugferd", async (req, res) => {
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: req.params.id, companyId: req.auth!.companyId },
+    include: { items: true, customer: true, company: true, correctsInvoice: true },
+  });
+  if (!invoice) throw new HttpError(404, "Rechnung nicht gefunden");
+  if (!invoice.invoiceNumber) throw new HttpError(409, "Nur bereits finalisierte Rechnungen können als ZUGFeRD-PDF exportiert werden.");
+  const blockers = getXRechnungBlockers(invoice);
+  if (blockers.length > 0) throw new HttpError(422, `Für die E-Rechnung fehlen Pflichtangaben: ${blockers.join("; ")}.`);
+  const deductedIds = [...new Set(invoice.items.map((i) => i.deductsInvoiceId).filter((x): x is string => !!x))];
+  const preceding = deductedIds.length ? await prisma.invoice.findMany({ where: { id: { in: deductedIds } }, select: { invoiceNumber: true } }) : [];
+  const xml = buildFacturXml({ ...invoice, precedingInvoiceNumbers: preceding.map((p) => p.invoiceNumber).filter((n): n is string => !!n) });
+  const locale = (req.query.lang as "de" | "en") || (invoice.company.defaultLocale as "de" | "en") || "de";
+  const pdf = await generateAndStoreInvoicePdf(invoice, locale, req.query.layout, {
+    xml,
+    filename: "factur-x.xml",
+    description: "Factur-X Invoice (EN 16931)",
+    xmp: FACTURX_XMP,
+  });
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "invoice.zugferd_export", entityType: "Invoice", entityId: invoice.id });
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${invoice.invoiceNumber}-zugferd.pdf"`);
+  res.send(pdf);
 });
 
 // ---------- E-Mail-Versand & Zahlungserinnerung ----------

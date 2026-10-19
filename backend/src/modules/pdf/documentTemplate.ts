@@ -85,6 +85,8 @@ export interface DocumentPdfInput {
   isDraft?: boolean;
   // Stornorechnung/Korrekturbeleg: ersetzt nicht das Original, sondern verweist darauf.
   correctsDocumentNumber?: string | null;
+  // ZUGFeRD/Factur-X: strukturierte Rechnung (XML), die als Anhang ins PDF/A-3 eingebettet wird. Braucht eingebettete Schriften.
+  embeddedXml?: { xml: string; filename: string; description: string; xmp: string };
   // Optisches Layout (siehe PDF_LAYOUTS) - rein gestalterisch, alle Pflichtangaben stehen in jedem Layout.
   layout?: PdfLayout | null;
   // Für Mahnungen: keine Netto-/USt.-Aufschlüsselung (Forderungen und Zinsen sind keine umsatzsteuerpflichtigen Entgelte),
@@ -762,6 +764,20 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
       lineBreak: false,
     });
     doc.page.margins.bottom = originalBottomMargin;
+  }
+
+  if (input.embeddedXml) {
+    if (!fonts.embedded) throw new Error("ZUGFeRD braucht eine eingebettete Schrift (PDF/A-3) - keine Schriftdatei gefunden");
+    const now = new Date();
+    doc.file(Buffer.from(input.embeddedXml.xml, "utf8"), {
+      name: input.embeddedXml.filename,
+      type: "text/xml",
+      description: input.embeddedXml.description,
+      relationship: "Alternative", // in den Typen von pdfkit noch nicht enthalten, zur Laufzeit vorhanden
+      creationDate: now,
+      modifiedDate: now,
+    } as any);
+    (doc as any).appendXML(input.embeddedXml.xmp);
   }
 
   doc.end();

@@ -207,6 +207,11 @@ export default function InvoiceDetail() {
               XRechnung (XML)
             </PdfLink>
           )}
+          {invoice.invoiceNumber && (
+            <PdfLink url={`/invoices/${id}/zugferd`} filename={`${numberLabel}-zugferd.pdf`} download className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm" title="PDF mit eingebetteter E-Rechnung (ZUGFeRD / Factur-X) - lesbar für Menschen und Software">
+              ZUGFeRD-PDF
+            </PdfLink>
+          )}
           <button onClick={handleShare} className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm">
             Teilen (WhatsApp, Mail, ...)
           </button>

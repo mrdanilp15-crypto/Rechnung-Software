@@ -34,7 +34,13 @@ export function buildPaymentTermsText(invoice: { isCancellationDocument: boolean
   return null;
 }
 
-export async function generateAndStoreInvoicePdf(invoice: InvoiceWithRelations, locale: "de" | "en", layoutOverride?: unknown): Promise<Buffer> {
+export async function generateAndStoreInvoicePdf(
+  invoice: InvoiceWithRelations,
+  locale: "de" | "en",
+  layoutOverride?: unknown,
+  // ZUGFeRD: XML wird eingebettet, das Ergebnis ersetzt NICHT die archivierte Standard-PDF (wird nicht gespeichert)
+  embeddedXml?: { xml: string; filename: string; description: string; xmp: string }
+): Promise<Buffer> {
   const isDraft = invoice.status === "DRAFT";
   const pdfBuffer = await renderDocumentPdf({
     docTypeLabel: invoice.isCancellationDocument
@@ -73,11 +79,12 @@ export async function generateAndStoreInvoicePdf(invoice: InvoiceWithRelations, 
     introText: invoice.introText,
     closingText: invoice.closingText,
     correctsDocumentNumber: invoice.correctsInvoice?.invoiceNumber ?? null,
+    embeddedXml,
   });
 
   // Entwurfs-Vorschauen werden nicht als Datei abgelegt/als pdfPath vermerkt - das
   // passiert erst für die finale, nummerierte Rechnung (siehe finalizeInvoiceNumber).
-  if (isDraft) return pdfBuffer;
+  if (isDraft || embeddedXml) return pdfBuffer;
 
   const outDir = path.join(env.UPLOAD_DIR, "invoices");
   fs.mkdirSync(outDir, { recursive: true });
