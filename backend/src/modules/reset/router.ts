@@ -55,12 +55,14 @@ async function isLocked(companyId: string): Promise<boolean> {
   return s?.value === "true";
 }
 
+// Bewusst 403 statt 401: Der Browser-Client behandelt 401 als "Sitzung abgelaufen" und würde bei falschem Passwort
+// erst einen Token-Refresh und dann eine Wiederholung auslösen (Schleife, Rate-Limit, ggf. Abmeldung).
 async function assertIdentity(userId: string, password: string, totpToken?: string) {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-  if (!(await verifyPassword(user.passwordHash, password))) throw new HttpError(401, "Passwort ist falsch");
+  if (!(await verifyPassword(user.passwordHash, password))) throw new HttpError(403, "Passwort ist falsch");
   if (user.totpEnabled) {
-    if (!totpToken) throw new HttpError(401, "2FA-Code erforderlich");
-    if (!user.totpSecret || !verifyTotpToken(user.totpSecret, totpToken)) throw new HttpError(401, "2FA-Code ungültig");
+    if (!totpToken) throw new HttpError(403, "2FA-Code erforderlich");
+    if (!user.totpSecret || !verifyTotpToken(user.totpSecret, totpToken)) throw new HttpError(403, "2FA-Code ungültig");
   }
   return user;
 }
