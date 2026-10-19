@@ -147,6 +147,7 @@ model User {
   updatedAt         DateTime @updatedAt
 
   refreshTokens     RefreshToken[]
+  passwordResets    PasswordResetToken[]
   auditLogs         AuditLog[]
 
   @@index([companyId])
@@ -162,6 +163,19 @@ model RefreshToken {
   replacedBy  String?
   createdByIp String?
   createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Einmal-Link zum Zurücksetzen eines vergessenen Passworts (nur der SHA-256-Hash wird gespeichert, 1 Stunde gültig)
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }

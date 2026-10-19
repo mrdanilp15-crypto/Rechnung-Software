@@ -93,6 +93,11 @@ export default function Login() {
           {t("auth.login")}
         </button>
         <p className="text-sm mt-4 text-center">
+          <Link to="/forgot-password" className="text-brand hover:underline">
+            Passwort vergessen?
+          </Link>
+        </p>
+        <p className="text-sm mt-2 text-center">
           {t("auth.noAccount")}{" "}
           <Link to="/register" className="text-brand hover:underline">
             {t("auth.register")}

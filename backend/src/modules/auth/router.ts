@@ -10,6 +10,11 @@ import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { setAuthCookies, clearAuthCookies, getRefreshTokenCookie } from "./cookies";
 import { env } from "../../config/env";
+import crypto from "crypto";
+import { sha256Hex } from "../../utils/crypto";
+import { sendMailForCompany, isSmtpConfigured } from "../email/mailer";
+import { forgotPasswordRateLimiter, resetPasswordRateLimiter } from "../../middleware/rateLimit";
+import { logger } from "../../utils/logger";
 
 export const authRouter = Router();
 
@@ -237,6 +242,71 @@ authRouter.post("/change-password", requireAuth, async (req, res) => {
   setAuthCookies(res, accessToken, refreshToken);
   await writeAuditLog({ req, companyId: user.companyId, userId: user.id, action: "auth.change_password", entityType: "User", entityId: user.id });
   res.json({ ok: true, accessToken, refreshToken });
+});
+
+// ---------- Passwort vergessen (Link per E-Mail über das SMTP-Postfach der Firma) ----------
+
+const RESET_TTL_MINUTES = 60;
+const forgotSchema = z.object({ email: z.string().email() });
+
+// Antwortet IMMER gleich (kein Hinweis, ob die Adresse existiert) und versendet im Hintergrund,
+// damit auch die Antwortzeit nichts verrät. Ohne eingerichtetes SMTP kann keine Mail gesendet werden -
+// dann hilft der Notfall-Weg per Server-Befehl (siehe INSTALL.md) oder ein Admin unter Benutzer.
+authRouter.post("/forgot-password", forgotPasswordRateLimiter, async (req, res) => {
+  const body = forgotSchema.parse(req.body);
+  res.json({ ok: true, message: "Falls ein Konto mit dieser Adresse existiert und E-Mail-Versand eingerichtet ist, wurde ein Link zum Zurücksetzen gesendet." });
+
+  void (async () => {
+    try {
+      const user = await prisma.user.findUnique({ where: { email: body.email }, include: { company: true } });
+      if (!user || !user.isActive) return;
+      if (!isSmtpConfigured(user.company)) {
+        logger.warn({ userId: user.id }, "Passwort-vergessen angefragt, aber kein SMTP eingerichtet");
+        return;
+      }
+      await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
+      const raw = crypto.randomBytes(32).toString("base64url");
+      await prisma.passwordResetToken.create({
+        data: { userId: user.id, tokenHash: sha256Hex(raw), expiresAt: new Date(Date.now() + RESET_TTL_MINUTES * 60 * 1000) },
+      });
+      const link = `${env.PUBLIC_APP_URL.replace(/\/$/, "")}/reset-password?token=${raw}`;
+      await sendMailForCompany(user.company, {
+        to: user.email,
+        subject: "Passwort zurücksetzen",
+        text: `Hallo ${user.name},
+
+für Ihr Konto wurde das Zurücksetzen des Passworts angefordert. Über diesen Link können Sie ein neues Passwort vergeben (gültig ${RESET_TTL_MINUTES} Minuten, nur einmal verwendbar):
+
+${link}
+
+Haben Sie das nicht angefordert, können Sie diese E-Mail ignorieren - Ihr Passwort bleibt unverändert.`,
+      });
+      await writeAuditLog({ req, companyId: user.companyId, userId: user.id, action: "auth.forgot_password", entityType: "User", entityId: user.id });
+    } catch (err: any) {
+      logger.warn({ err: err.message }, "Passwort-vergessen-Mail konnte nicht gesendet werden");
+    }
+  })();
+});
+
+const resetSchema = z.object({ token: z.string().min(20), newPassword: z.string().min(10) });
+
+authRouter.post("/reset-password", resetPasswordRateLimiter, async (req, res) => {
+  const body = resetSchema.parse(req.body);
+  if (!isPasswordStrongEnough(body.newPassword)) {
+    throw new HttpError(400, "Passwort zu schwach (mind. 10 Zeichen, Buchstaben und Ziffern)");
+  }
+  const record = await prisma.passwordResetToken.findUnique({ where: { tokenHash: sha256Hex(body.token) }, include: { user: true } });
+  if (!record || record.usedAt || record.expiresAt < new Date() || !record.user.isActive) {
+    throw new HttpError(400, "Der Link ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen an.");
+  }
+  const passwordHash = await hashPassword(body.newPassword);
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: record.userId }, data: { passwordHash, failedLoginCount: 0, lockedUntil: null } }),
+    prisma.passwordResetToken.deleteMany({ where: { userId: record.userId } }),
+  ]);
+  await revokeAllUserTokens(record.userId);
+  await writeAuditLog({ req, companyId: record.user.companyId, userId: record.userId, action: "auth.reset_password", entityType: "User", entityId: record.userId });
+  res.json({ ok: true });
 });
 
 // ---------- Zwei-Faktor-Authentifizierung (TOTP, optional) ----------
