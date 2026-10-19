@@ -5,6 +5,9 @@ import "./i18n";
 import "./index.css";
 import App from "./App";
 import { ToastProvider } from "./components/Toast";
+import { installNumberInputHelpers } from "./numberInputs";
+
+installNumberInputHelpers();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
