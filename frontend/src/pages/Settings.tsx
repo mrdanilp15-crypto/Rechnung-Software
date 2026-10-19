@@ -40,6 +40,8 @@ interface Company {
   laborRateCentsPerHour?: number;
   materialWastePercent?: number;
   targetMarginPercent?: number;
+  electricityCentsPerKwh?: number;
+  overheadPercent?: number;
   pdfLayout?: "CLEAR" | "BAND" | "COMPACT";
   invoiceIntroText?: string;
   invoiceClosingText?: string;
@@ -344,9 +346,9 @@ export default function Settings() {
           <p className="text-xs text-slate-500 -mt-2">Aus diesen Sätzen berechnet die Produktverwaltung die Selbstkosten und einen Preisvorschlag (Material aus dem Lager + Maschinen- und Arbeitszeit).</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="block text-sm">
-              Maschinenstundensatz (€ pro Stunde)
+              Pauschaler Maschinenstundensatz (€ pro Stunde)
               <input type="number" min={0} step="0.01" value={(company.machineRateCentsPerHour ?? 0) / 100} onChange={(e) => setCompany({ ...company, machineRateCentsPerHour: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Strom, Verschleiß, Abschreibung des Druckers je Betriebsstunde.</span>
+              <span className="block text-xs text-slate-500 mt-0.5">Nur für Produkte ohne gewählten Drucker. Mit Drucker rechnet die Software Strom, Abschreibung und Verschleiß einzeln (siehe Katalog → Drucker).</span>
             </label>
             <label className="block text-sm">
               Arbeitsstundensatz (€ pro Stunde)
@@ -356,6 +358,16 @@ export default function Settings() {
               Materialausschuss (%)
               <input type="number" min={0} max={100} step="0.5" value={company.materialWastePercent ?? 5} onChange={(e) => setCompany({ ...company, materialWastePercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               <span className="block text-xs text-slate-500 mt-0.5">Aufschlag auf den Materialverbrauch für Fehldrucke, Stützstrukturen, Reste.</span>
+            </label>
+            <label className="block text-sm">
+              Strompreis (Cent pro kWh)
+              <input type="number" min={0} step="0.1" value={company.electricityCentsPerKwh ?? 35} onChange={(e) => setCompany({ ...company, electricityCentsPerKwh: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Ihr Preis pro Kilowattstunde laut Stromrechnung (Beispiel: 35 = 0,35 €/kWh).</span>
+            </label>
+            <label className="block text-sm">
+              Gemeinkosten-Aufschlag (%)
+              <input type="number" min={0} step="0.5" value={company.overheadPercent ?? 5} onChange={(e) => setCompany({ ...company, overheadPercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Miete, Software, Versicherung, Verpackung, Fehldruck-Risiko - als Prozentaufschlag auf die direkten Kosten.</span>
             </label>
             <label className="block text-sm">
               Gewinnaufschlag (%)

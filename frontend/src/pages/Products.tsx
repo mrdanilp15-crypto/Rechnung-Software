@@ -6,6 +6,7 @@ import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
 import { MobileCard, MobileField } from "../components/MobileCard";
+import { calcCost, type CostRates, type PrinterCosts } from "../lib/cost";
 
 interface Material {
   id: string;
@@ -14,20 +15,10 @@ interface Material {
   costPerUnitCents?: number;
 }
 
-interface Rates {
-  machineRateCentsPerHour: number;
-  laborRateCentsPerHour: number;
-  materialWastePercent: number;
-  targetMarginPercent: number;
-}
-
-/** Selbstkosten je Einheit in Cent (Bruchteile möglich): Material inkl. Ausschuss + Maschinen- und Arbeitszeit. */
-function calcCost(used: { quantityPerUnit: number; costPerUnitCents: number }[], printMinutes: number, laborMinutes: number, rates: Rates) {
-  const material = used.reduce((s, m) => s + m.quantityPerUnit * m.costPerUnitCents, 0) * (1 + rates.materialWastePercent / 100);
-  const machine = (printMinutes / 60) * rates.machineRateCentsPerHour;
-  const labor = (laborMinutes / 60) * rates.laborRateCentsPerHour;
-  const total = material + machine + labor;
-  return { material, machine, labor, total, recommended: total * (1 + rates.targetMarginPercent / 100) };
+type Rates = CostRates;
+interface PrinterOption extends PrinterCosts {
+  id: string;
+  name: string;
 }
 interface ProductMaterial {
   materialId: string;
@@ -44,6 +35,7 @@ interface Product {
   vatRateBps: number;
   printTimeMinutes?: number;
   laborMinutes?: number;
+  printerId?: string | null;
   materials: ProductMaterial[];
 }
 interface MaterialUsageRow {
@@ -51,7 +43,7 @@ interface MaterialUsageRow {
   quantityPerUnit: string;
 }
 
-const emptyForm = { sku: "", name: "", description: "", unit: "Stk.", unitPriceEur: "0.00", vatRateBps: 1900, printTimeMinutes: "", laborMinutes: "" };
+const emptyForm = { sku: "", name: "", description: "", unit: "Stk.", unitPriceEur: "0.00", vatRateBps: 1900, printTimeMinutes: "", laborMinutes: "", printerId: "" };
 
 export default function Products() {
   const { t } = useTranslation();
@@ -63,7 +55,8 @@ export default function Products() {
   const [form, setForm] = useState(emptyForm);
   const [materialRows, setMaterialRows] = useState<MaterialUsageRow[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [rates, setRates] = useState<Rates>({ machineRateCentsPerHour: 0, laborRateCentsPerHour: 0, materialWastePercent: 5, targetMarginPercent: 30 });
+  const [rates, setRates] = useState<Rates>({ machineRateCentsPerHour: 0, laborRateCentsPerHour: 0, materialWastePercent: 5, targetMarginPercent: 30, electricityCentsPerKwh: 35, overheadPercent: 5 });
+  const [printers, setPrinters] = useState<PrinterOption[]>([]);
   const { status, run } = useSaveStatus();
   const showToast = useToast();
 
@@ -79,8 +72,11 @@ export default function Products() {
         laborRateCentsPerHour: res.data.laborRateCentsPerHour ?? 0,
         materialWastePercent: res.data.materialWastePercent ?? 5,
         targetMarginPercent: res.data.targetMarginPercent ?? 30,
+        electricityCentsPerKwh: res.data.electricityCentsPerKwh ?? 35,
+        overheadPercent: res.data.overheadPercent ?? 5,
       })
     );
+    api.get("/printers").then((res) => setPrinters(res.data));
   }, []);
 
   const fuse = useMemo(() => new Fuse(products, { keys: ["name", "sku", "description"], threshold: 0.35 }), [products]);
@@ -104,6 +100,7 @@ export default function Products() {
       vatRateBps: p.vatRateBps,
       printTimeMinutes: p.printTimeMinutes ? String(p.printTimeMinutes) : "",
       laborMinutes: p.laborMinutes ? String(p.laborMinutes) : "",
+      printerId: p.printerId ?? "",
     });
     setMaterialRows(p.materials.map((m) => ({ materialId: m.materialId, quantityPerUnit: String(m.quantityPerUnit) })));
     setShowForm(true);
@@ -133,6 +130,7 @@ export default function Products() {
       vatRateBps: form.vatRateBps,
       printTimeMinutes: parseFloat(form.printTimeMinutes) || 0,
       laborMinutes: parseFloat(form.laborMinutes) || 0,
+      printerId: form.printerId || null,
       materials: validMaterialRows.map((r) => ({ materialId: r.materialId, quantityPerUnit: parseFloat(r.quantityPerUnit) })),
     };
     try {
@@ -170,7 +168,8 @@ export default function Products() {
       .filter((r) => r.quantityPerUnit > 0),
     parseFloat(form.printTimeMinutes) || 0,
     parseFloat(form.laborMinutes) || 0,
-    rates
+    rates,
+    printers.find((pr) => pr.id === form.printerId)
   );
   const livePriceCents = Math.round(parseFloat(form.unitPriceEur) * 100) || 0;
   const liveProfit = livePriceCents - liveCost.total;
@@ -261,6 +260,16 @@ export default function Products() {
 
           <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-3">
             <div className="text-sm font-medium">Kalkulation (optional)</div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Drucker (bestimmt Strom, Abschreibung und Verschleiß)</label>
+              <select value={form.printerId} onChange={(e) => setForm((f) => ({ ...f, printerId: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                <option value="">Kein Drucker - pauschaler Maschinenstundensatz ({formatPrice(rates.machineRateCentsPerHour)}/h)</option>
+                {printers.map((pr) => (
+                  <option key={pr.id} value={pr.id}>{pr.name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 mt-1">Drucker und ihre Werte pflegen Sie unter Katalog → Drucker.</p>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Druckzeit pro {form.unit || "Einheit"} (Minuten)</label>
@@ -274,8 +283,17 @@ export default function Products() {
             {liveCost.total > 0 ? (
               <div className="text-sm space-y-1 bg-slate-50 dark:bg-slate-900/40 rounded p-3">
                 <div className="flex justify-between"><span className="text-slate-500">Material (inkl. {rates.materialWastePercent}% Ausschuss)</span><span>{formatPrice(liveCost.material)}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Maschine</span><span>{formatPrice(liveCost.machine)}</span></div>
+                {form.printerId ? (
+                  <>
+                    <div className="flex justify-between"><span className="text-slate-500">Strom</span><span>{formatPrice(liveCost.electricity)}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Abschreibung Drucker</span><span>{formatPrice(liveCost.depreciation)}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Verschleiß &amp; Wartung</span><span>{formatPrice(liveCost.wear)}</span></div>
+                  </>
+                ) : (
+                  <div className="flex justify-between"><span className="text-slate-500">Maschine (pauschal)</span><span>{formatPrice(liveCost.machineFlat)}</span></div>
+                )}
                 <div className="flex justify-between"><span className="text-slate-500">Arbeit</span><span>{formatPrice(liveCost.labor)}</span></div>
+                {rates.overheadPercent > 0 && <div className="flex justify-between"><span className="text-slate-500">Gemeinkosten ({rates.overheadPercent}%)</span><span>{formatPrice(liveCost.overhead)}</span></div>}
                 <div className="flex justify-between font-medium border-t border-slate-200 dark:border-slate-700 pt-1"><span>Selbstkosten</span><span>{formatPrice(liveCost.total)}</span></div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500">Preisvorschlag (+{rates.targetMarginPercent}%)</span>
@@ -345,7 +363,8 @@ export default function Products() {
                       p.materials.map((m) => ({ quantityPerUnit: m.quantityPerUnit, costPerUnitCents: m.material.costPerUnitCents ?? 0 })),
                       p.printTimeMinutes ?? 0,
                       p.laborMinutes ?? 0,
-                      rates
+                      rates,
+                      printers.find((pr) => pr.id === p.printerId)
                     );
                     if (cost.total <= 0 || p.unitPriceCents <= 0) return null;
                     const profit = p.unitPriceCents - cost.total;

@@ -36,11 +36,19 @@ const productSchema = z.object({
   vatRateBps: z.number().int().min(0).max(10000).default(1900),
   printTimeMinutes: z.number().min(0).max(100000).optional(),
   laborMinutes: z.number().min(0).max(100000).optional(),
+  printerId: z.string().nullish(),
   // Materialverbrauch pro verkaufter Einheit dieses Produkts (siehe modules/materials) -
   // wird beim Erstellen einer Rechnung genutzt, um den Materialbestand automatisch zu
   // reduzieren. Optional: ein Produkt ohne Materialverbrauch bleibt ohne Bestandsabzug.
   materials: z.array(materialUsageSchema).optional(),
 });
+
+// Ein Drucker darf nur aus der eigenen Firma stammen
+async function validPrinterId(companyId: string, printerId: string) {
+  const p = await prisma.printer.findFirst({ where: { id: printerId, companyId, isArchived: false }, select: { id: true } });
+  if (!p) throw new HttpError(400, "Drucker nicht gefunden");
+  return p.id;
+}
 
 productsRouter.post("/", async (req, res) => {
   const body = productSchema.parse(req.body);
@@ -49,6 +57,7 @@ productsRouter.post("/", async (req, res) => {
     data: {
       ...productData,
       companyId: req.auth!.companyId,
+      ...(productData.printerId ? { printerId: await validPrinterId(req.auth!.companyId, productData.printerId) } : { printerId: null }),
       materials: materials ? { create: materials } : undefined,
     },
     include: { materials: { include: { material: true } } },
@@ -66,6 +75,7 @@ productsRouter.patch("/:id", async (req, res) => {
     where: { id: existing.id },
     data: {
       ...productData,
+      ...(productData.printerId !== undefined ? { printerId: productData.printerId ? await validPrinterId(req.auth!.companyId, productData.printerId) : null } : {}),
       // Rezept immer komplett ersetzen, wenn mitgeschickt - einfacher und weniger
       // fehleranfällig als einzelne Zeilen abzugleichen (analog zu Positionslisten bei
       // Rechnungen/Angeboten).

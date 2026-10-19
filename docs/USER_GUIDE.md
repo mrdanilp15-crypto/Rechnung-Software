@@ -143,8 +143,14 @@ In der Rechnungsdetailansicht:
 - **Wiederkehrende Rechnungen**: im Menü (⋮) einer Rechnung "Wiederkehrend einrichten" (Rhythmus, erster Termin, optionales Ende).
   Zu jedem Termin legt die Software einen **Entwurf** an - Sie prüfen und stellen ihn fertig, es wird nie automatisch versendet.
   Verwalten unter *Belege → Wiederkehrende Rechnungen*.
-- **Kalkulation für 3D-Druck**: bei Produkten Material, Druckzeit, Strom, Maschinenverschleiß und Aufschläge eingeben, die Software
-  schlägt den Verkaufspreis vor (Stundensätze und Aufschläge unter *Einstellungen*).
+- **Kalkulation für 3D-Druck**: bei Produkten Material (inkl. Ausschuss), Druckzeit und Arbeitszeit eingeben, die Software
+  rechnet Strom, Abschreibung, Verschleiß, Arbeit und Gemeinkosten aus und schlägt den Verkaufspreis vor. Die Kosten werden
+  einzeln aufgeschlüsselt.
+  - **Drucker** (*Katalog → Drucker*): beliebig viele Maschinen anlegen, je mit Anschaffungspreis, Lebensdauer (Druckstunden),
+    Leistung (Watt) und Verschleiß/Wartung pro Stunde. Beim Anlegen sehen Sie live die Kosten pro Druckstunde. Die zwei
+    vorausgefüllten Drucker sind **Beispielwerte** - bitte an Ihre Maschinen anpassen.
+  - **Strompreis und Gemeinkosten-Aufschlag** stehen unter *Einstellungen → Firma → Kalkulation*.
+  - Im Produkt wählen Sie den Drucker aus. Ohne Drucker gilt der pauschale Maschinenstundensatz aus den Einstellungen.
 - **Steuerberater-Paket** (*Finanzen → Steuerberater*): USt-Übersicht je Zeitraum (zur Orientierung - ersetzt keine
   Umsatzsteuer-Voranmeldung, es wird nach vereinbarten Entgelten gerechnet) und ein ZIP mit allen Rechnungs-PDFs, Belegliste und
   Ausgaben. Es ist **kein DATEV-Format**. Grenzüberschreitende Fälle (innergemeinschaftliche Lieferung, Reverse-Charge) lassen Sie

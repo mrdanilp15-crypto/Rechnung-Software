@@ -49,6 +49,9 @@ model Company {
   laborRateCentsPerHour   Int   @default(0)
   materialWastePercent    Float @default(5)
   targetMarginPercent     Float @default(30)
+  // Strompreis (Cent pro kWh) und Gemeinkosten-Aufschlag in Prozent (Miete, Software, Versicherung, Fehldruck-Risiko ...)
+  electricityCentsPerKwh  Float @default(35)
+  overheadPercent         Float @default(5)
   // Mahnwesen: Mahngebühren (Auslagenersatz) je Stufe in Cent, Basiszinssatz der Bundesbank in Prozent (ändert sich
   // halbjährlich - bitte aktuell halten), Zahlungsfrist je Mahnung in Tagen und die Texte der drei Stufen.
   dunningFee2Cents        Int   @default(500)
@@ -112,6 +115,7 @@ model Company {
   deliveryNotes       DeliveryNote[]
   orderConfirmations  OrderConfirmation[]
   numberSequences     NumberSequence[]
+  printers            Printer[]
   auditLogs           AuditLog[]
   dunnings            Dunning[]
   recurringInvoices   RecurringInvoice[]
@@ -252,6 +256,9 @@ model Product {
   // Kalkulation: Druck- und Arbeitszeit in Minuten pro verkaufter Einheit (siehe Company-Stundensätze)
   printTimeMinutes Float @default(0)
   laborMinutes     Float @default(0)
+  // Auf welchem Drucker gedruckt wird (bestimmt Strom, Abschreibung, Verschleiß). Ohne Drucker gilt der pauschale Maschinenstundensatz.
+  printer          Printer? @relation(fields: [printerId], references: [id], onDelete: SetNull)
+  printerId        String?
   isArchived    Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -288,6 +295,26 @@ model Material {
   updatedAt        DateTime @updatedAt
 
   products         ProductMaterial[]
+
+  @@index([companyId])
+}
+
+// 3D-Drucker (oder andere Maschinen) mit eigenen Kostenwerten für die Kalkulation
+model Printer {
+  id                 String   @id @default(uuid())
+  company            Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId          String
+  name               String
+  purchasePriceCents Int      @default(0) // Anschaffungspreis
+  lifetimeHours      Float    @default(5000) // geschätzte Lebensdauer in Druckstunden -> Abschreibung je Stunde
+  powerWatts         Float    @default(120) // durchschnittliche Leistungsaufnahme beim Drucken -> Stromkosten
+  wearCentsPerHour   Float    @default(10) // Verschleiß/Wartung (Düse, Bett, Riemen, Lager ...) je Druckstunde in Cent
+  notes              String?
+  isArchived         Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  products           Product[]
 
   @@index([companyId])
 }

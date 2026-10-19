@@ -55,6 +55,8 @@ const updateCompanySchema = z.object({
   laborRateCentsPerHour: z.number().int().min(0).max(10_000_000).optional(),
   materialWastePercent: z.number().min(0).max(100).optional(),
   targetMarginPercent: z.number().min(0).max(1000).optional(),
+  electricityCentsPerKwh: z.number().min(0).max(10_000).optional(),
+  overheadPercent: z.number().min(0).max(1000).optional(),
   dunningFee2Cents: z.number().int().min(0).max(100_000).optional(),
   dunningFee3Cents: z.number().int().min(0).max(100_000).optional(),
   baseInterestRatePercent: z.number().min(-5).max(25).optional(),

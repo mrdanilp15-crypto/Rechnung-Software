@@ -118,7 +118,8 @@ implementiert.
 | Gemeinsamer Editor für Rechnung/Angebot/Auftrag/Lieferschein, Autospeichern, Live-Vorschau | ✅ |
 | Belegkette Angebot → Auftrag → Lieferschein → Rechnung | ✅ |
 | Duplizieren, globale Suche (Strg+K), Umsatz-Diagramm | ✅ |
-| Kalkulation für 3D-Druck | ✅ |
+| Kalkulation für 3D-Druck (Material, Strom, Abschreibung, Verschleiß, Arbeit, Gemeinkosten) | ✅ |
+| Drucker-Verwaltung mit eigenen Kostenwerten je Maschine | ✅ Vorausgefüllte Werte sind Beispiele |
 | Mahnwesen mit drei Stufen, Verzugszinsen, Pauschale, Mahn-PDF | ✅ Basiszinssatz muss vom Nutzer gepflegt werden |
 | Anzahlungs- und Schlussrechnung (XRechnung: Typ 326 + BT-113) | ✅ mit KoSIT geprüft |
 | Wiederkehrende Rechnungen (erzeugen nur Entwürfe) | ✅ |
