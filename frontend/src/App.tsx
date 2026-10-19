@@ -15,6 +15,7 @@ import InvoiceDetail from "./pages/InvoiceDetail";
 import DocumentEditor from "./pages/DocumentEditor";
 import Documents from "./pages/Documents";
 import Catalog from "./pages/Catalog";
+import RecurringPage from "./pages/Recurring";
 import Finance from "./pages/Finance";
 import AuditLog from "./pages/AuditLog";
 import Settings from "./pages/Settings";
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/documents" element={<Documents />} />
         <Route path="/catalog" element={<Catalog />} />
+        <Route path="/recurring" element={<RecurringPage />} />
         <Route path="/invoices/new" element={<DocumentEditor kind="invoice" />} />
         <Route path="/invoices/:id" element={<InvoiceDetail />} />
         <Route path="/invoices/:id/edit" element={<DocumentEditor kind="invoice" />} />

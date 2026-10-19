@@ -114,6 +114,7 @@ model Company {
   numberSequences     NumberSequence[]
   auditLogs           AuditLog[]
   dunnings            Dunning[]
+  recurringInvoices   RecurringInvoice[]
   webhooks            Webhook[]
   settings            Setting[]
   expenses            Expense[]
@@ -216,6 +217,7 @@ model Customer {
   quotes             Quote[]
   deliveryNotes      DeliveryNote[]
   orderConfirmations OrderConfirmation[]
+  recurringInvoices  RecurringInvoice[]
 
   @@unique([companyId, customerNumber])
   @@index([companyId])
@@ -656,4 +658,34 @@ model Dunning {
 
   @@index([invoiceId])
   @@index([companyId, createdAt])
+}
+
+// ---------- Wiederkehrende Rechnungen ----------
+// Eine Vorlage erzeugt zu jedem Fälligkeitstermin automatisch einen Rechnungs-ENTWURF (nie eine versendete Rechnung) -
+// die Rechnung wird erst nach Prüfung per "Fertigstellen" ausgestellt (GoBD: Nummer erst bei Ausstellung).
+
+model RecurringInvoice {
+  id            String    @id @default(uuid())
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId     String
+  customer      Customer  @relation(fields: [customerId], references: [id])
+  customerId    String
+  name          String // interne Bezeichnung, z.B. "Monatliche Wartung Industrie AG"
+  intervalUnit  String // WEEK | MONTH | QUARTER | YEAR
+  intervalCount Int       @default(1)
+  nextRunDate   DateTime
+  endDate       DateTime?
+  isActive      Boolean   @default(true)
+  supplyType    String    @default("GOODS")
+  notes         String?
+  introText     String?
+  closingText   String?
+  itemsJson     String // JSON-Array der Positionen (description, quantity, unit, unitPriceCents, vatRateBps, productId?)
+  lastRunAt     DateTime?
+  lastInvoiceId String?
+  runCount      Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([companyId, isActive, nextRunDate])
 }

@@ -6,6 +6,7 @@ import { registerPlugin } from "./modules/plugins/hooks";
 import exampleTaxNotePlugin from "../plugins/example-tax-note";
 import { markOverdueInvoices } from "./modules/invoices/overdueJob";
 import { runBackup } from "./modules/backup/runBackup";
+import { runDueRecurringInvoices } from "./modules/recurring/service";
 
 // Sicherheitsnetz: normale HTTP-Fehler (404, 400, ...) werden bereits über
 // express-async-errors + middleware/errorHandler.ts korrekt behandelt (siehe app.ts).
@@ -32,6 +33,12 @@ async function main() {
   }, 60 * 60 * 1000);
   markOverdueInvoices().catch((err) => logger.error({ err }, "Fehler beim Prüfen überfälliger Rechnungen"));
 
+  // Wiederkehrende Rechnungen: stündlich fällige Vorlagen als ENTWURF anlegen (nie automatisch versenden)
+  const recurringInterval = setInterval(() => {
+    runDueRecurringInvoices().catch((err) => logger.error({ err }, "Fehler bei wiederkehrenden Rechnungen"));
+  }, 60 * 60 * 1000);
+  runDueRecurringInvoices().catch((err) => logger.error({ err }, "Fehler bei wiederkehrenden Rechnungen"));
+
   // Automatisches Backup alle BACKUP_INTERVAL_HOURS Stunden (Standard: täglich). Läuft
   // im selben Prozess statt per externem Cron, damit ein reines "Compose hochladen und
   // starten" ohne zusätzliche Host-Konfiguration bereits regelmäßige Backups liefert.
@@ -48,6 +55,7 @@ async function main() {
   const shutdown = async (signal: string) => {
     logger.info(`${signal} empfangen, fahre Server geordnet herunter...`);
     clearInterval(overdueInterval);
+    clearInterval(recurringInterval);
     if (backupInterval) clearInterval(backupInterval);
     server.close();
     await prisma.$disconnect();

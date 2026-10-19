@@ -21,6 +21,7 @@ import { documentsRouter } from "./modules/documents/router";
 import { searchRouter } from "./modules/search/router";
 import { accountingRouter } from "./modules/accounting/router";
 import { dunningRouter } from "./modules/dunning/router";
+import { recurringRouter } from "./modules/recurring/router";
 import { usersRouter } from "./modules/users/router";
 import { companiesRouter } from "./modules/companies/router";
 import { customersRouter } from "./modules/customers/router";
@@ -107,6 +108,7 @@ export function createApp() {
   app.use("/api/search", searchRouter);
   app.use("/api/accounting", accountingRouter);
   app.use("/api/dunning", dunningRouter);
+  app.use("/api/recurring", recurringRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

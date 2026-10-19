@@ -5,6 +5,7 @@ import { PdfLink } from "../components/PdfLink";
 import { RowActionsMenu, RowAction } from "../components/RowActionsMenu";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { useToast } from "../components/Toast";
+import { RecurringDialog } from "../components/RecurringDialog";
 
 type Kind = "INVOICE" | "QUOTE" | "ORDER_CONFIRMATION" | "DELIVERY_NOTE";
 
@@ -66,6 +67,7 @@ export default function Documents() {
   const [q, setQ] = useState("");
   const [newOpen, setNewOpen] = useState(false);
   const [dpRow, setDpRow] = useState<DocRow | null>(null);
+  const [recurringRow, setRecurringRow] = useState<DocRow | null>(null);
   const [dpPercent, setDpPercent] = useState("30");
   const newRef = useRef<HTMLDivElement>(null);
 
@@ -183,6 +185,7 @@ export default function Documents() {
     if (row.kind === "ORDER_CONFIRMATION" && row.status !== "DRAFT") {
       list.push({ label: "→ Lieferschein", onClick: () => convert(row, "convert-to-delivery-note", "/delivery-notes", "Lieferschein als Entwurf angelegt") });
     }
+    if (row.kind === "INVOICE" && !row.isCancellationDocument && row.invoiceKind !== "DOWN_PAYMENT") list.push({ label: "Wiederkehrend einrichten", onClick: () => setRecurringRow(row) });
     if (!row.isCancellationDocument) list.push({ label: "Duplizieren", onClick: () => duplicate(row) });
     const deletable = row.kind === "INVOICE" ? row.status === "DRAFT" : row.kind === "QUOTE" ? row.status === "DRAFT" : true;
     if (deletable) list.push({ label: row.status === "DRAFT" ? "Entwurf verwerfen" : "Ungültig markieren", onClick: () => remove(row), danger: true });
@@ -289,6 +292,19 @@ export default function Documents() {
         )}
       </div>
 
+      {recurringRow && (
+        <RecurringDialog
+          invoiceId={recurringRow.id}
+          defaultName={`${recurringRow.customerName} - ${recurringRow.number ?? "Rechnung"}`}
+          onClose={() => setRecurringRow(null)}
+          onCreated={() => {
+            setRecurringRow(null);
+            showToast("Wiederkehrende Rechnung eingerichtet", "success");
+            navigate("/recurring");
+          }}
+        />
+      )}
+
       {dpRow && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4" onMouseDown={() => setDpRow(null)}>
           <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-5 space-y-3" onMouseDown={(e) => e.stopPropagation()}>
@@ -308,7 +324,7 @@ export default function Documents() {
 
       <p className="text-xs text-slate-500 mt-3">
         Der übliche Ablauf: Angebot → Auftrag → Lieferschein → Rechnung. Über das Menü (⋮) führen Sie einen Beleg mit allen Positionen zum nächsten weiter.{" "}
-        <Link to="/invoices" className="text-brand hover:underline">Rechnungen verwalten</Link> (Mehrfachauswahl, E-Mail-Status).
+        <Link to="/invoices" className="text-brand hover:underline">Rechnungen verwalten</Link> (Mehrfachauswahl, E-Mail-Status) · <Link to="/recurring" className="text-brand hover:underline">Wiederkehrende Rechnungen</Link>.
       </p>
     </div>
   );

@@ -11,7 +11,7 @@ import { GlobalSearch } from "./GlobalSearch";
 // "match" bestimmt, welche Unterseiten den Menüpunkt hervorheben.
 const navItems = [
   { to: "/", key: "start", match: [] as string[] },
-  { to: "/documents", key: "documents", match: ["/documents", "/invoices", "/quotes", "/order-confirmations", "/delivery-notes"] },
+  { to: "/documents", key: "documents", match: ["/documents", "/invoices", "/quotes", "/order-confirmations", "/delivery-notes", "/recurring"] },
   { to: "/customers", key: "customers", match: ["/customers"] },
   { to: "/catalog", key: "catalog", match: ["/catalog", "/products", "/materials"] },
   { to: "/finance", key: "finance", match: ["/finance"] },
