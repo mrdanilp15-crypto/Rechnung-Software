@@ -81,8 +81,11 @@ export default function CustomerDetail() {
           <p className="text-sm text-slate-500">{customer.customerNumber} · {customer.type === "GEWERBLICH" ? t("customers.business") : t("customers.private")} · Kunde seit {formatDate(customer.createdAt)}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <PdfLink url={`/customers/${id}/gdpr-export`} filename={`dsgvo-export-${customer.customerNumber}.json`} download className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm">
-            DSGVO-Export
+          <PdfLink url={`/customers/${id}/gdpr-export.pdf`} filename={`datenauskunft-${customer.customerNumber}.pdf`} download className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm" title="Lesbare Datenauskunft nach Art. 15 DSGVO als PDF - zum Weitergeben an den Kunden">
+            Datenauskunft (PDF)
+          </PdfLink>
+          <PdfLink url={`/customers/${id}/gdpr-export`} filename={`dsgvo-export-${customer.customerNumber}.json`} download className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm" title="Maschinenlesbare Rohdaten (JSON), z.B. zur Datenübertragung">
+            Rohdaten (JSON)
           </PdfLink>
           {isAdmin && (
             <button onClick={handleGdprErase} className="bg-red-100 text-red-700 px-3 py-1.5 rounded text-sm">

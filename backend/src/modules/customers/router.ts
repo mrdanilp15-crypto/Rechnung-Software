@@ -5,6 +5,7 @@ import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { nextDocumentNumber } from "../shared/numbering";
+import { renderDataDisclosurePdf } from "../pdf/dataDisclosure";
 
 export const customersRouter = Router();
 customersRouter.use(requireAuth);
@@ -88,14 +89,43 @@ customersRouter.delete("/:id", async (req, res) => {
 customersRouter.get("/:id/gdpr-export", async (req, res) => {
   const customer = await prisma.customer.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!customer) throw new HttpError(404, "Kunde nicht gefunden");
-  const [invoices, quotes, deliveryNotes] = await Promise.all([
+  const [invoices, quotes, deliveryNotes, orderConfirmations] = await Promise.all([
     prisma.invoice.findMany({ where: { customerId: customer.id }, include: { items: true } }),
     prisma.quote.findMany({ where: { customerId: customer.id }, include: { items: true } }),
     prisma.deliveryNote.findMany({ where: { customerId: customer.id }, include: { items: true } }),
+    prisma.orderConfirmation.findMany({ where: { customerId: customer.id }, include: { items: true } }),
   ]);
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "customer.gdpr_export", entityType: "Customer", entityId: customer.id });
   res.setHeader("Content-Disposition", `attachment; filename="dsgvo-export-${customer.customerNumber}.json"`);
-  res.json({ customer, invoices, quotes, deliveryNotes });
+  res.json({ customer, invoices, quotes, deliveryNotes, orderConfirmations });
+});
+
+// Dieselbe Auskunft als lesbares PDF (zum Weitergeben an den Kunden)
+customersRouter.get("/:id/gdpr-export.pdf", async (req, res) => {
+  const companyId = req.auth!.companyId;
+  const customer = await prisma.customer.findFirst({ where: { id: req.params.id, companyId } });
+  if (!customer) throw new HttpError(404, "Kunde nicht gefunden");
+  const [company, invoices, quotes, deliveryNotes, orderConfirmations] = await Promise.all([
+    prisma.company.findUniqueOrThrow({ where: { id: companyId } }),
+    prisma.invoice.findMany({ where: { customerId: customer.id } }),
+    prisma.quote.findMany({ where: { customerId: customer.id } }),
+    prisma.deliveryNote.findMany({ where: { customerId: customer.id } }),
+    prisma.orderConfirmation.findMany({ where: { customerId: customer.id } }),
+  ]);
+  const pdf = await renderDataDisclosurePdf({
+    company,
+    customer,
+    documents: [
+      ...invoices.map((i) => ({ kind: i.isCancellationDocument ? "Rechnungskorrektur" : i.kind === "DOWN_PAYMENT" ? "Anzahlungsrechnung" : i.kind === "FINAL" ? "Schlussrechnung" : "Rechnung", number: i.invoiceNumber ?? "(Entwurf)", date: i.issueDate, status: i.status, totalCents: i.totalCents })),
+      ...quotes.map((q) => ({ kind: "Angebot", number: q.quoteNumber, date: q.issueDate, status: q.status, totalCents: q.totalCents })),
+      ...orderConfirmations.map((o) => ({ kind: "Auftragsbestätigung", number: o.confirmationNumber, date: o.issueDate, status: o.status, totalCents: o.totalCents })),
+      ...deliveryNotes.map((d) => ({ kind: "Lieferschein", number: d.noteNumber, date: d.deliveryDate, status: d.status, totalCents: null })),
+    ],
+  });
+  await writeAuditLog({ req, companyId, userId: req.auth!.sub, action: "customer.gdpr_export_pdf", entityType: "Customer", entityId: customer.id });
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="datenauskunft-${customer.customerNumber}.pdf"`);
+  res.send(pdf);
 });
 
 // Anonymisiert personenbezogene Daten, behält aber Beleg-/Zahlenwerte für die
