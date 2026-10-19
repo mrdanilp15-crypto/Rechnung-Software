@@ -28,6 +28,10 @@ interface Company {
   managingDirector?: string;
   bankName?: string;
   paymentTermDays?: number;
+  machineRateCentsPerHour?: number;
+  laborRateCentsPerHour?: number;
+  materialWastePercent?: number;
+  targetMarginPercent?: number;
   pdfLayout?: "CLEAR" | "BAND" | "COMPACT";
   invoiceIntroText?: string;
   invoiceClosingText?: string;
@@ -325,6 +329,29 @@ export default function Settings() {
             <label className="block text-sm">
               Webseite
               <input type="text" value={company.website || ""} onChange={(e) => setCompany({ ...company, website: e.target.value })} placeholder="www.firma.de" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+          </div>
+          <h3 className="text-sm font-semibold pt-2">Kalkulation (Produktpreise)</h3>
+          <p className="text-xs text-slate-500 -mt-2">Aus diesen Sätzen berechnet die Produktverwaltung die Selbstkosten und einen Preisvorschlag (Material aus dem Lager + Maschinen- und Arbeitszeit).</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="block text-sm">
+              Maschinenstundensatz (€ pro Stunde)
+              <input type="number" min={0} step="0.01" value={(company.machineRateCentsPerHour ?? 0) / 100} onChange={(e) => setCompany({ ...company, machineRateCentsPerHour: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Strom, Verschleiß, Abschreibung des Druckers je Betriebsstunde.</span>
+            </label>
+            <label className="block text-sm">
+              Arbeitsstundensatz (€ pro Stunde)
+              <input type="number" min={0} step="0.01" value={(company.laborRateCentsPerHour ?? 0) / 100} onChange={(e) => setCompany({ ...company, laborRateCentsPerHour: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+            <label className="block text-sm">
+              Materialausschuss (%)
+              <input type="number" min={0} max={100} step="0.5" value={company.materialWastePercent ?? 5} onChange={(e) => setCompany({ ...company, materialWastePercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Aufschlag auf den Materialverbrauch für Fehldrucke, Stützstrukturen, Reste.</span>
+            </label>
+            <label className="block text-sm">
+              Gewinnaufschlag (%)
+              <input type="number" min={0} step="1" value={company.targetMarginPercent ?? 30} onChange={(e) => setCompany({ ...company, targetMarginPercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Wird auf die Selbstkosten aufgeschlagen, ergibt den Preisvorschlag.</span>
             </label>
           </div>
           <h3 className="text-sm font-semibold pt-2">Bank &amp; Zahlung</h3>

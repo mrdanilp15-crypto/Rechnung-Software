@@ -25,6 +25,39 @@ interface RevenueStatus {
   currentYearExceeded: boolean;
 }
 
+interface Stats {
+  months: { month: string; revenueCents: number }[];
+  topCustomers: { name: string; revenueCents: number }[];
+  yearRevenueCents: number;
+}
+
+const MONTH_SHORT = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+
+/** Einfaches Balkendiagramm (reines SVG, keine Bibliothek): Nettoumsatz je Monat, aktueller Monat hervorgehoben. */
+function RevenueChart({ months }: { months: Stats["months"] }) {
+  const max = Math.max(1, ...months.map((m) => m.revenueCents));
+  const W = 600;
+  const H = 150;
+  const barW = W / months.length;
+  const eur = (c: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(c / 100);
+  return (
+    <svg viewBox={`0 0 ${W} ${H + 24}`} className="w-full" role="img" aria-label="Nettoumsatz der letzten zwölf Monate">
+      {months.map((m, i) => {
+        const h = Math.round((m.revenueCents / max) * H);
+        const isLast = i === months.length - 1;
+        const label = MONTH_SHORT[Number(m.month.slice(5)) - 1];
+        return (
+          <g key={m.month}>
+            <title>{`${label} ${m.month.slice(0, 4)}: ${eur(m.revenueCents)}`}</title>
+            <rect x={i * barW + 6} y={H - h} width={barW - 12} height={Math.max(h, m.revenueCents > 0 ? 2 : 0)} rx={3} className={isLast ? "fill-blue-600" : "fill-blue-300 dark:fill-blue-800"} />
+            <text x={i * barW + barW / 2} y={H + 16} textAnchor="middle" className="fill-slate-500" fontSize="11">{label}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 const KIND_LABEL = { INVOICE: "Rechnung", QUOTE: "Angebot", ORDER_CONFIRMATION: "Auftrag", DELIVERY_NOTE: "Lieferschein" } as const;
 const KIND_BASE = { INVOICE: "/invoices", QUOTE: "/quotes", ORDER_CONFIRMATION: "/order-confirmations", DELIVERY_NOTE: "/delivery-notes" } as const;
 const format = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
@@ -34,10 +67,12 @@ export default function Dashboard() {
   const [rows, setRows] = useState<DocRow[]>([]);
   const [revenue, setRevenue] = useState<RevenueStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
     api.get("/documents").then((res) => setRows(res.data)).finally(() => setLoading(false));
     api.get("/companies/me/revenue-status").then((res) => setRevenue(res.data));
+    api.get("/documents/stats").then((res) => setStats(res.data)).catch(() => setStats(null));
   }, []);
 
   // Korrekturbelege (Storno/Gutschrift) tragen negative Beträge und stehen neben dem stornierten Original -
@@ -95,6 +130,30 @@ export default function Dashboard() {
             </Link>
           </div>
 
+          {stats && stats.months.some((m) => m.revenueCents > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6">
+              <div className={`${card} lg:col-span-2`}>
+                <div className="flex items-baseline justify-between mb-2">
+                  <h2 className="text-sm font-medium text-slate-500">Umsatz (netto) der letzten 12 Monate</h2>
+                  <span className="text-xs text-slate-500">{new Date().getFullYear()}: {format(stats.yearRevenueCents)}</span>
+                </div>
+                <RevenueChart months={stats.months} />
+              </div>
+              <div className={card}>
+                <h2 className="text-sm font-medium text-slate-500 mb-2">Beste Kunden {new Date().getFullYear()}</h2>
+                {stats.topCustomers.length === 0 && <p className="text-sm text-slate-500">Noch kein Umsatz.</p>}
+                <ol className="space-y-1.5 text-sm">
+                  {stats.topCustomers.slice(0, 6).map((c, i) => (
+                    <li key={c.name + i} className="flex justify-between gap-3">
+                      <span className="truncate"><span className="text-slate-400 mr-1.5">{i + 1}.</span>{c.name}</span>
+                      <span className="shrink-0">{format(c.revenueCents)}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          )}
+
           {drafts.length > 0 && (
             <div className="mb-6">
               <h2 className="text-sm font-medium text-slate-500 mb-2">Zuletzt angefangen</h2>
@@ -113,7 +172,7 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
             {recent.map((r) => (
               <Link key={`${r.kind}-${r.id}`} to={r.kind === "INVOICE" ? `/invoices/${r.id}` : `/documents?type=${r.kind}`} className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700">
-                <span className="truncate"><span className="text-slate-500">{KIND_LABEL[r.kind]}</span> {r.number} · {r.customerName}</span>
+                <span className="truncate"><span className="text-slate-500">{r.isCancellationDocument ? "Korrekturbeleg" : KIND_LABEL[r.kind]}</span> {r.number} · {r.customerName}</span>
                 <span className="shrink-0">{r.totalCents === null ? "" : format(r.totalCents)}</span>
               </Link>
             ))}

@@ -304,3 +304,44 @@ quotesRouter.post("/:id/convert-to-order-confirmation", async (req, res) => {
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "quote.convert_to_order_confirmation", entityType: "Quote", entityId: quote.id, metadata: { orderConfirmationId: confirmation.id } });
   res.status(201).json(confirmation);
 });
+
+quotesRouter.post("/:id/duplicate", async (req, res) => {
+  const source = await prisma.quote.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId }, include: { items: true } });
+  if (!source) throw new HttpError(404, "Angebot nicht gefunden");
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: source.companyId } });
+  const totals = calculateDocumentTotals(source.items, company.isSmallBusiness);
+  const issueDate = new Date();
+  const copy = await prisma.$transaction(async (tx) => {
+    const quoteNumber = await nextDocumentNumber(company.id, "QUOTE", tx);
+    return tx.quote.create({
+      data: {
+        companyId: company.id,
+        customerId: source.customerId,
+        quoteNumber,
+        issueDate,
+        validUntil: new Date(issueDate.getTime() + 30 * 86_400_000),
+        notes: source.notes,
+        introText: source.introText ?? company.quoteIntroText,
+        closingText: source.closingText ?? company.quoteClosingText,
+        subtotalCents: totals.subtotalCents,
+        vatTotalCents: totals.vatTotalCents,
+        totalCents: totals.totalCents,
+        items: {
+          create: source.items.map((i, idx) => ({
+            position: idx + 1,
+            productId: i.productId,
+            description: i.description,
+            quantity: i.quantity,
+            unit: i.unit,
+            unitPriceCents: i.unitPriceCents,
+            vatRateBps: company.isSmallBusiness ? 0 : i.vatRateBps,
+            lineTotalCents: Math.round(i.quantity * i.unitPriceCents),
+          })),
+        },
+      },
+      include: { items: true, customer: true },
+    });
+  });
+  await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "quote.duplicate", entityType: "Quote", entityId: source.id, metadata: { newQuoteId: copy.id } });
+  res.status(201).json(copy);
+});

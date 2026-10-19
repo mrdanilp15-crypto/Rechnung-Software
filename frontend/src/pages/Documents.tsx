@@ -119,6 +119,16 @@ export default function Documents() {
     load();
   }
 
+  async function duplicate(row: DocRow) {
+    try {
+      const { data } = await api.post(`${KIND_INFO[row.kind].base}/${row.id}/duplicate`);
+      showToast(`${KIND_INFO[row.kind].label} als Entwurf kopiert`, "success");
+      navigate(`${KIND_INFO[row.kind].base}/${data.id}/edit`);
+    } catch (err: any) {
+      showToast(err.response?.data?.error || "Konnte nicht kopiert werden", "error");
+    }
+  }
+
   async function remove(row: DocRow) {
     const what = row.status === "DRAFT" ? "Entwurf verwerfen" : "als ungültig markieren";
     if (!confirm(`${KIND_INFO[row.kind].label} ${row.number ?? "(Entwurf)"} wirklich ${what}?`)) return;
@@ -152,6 +162,7 @@ export default function Documents() {
     if (row.kind === "ORDER_CONFIRMATION" && row.status !== "DRAFT") {
       list.push({ label: "→ Lieferschein", onClick: () => convert(row, "convert-to-delivery-note", "/delivery-notes", "Lieferschein als Entwurf angelegt") });
     }
+    if (!row.isCancellationDocument) list.push({ label: "Duplizieren", onClick: () => duplicate(row) });
     const deletable = row.kind === "INVOICE" ? row.status === "DRAFT" : row.kind === "QUOTE" ? row.status === "DRAFT" : true;
     if (deletable) list.push({ label: row.status === "DRAFT" ? "Entwurf verwerfen" : "Ungültig markieren", onClick: () => remove(row), danger: true });
     return list;

@@ -4,6 +4,7 @@ import { PdfLink } from "../components/PdfLink";
 import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { MobileCard, MobileField } from "../components/MobileCard";
+import { TaxPanel } from "../components/TaxPanel";
 
 interface Expense {
   id: string;
@@ -36,7 +37,7 @@ const formatEuro = (cents: number) => new Intl.NumberFormat("de-DE", { style: "c
 const emptyExpense = { date: new Date().toISOString().slice(0, 10), vendor: "", category: "Material", amountEur: "0.00", description: "" };
 
 export default function Finance() {
-  const [tab, setTab] = useState<"euer" | "expenses" | "bank">("euer");
+  const [tab, setTab] = useState<"euer" | "expenses" | "bank" | "tax">("euer");
   const [year, setYear] = useState(new Date().getFullYear());
   const [summary, setSummary] = useState<EuerSummary | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -104,16 +105,30 @@ export default function Finance() {
       <h1 className="text-2xl font-semibold mb-6">Finanzen</h1>
 
       <div className="flex gap-2 mb-6">
-        {(["euer", "expenses", "bank"] as const).map((tabKey) => (
+        {(["euer", "expenses", "bank", "tax"] as const).map((tabKey) => (
           <button
             key={tabKey}
             onClick={() => setTab(tabKey)}
             className={`px-4 py-2 rounded text-sm ${tab === tabKey ? "bg-brand text-white" : "bg-slate-200 dark:bg-slate-700"}`}
           >
-            {tabKey === "euer" ? "EÜR-Übersicht" : tabKey === "expenses" ? "Ausgaben" : "Bankabgleich"}
+            {tabKey === "euer" ? "EÜR-Übersicht" : tabKey === "expenses" ? "Ausgaben" : tabKey === "bank" ? "Bankabgleich" : "Steuerberater"}
           </button>
         ))}
       </div>
+
+      {tab === "tax" && (
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <label className="text-sm">Jahr:</label>
+            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+              {[year - 1, year, year + 1].map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+          <TaxPanel year={year} />
+        </div>
+      )}
 
       {tab === "euer" && (
         <div>

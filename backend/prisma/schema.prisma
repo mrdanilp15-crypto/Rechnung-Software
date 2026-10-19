@@ -43,6 +43,12 @@ model Company {
   // Standard-Zahlungsziel in Tagen: wird beim Anlegen einer Rechnung als Fälligkeitsdatum
   // vorbelegt, wenn keines angegeben wurde.
   paymentTermDays Int     @default(14)
+  // Kalkulation (z.B. 3D-Druck): Maschinen- und Arbeitsstundensatz in Cent, Materialausschuss und gewünschter
+  // Gewinnaufschlag in Prozent - daraus berechnet die Produktverwaltung Selbstkosten und einen Preisvorschlag.
+  machineRateCentsPerHour Int   @default(0)
+  laborRateCentsPerHour   Int   @default(0)
+  materialWastePercent    Float @default(5)
+  targetMarginPercent     Float @default(30)
   // Optisches Layout der PDFs: "CLEAR" (klar, viel Weiß), "BAND" (farbiges Kopfband) oder
   // "COMPACT" (Karten, kompakt) - siehe modules/pdf/documentTemplate.ts. Rein gestalterisch.
   pdfLayout     String   @default("CLEAR")
@@ -217,6 +223,9 @@ model Product {
   unit          String   @default("Stk.")
   unitPriceCents Int
   vatRateBps    Int      @default(1900)
+  // Kalkulation: Druck- und Arbeitszeit in Minuten pro verkaufter Einheit (siehe Company-Stundensätze)
+  printTimeMinutes Float @default(0)
+  laborMinutes     Float @default(0)
   isArchived    Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

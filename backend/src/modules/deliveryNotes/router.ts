@@ -150,3 +150,26 @@ deliveryNotesRouter.post("/:id/finalize", async (req, res) => {
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "delivery_note.finalize", entityType: "DeliveryNote", entityId: existing.id });
   res.json(updated);
 });
+
+deliveryNotesRouter.post("/:id/duplicate", async (req, res) => {
+  const source = await prisma.deliveryNote.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId, voidedAt: null }, include: { items: true } });
+  if (!source) throw new HttpError(404, "Lieferschein nicht gefunden");
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: source.companyId } });
+  const copy = await prisma.$transaction(async (tx) => {
+    const noteNumber = await nextDocumentNumber(company.id, "DELIVERY_NOTE", tx);
+    return tx.deliveryNote.create({
+      data: {
+        companyId: company.id,
+        customerId: source.customerId,
+        noteNumber,
+        notes: source.notes,
+        introText: source.introText ?? company.deliveryNoteIntroText,
+        closingText: source.closingText ?? company.deliveryNoteClosingText,
+        items: { create: source.items.map((i, idx) => ({ position: idx + 1, description: i.description, quantity: i.quantity, unit: i.unit })) },
+      },
+      include: { items: true, customer: true },
+    });
+  });
+  await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "delivery_note.duplicate", entityType: "DeliveryNote", entityId: source.id, metadata: { newId: copy.id } });
+  res.status(201).json(copy);
+});

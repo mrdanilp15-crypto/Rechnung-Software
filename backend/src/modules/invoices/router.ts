@@ -291,6 +291,10 @@ invoicesRouter.post("/:id/cancel", requireRole("ADMIN", "BUCHHALTUNG"), async (r
         invoiceNumber: creditNoteNumber,
         status: "SENT",
         isSmallBusiness: invoice.isSmallBusiness,
+        // Der Korrekturbeleg bildet die Originalrechnung 1:1 ab - auch den Steuerhinweis (z.B. innergemeinschaftliche
+        // Lieferung, Reverse-Charge, Ausfuhr) und die Leistungsart, sonst fehlt er im PDF, in der XRechnung und in der USt-Übersicht
+        vatNoticeKey: invoice.vatNoticeKey,
+        supplyType: invoice.supplyType,
         footerText: company.invoiceFooterText,
         correctsInvoiceId: invoice.id,
         isCancellationDocument: true,
@@ -509,4 +513,41 @@ invoicesRouter.get("/export/all", async (req, res) => {
 
   res.setHeader("Content-Disposition", 'attachment; filename="rechnungen.json"');
   res.json(invoices);
+});
+
+// Rechnung als neuen Entwurf kopieren (Kunde, Positionen, Anmerkung, Texte) - mit heutigem Datum, ohne Nummer.
+// Steuerbehandlung und Materialbestand werden wie bei jeder neuen Rechnung neu berechnet bzw. abgezogen.
+invoicesRouter.post("/:id/duplicate", async (req, res) => {
+  const source = await prisma.invoice.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId }, include: { items: true, customer: true } });
+  if (!source) throw new HttpError(404, "Rechnung nicht gefunden");
+  if (source.isCancellationDocument) throw new HttpError(400, "Ein Korrekturbeleg kann nicht kopiert werden.");
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: source.companyId } });
+  const supplyType = (source.supplyType === "SERVICE" ? "SERVICE" : "GOODS") as "GOODS" | "SERVICE";
+  const financials = buildInvoiceFinancials(company, source.customer, source.items.map((i) => ({ productId: i.productId, description: i.description, quantity: i.quantity, unit: i.unit, unitPriceCents: i.unitPriceCents, vatRateBps: i.vatRateBps })), supplyType);
+  const issueDate = new Date();
+  const copy = await prisma.$transaction(async (tx) => {
+    await deductMaterialStock(tx, source.items);
+    return tx.invoice.create({
+      data: {
+        companyId: company.id,
+        customerId: source.customerId,
+        issueDate,
+        dueDate: defaultDueDate(company, issueDate),
+        isSmallBusiness: financials.isSmallBusiness,
+        vatNoticeKey: financials.vatNoticeKey,
+        supplyType,
+        notes: source.notes,
+        introText: source.introText ?? company.invoiceIntroText,
+        closingText: source.closingText ?? company.invoiceClosingText,
+        footerText: company.invoiceFooterText,
+        subtotalCents: financials.subtotalCents,
+        vatTotalCents: financials.vatTotalCents,
+        totalCents: financials.totalCents,
+        items: { create: financials.itemsCreate },
+      },
+      include: { items: true, customer: true },
+    });
+  });
+  await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "invoice.duplicate", entityType: "Invoice", entityId: source.id, metadata: { newInvoiceId: copy.id } });
+  res.status(201).json(copy);
 });

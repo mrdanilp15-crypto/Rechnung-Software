@@ -18,6 +18,8 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 import { authRouter } from "./modules/auth/router";
 import { documentsRouter } from "./modules/documents/router";
+import { searchRouter } from "./modules/search/router";
+import { accountingRouter } from "./modules/accounting/router";
 import { usersRouter } from "./modules/users/router";
 import { companiesRouter } from "./modules/companies/router";
 import { customersRouter } from "./modules/customers/router";
@@ -101,6 +103,8 @@ export function createApp() {
   app.use("/api/materials", materialsRouter);
   app.use("/api/audit-logs", auditRouter);
   app.use("/api/documents", documentsRouter);
+  app.use("/api/search", searchRouter);
+  app.use("/api/accounting", accountingRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

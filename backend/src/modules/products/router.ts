@@ -34,6 +34,8 @@ const productSchema = z.object({
   unit: z.string().default("Stk."),
   unitPriceCents: z.number().int().min(0),
   vatRateBps: z.number().int().min(0).max(10000).default(1900),
+  printTimeMinutes: z.number().min(0).max(100000).optional(),
+  laborMinutes: z.number().min(0).max(100000).optional(),
   // Materialverbrauch pro verkaufter Einheit dieses Produkts (siehe modules/materials) -
   // wird beim Erstellen einer Rechnung genutzt, um den Materialbestand automatisch zu
   // reduzieren. Optional: ein Produkt ohne Materialverbrauch bleibt ohne Bestandsabzug.

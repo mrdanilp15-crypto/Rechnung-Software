@@ -264,3 +264,40 @@ orderConfirmationsRouter.post("/:id/convert-to-invoice", async (req, res) => {
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "order_confirmation.convert_to_invoice", entityType: "OrderConfirmation", entityId: source.id, metadata: { invoiceId: invoice.id } });
   res.status(201).json(invoice);
 });
+
+orderConfirmationsRouter.post("/:id/duplicate", async (req, res) => {
+  const source = await prisma.orderConfirmation.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId, voidedAt: null }, include: { items: true } });
+  if (!source) throw new HttpError(404, "Auftragsbestätigung nicht gefunden");
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: source.companyId } });
+  const totals = calculateDocumentTotals(source.items, company.isSmallBusiness);
+  const copy = await prisma.$transaction(async (tx) => {
+    const confirmationNumber = await nextDocumentNumber(company.id, "ORDER_CONFIRMATION", tx);
+    return tx.orderConfirmation.create({
+      data: {
+        companyId: company.id,
+        customerId: source.customerId,
+        confirmationNumber,
+        notes: source.notes,
+        introText: source.introText ?? company.orderConfirmationIntroText,
+        closingText: source.closingText ?? company.orderConfirmationClosingText,
+        subtotalCents: totals.subtotalCents,
+        vatTotalCents: totals.vatTotalCents,
+        totalCents: totals.totalCents,
+        items: {
+          create: source.items.map((i, idx) => ({
+            position: idx + 1,
+            description: i.description,
+            quantity: i.quantity,
+            unit: i.unit,
+            unitPriceCents: i.unitPriceCents,
+            vatRateBps: company.isSmallBusiness ? 0 : i.vatRateBps,
+            lineTotalCents: Math.round(i.quantity * i.unitPriceCents),
+          })),
+        },
+      },
+      include: { items: true, customer: true },
+    });
+  });
+  await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "order_confirmation.duplicate", entityType: "OrderConfirmation", entityId: source.id, metadata: { newId: copy.id } });
+  res.status(201).json(copy);
+});

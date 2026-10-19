@@ -5,6 +5,7 @@ import { useAuthStore } from "../store/authStore";
 import { useDarkMode } from "../theme/useDarkMode";
 import { setLocale } from "../i18n";
 import { api } from "../api/client";
+import { GlobalSearch } from "./GlobalSearch";
 
 // Sechs Hauptpunkte statt zwölf: alle Belegarten stehen unter "Belege", Produkte und Material unter "Katalog".
 // "match" bestimmt, welche Unterseiten den Menüpunkt hervorheben.
@@ -27,6 +28,19 @@ export default function Layout() {
   // auf Desktop-Breiten (md+) immer sichtbar - siehe md:translate-x-0 unten.
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Strg+K / Cmd+K öffnet die globale Suche von jeder Seite aus
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -47,6 +61,14 @@ export default function Layout() {
           ✕
         </button>
       </div>
+      <button
+        type="button"
+        onClick={() => setSearchOpen(true)}
+        className="mb-3 w-full flex items-center justify-between px-3 py-2 rounded-md text-sm border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
+      >
+        <span>Suchen ...</span>
+        <span className="text-xs hidden md:inline">Strg K</span>
+      </button>
       <nav className="flex flex-col gap-1 flex-1">
         {navItems.map((item) => (
           <NavLink
@@ -132,6 +154,8 @@ export default function Layout() {
       >
         {sidebarContent}
       </aside>
+
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
 
       <main className="flex-1 p-4 pt-20 md:p-6 md:pt-6 overflow-auto min-w-0">
         <Outlet />

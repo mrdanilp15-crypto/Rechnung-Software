@@ -68,3 +68,40 @@ documentsRouter.get("/", async (req, res) => {
   rows.sort((a, b) => Number(b.status === "DRAFT") - Number(a.status === "DRAFT") || b.date.localeCompare(a.date));
   res.json(rows);
 });
+
+/**
+ * Kennzahlen für die Startseite: Nettoumsatz der letzten 12 Monate (ausgestellte Rechnungen ohne Entwürfe;
+ * stornierte Originale und ihre Korrekturbelege werden beide ausgeklammert) und die umsatzstärksten Kunden
+ * des laufenden Jahres.
+ */
+documentsRouter.get("/stats", async (req, res) => {
+  const companyId = req.auth!.companyId;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+  const yearStart = new Date(now.getFullYear(), 0, 1);
+  const invoices = await prisma.invoice.findMany({
+    where: { companyId, isCancellationDocument: false, status: { in: ["SENT", "PAID", "OVERDUE"] }, issueDate: { gte: start < yearStart ? start : yearStart } },
+    select: { issueDate: true, subtotalCents: true, customerId: true, customer: { select: { name: true } } },
+  });
+
+  const months: { month: string; revenueCents: number }[] = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
+    months.push({ month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, revenueCents: 0 });
+  }
+  const byCustomer = new Map<string, { name: string; revenueCents: number }>();
+  let yearRevenueCents = 0;
+  for (const inv of invoices) {
+    const key = `${inv.issueDate.getFullYear()}-${String(inv.issueDate.getMonth() + 1).padStart(2, "0")}`;
+    const bucket = months.find((m) => m.month === key);
+    if (bucket) bucket.revenueCents += inv.subtotalCents;
+    if (inv.issueDate >= yearStart) {
+      yearRevenueCents += inv.subtotalCents;
+      const entry = byCustomer.get(inv.customerId) ?? { name: inv.customer.name, revenueCents: 0 };
+      entry.revenueCents += inv.subtotalCents;
+      byCustomer.set(inv.customerId, entry);
+    }
+  }
+  const topCustomers = [...byCustomer.values()].sort((a, b) => b.revenueCents - a.revenueCents).slice(0, 10);
+  res.json({ months, topCustomers, yearRevenueCents });
+});

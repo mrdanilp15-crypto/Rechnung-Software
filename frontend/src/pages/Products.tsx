@@ -11,6 +11,23 @@ interface Material {
   id: string;
   name: string;
   unit: string;
+  costPerUnitCents?: number;
+}
+
+interface Rates {
+  machineRateCentsPerHour: number;
+  laborRateCentsPerHour: number;
+  materialWastePercent: number;
+  targetMarginPercent: number;
+}
+
+/** Selbstkosten je Einheit in Cent (Bruchteile möglich): Material inkl. Ausschuss + Maschinen- und Arbeitszeit. */
+function calcCost(used: { quantityPerUnit: number; costPerUnitCents: number }[], printMinutes: number, laborMinutes: number, rates: Rates) {
+  const material = used.reduce((s, m) => s + m.quantityPerUnit * m.costPerUnitCents, 0) * (1 + rates.materialWastePercent / 100);
+  const machine = (printMinutes / 60) * rates.machineRateCentsPerHour;
+  const labor = (laborMinutes / 60) * rates.laborRateCentsPerHour;
+  const total = material + machine + labor;
+  return { material, machine, labor, total, recommended: total * (1 + rates.targetMarginPercent / 100) };
 }
 interface ProductMaterial {
   materialId: string;
@@ -25,6 +42,8 @@ interface Product {
   unit: string;
   unitPriceCents: number;
   vatRateBps: number;
+  printTimeMinutes?: number;
+  laborMinutes?: number;
   materials: ProductMaterial[];
 }
 interface MaterialUsageRow {
@@ -32,7 +51,7 @@ interface MaterialUsageRow {
   quantityPerUnit: string;
 }
 
-const emptyForm = { sku: "", name: "", description: "", unit: "Stk.", unitPriceEur: "0.00", vatRateBps: 1900 };
+const emptyForm = { sku: "", name: "", description: "", unit: "Stk.", unitPriceEur: "0.00", vatRateBps: 1900, printTimeMinutes: "", laborMinutes: "" };
 
 export default function Products() {
   const { t } = useTranslation();
@@ -44,6 +63,7 @@ export default function Products() {
   const [form, setForm] = useState(emptyForm);
   const [materialRows, setMaterialRows] = useState<MaterialUsageRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [rates, setRates] = useState<Rates>({ machineRateCentsPerHour: 0, laborRateCentsPerHour: 0, materialWastePercent: 5, targetMarginPercent: 30 });
   const { status, run } = useSaveStatus();
   const showToast = useToast();
 
@@ -53,6 +73,14 @@ export default function Products() {
   useEffect(load, []);
   useEffect(() => {
     api.get("/materials").then((res) => setMaterials(res.data));
+    api.get("/companies/me").then((res) =>
+      setRates({
+        machineRateCentsPerHour: res.data.machineRateCentsPerHour ?? 0,
+        laborRateCentsPerHour: res.data.laborRateCentsPerHour ?? 0,
+        materialWastePercent: res.data.materialWastePercent ?? 5,
+        targetMarginPercent: res.data.targetMarginPercent ?? 30,
+      })
+    );
   }, []);
 
   const fuse = useMemo(() => new Fuse(products, { keys: ["name", "sku", "description"], threshold: 0.35 }), [products]);
@@ -74,6 +102,8 @@ export default function Products() {
       unit: p.unit,
       unitPriceEur: (p.unitPriceCents / 100).toFixed(2),
       vatRateBps: p.vatRateBps,
+      printTimeMinutes: p.printTimeMinutes ? String(p.printTimeMinutes) : "",
+      laborMinutes: p.laborMinutes ? String(p.laborMinutes) : "",
     });
     setMaterialRows(p.materials.map((m) => ({ materialId: m.materialId, quantityPerUnit: String(m.quantityPerUnit) })));
     setShowForm(true);
@@ -101,6 +131,8 @@ export default function Products() {
       unit: form.unit,
       unitPriceCents: Math.round(parseFloat(form.unitPriceEur) * 100),
       vatRateBps: form.vatRateBps,
+      printTimeMinutes: parseFloat(form.printTimeMinutes) || 0,
+      laborMinutes: parseFloat(form.laborMinutes) || 0,
       materials: validMaterialRows.map((r) => ({ materialId: r.materialId, quantityPerUnit: parseFloat(r.quantityPerUnit) })),
     };
     try {
@@ -130,6 +162,18 @@ export default function Products() {
       setError(err.response?.data?.error || t("common.error"));
     }
   }
+
+  // Live-Kalkulation für das gerade bearbeitete Produkt
+  const liveCost = calcCost(
+    materialRows
+      .map((r) => ({ quantityPerUnit: parseFloat(r.quantityPerUnit) || 0, costPerUnitCents: materials.find((m) => m.id === r.materialId)?.costPerUnitCents ?? 0 }))
+      .filter((r) => r.quantityPerUnit > 0),
+    parseFloat(form.printTimeMinutes) || 0,
+    parseFloat(form.laborMinutes) || 0,
+    rates
+  );
+  const livePriceCents = Math.round(parseFloat(form.unitPriceEur) * 100) || 0;
+  const liveProfit = livePriceCents - liveCost.total;
 
   const formatPrice = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
 
@@ -215,6 +259,41 @@ export default function Products() {
             ))}
           </div>
 
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-3">
+            <div className="text-sm font-medium">Kalkulation (optional)</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Druckzeit pro {form.unit || "Einheit"} (Minuten)</label>
+                <input type="number" min="0" step="any" value={form.printTimeMinutes} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, printTimeMinutes: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Arbeitszeit pro {form.unit || "Einheit"} (Minuten, Nachbearbeitung/Verpackung)</label>
+                <input type="number" min="0" step="any" value={form.laborMinutes} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, laborMinutes: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              </div>
+            </div>
+            {liveCost.total > 0 ? (
+              <div className="text-sm space-y-1 bg-slate-50 dark:bg-slate-900/40 rounded p-3">
+                <div className="flex justify-between"><span className="text-slate-500">Material (inkl. {rates.materialWastePercent}% Ausschuss)</span><span>{formatPrice(liveCost.material)}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Maschine</span><span>{formatPrice(liveCost.machine)}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Arbeit</span><span>{formatPrice(liveCost.labor)}</span></div>
+                <div className="flex justify-between font-medium border-t border-slate-200 dark:border-slate-700 pt-1"><span>Selbstkosten</span><span>{formatPrice(liveCost.total)}</span></div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Preisvorschlag (+{rates.targetMarginPercent}%)</span>
+                  <span className="flex items-center gap-2">
+                    {formatPrice(liveCost.recommended)}
+                    <button type="button" onClick={() => setForm((f) => ({ ...f, unitPriceEur: (liveCost.recommended / 100).toFixed(2) }))} className="text-brand hover:underline text-xs">Übernehmen</button>
+                  </span>
+                </div>
+                <div className={`flex justify-between font-medium ${liveProfit < 0 ? "text-red-600" : "text-green-600"}`}>
+                  <span>Gewinn bei aktuellem Preis ({formatPrice(livePriceCents)})</span>
+                  <span>{formatPrice(liveProfit)}{livePriceCents > 0 ? ` (${Math.round((liveProfit / livePriceCents) * 100)}% vom Preis)` : ""}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">Material oben, Druck-/Arbeitszeit hier eintragen und die Stundensätze unter Einstellungen → Firma hinterlegen - dann erscheinen Selbstkosten, Preisvorschlag und Gewinn.</p>
+            )}
+          </div>
+
           <div className="flex gap-2">
             <SaveButton status={status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">
               {t("common.save")}
@@ -261,6 +340,21 @@ export default function Products() {
                   {(p.sku || p.description) && (
                     <div className="text-xs text-slate-500 truncate">{[p.sku, p.description].filter(Boolean).join(" · ")}</div>
                   )}
+                  {(() => {
+                    const cost = calcCost(
+                      p.materials.map((m) => ({ quantityPerUnit: m.quantityPerUnit, costPerUnitCents: m.material.costPerUnitCents ?? 0 })),
+                      p.printTimeMinutes ?? 0,
+                      p.laborMinutes ?? 0,
+                      rates
+                    );
+                    if (cost.total <= 0 || p.unitPriceCents <= 0) return null;
+                    const profit = p.unitPriceCents - cost.total;
+                    return (
+                      <div className={`text-xs ${profit < 0 ? "text-red-600" : "text-green-600"}`}>
+                        Kosten {formatPrice(cost.total)} · Gewinn {formatPrice(profit)} ({Math.round((profit / p.unitPriceCents) * 100)}%)
+                      </div>
+                    );
+                  })()}
                   {p.materials.length > 0 && (
                     <div className="text-xs text-slate-400 truncate">
                       Verbraucht: {p.materials.map((m) => `${m.quantityPerUnit}${m.material.unit} ${m.material.name}`).join(", ")}
