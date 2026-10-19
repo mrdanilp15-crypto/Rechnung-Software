@@ -58,6 +58,7 @@ implementiert.
 | Dynamische Templates (Logo, Farben, Layout) | ✅ Logo, Firmenfarbe konfigurierbar; Layout ist ein festes, aber parametrisiertes Template - kein visueller Template-Editor |
 | Automatische Seitenumbrüche | ✅ |
 | QR-Code für SEPA-Zahlungen | ✅ EPC069-12/GiroCode |
+| ZUGFeRD / Factur-X (EN 16931) | ✅ PDF/A-3b mit eingebettetem CII-XML, mit KoSIT (CII-Variante) und veraPDF geprüft |
 | Digitale Signaturen | 🧩 Nicht implementiert |
 
 ## 5. Datenhaltung & Backup
@@ -108,6 +109,22 @@ implementiert.
 | Installationsanleitung | ✅ |
 | Entwickler-Guide | ✅ |
 | Benutzerhandbuch | ✅ |
+
+## 10. Funktionsumfang seit der Überarbeitung
+
+| Funktion | Status |
+|---|---|
+| Drei PDF-Layouts (Klar/Akzentband/Kompakt) mit eigenen Begrüßungs- und Schlusstexten | ✅ |
+| Gemeinsamer Editor für Rechnung/Angebot/Auftrag/Lieferschein, Autospeichern, Live-Vorschau | ✅ |
+| Belegkette Angebot → Auftrag → Lieferschein → Rechnung | ✅ |
+| Duplizieren, globale Suche (Strg+K), Umsatz-Diagramm | ✅ |
+| Kalkulation für 3D-Druck | ✅ |
+| Mahnwesen mit drei Stufen, Verzugszinsen, Pauschale, Mahn-PDF | ✅ Basiszinssatz muss vom Nutzer gepflegt werden |
+| Anzahlungs- und Schlussrechnung (XRechnung: Typ 326 + BT-113) | ✅ mit KoSIT geprüft |
+| Wiederkehrende Rechnungen (erzeugen nur Entwürfe) | ✅ |
+| Steuerberater-Paket, USt-Übersicht | 🟡 Orientierungshilfe, kein DATEV-Format, keine Voranmeldung |
+| Passwort vergessen per E-Mail | ✅ benötigt eingerichtetes SMTP |
+| Grenzüberschreitende USt. (ig. Lieferung, Reverse-Charge, Ausfuhr) | 🟡 Logik umgesetzt; im Einzelfall vom Steuerberater bestätigen lassen |
 
 ## Kritischer Hinweis zur Verifikation
 

@@ -127,6 +127,31 @@ In der Rechnungsdetailansicht:
   nennt die Software die fehlenden Angaben. Die erzeugte Datei wurde mit dem offiziellen
   KoSIT-Validator geprüft (siehe [STATUS.md](STATUS.md)).
 
+### Weitere Funktionen rund um Rechnungen
+
+- **ZUGFeRD-PDF**: ein normales PDF (PDF/A-3), in das die strukturierte E-Rechnung (Profil EN 16931) eingebettet ist -
+  Menschen lesen das PDF, Buchhaltungssoftware liest die Daten automatisch. Gleiche Voraussetzungen wie bei der XRechnung.
+  Das archivierte Standard-PDF bleibt unverändert.
+- **Duplizieren** (Menü ⋮ eines Belegs): legt eine Kopie als neuen Entwurf an - praktisch für Stammkunden.
+- **Anzahlungs- und Schlussrechnung**: bei Angeboten, Aufträgen und Rechnungen im Menü "Anzahlungsrechnung". Die Schlussrechnung
+  zieht bereits berechnete Anzahlungen mit dem ursprünglichen Steuersatz wieder ab (§ 14 Abs. 5 UStG).
+- **Mahnwesen**: in der Rechnungsdetailansicht (bei überfälligen Rechnungen) erzeugen Sie Zahlungserinnerung, 1. und 2. Mahnung
+  als PDF. Verzugszinsen (§ 288 BGB: Basiszins + 5 bzw. + 9 Prozentpunkte bei Geschäftskunden), die 40-€-Pauschale und
+  Mahngebühren werden berechnet; Fristen und Gebühren stellen Sie unter *Einstellungen → Mahnwesen* ein.
+  **Wichtig:** den aktuellen **Basiszinssatz** (Bundesbank, ändert sich halbjährlich) tragen Sie dort selbst ein - der voreingestellte Wert ist nur ein Startwert.
+  Auf der Startseite sehen Sie Vorschläge, welche Rechnungen als Nächstes gemahnt werden sollten.
+- **Wiederkehrende Rechnungen**: im Menü (⋮) einer Rechnung "Wiederkehrend einrichten" (Rhythmus, erster Termin, optionales Ende).
+  Zu jedem Termin legt die Software einen **Entwurf** an - Sie prüfen und stellen ihn fertig, es wird nie automatisch versendet.
+  Verwalten unter *Belege → Wiederkehrende Rechnungen*.
+- **Kalkulation für 3D-Druck**: bei Produkten Material, Druckzeit, Strom, Maschinenverschleiß und Aufschläge eingeben, die Software
+  schlägt den Verkaufspreis vor (Stundensätze und Aufschläge unter *Einstellungen*).
+- **Steuerberater-Paket** (*Finanzen → Steuerberater*): USt-Übersicht je Zeitraum (zur Orientierung - ersetzt keine
+  Umsatzsteuer-Voranmeldung, es wird nach vereinbarten Entgelten gerechnet) und ein ZIP mit allen Rechnungs-PDFs, Belegliste und
+  Ausgaben. Es ist **kein DATEV-Format**. Grenzüberschreitende Fälle (innergemeinschaftliche Lieferung, Reverse-Charge) lassen Sie
+  bitte von Ihrem Steuerberater bestätigen.
+- **Suche überall**: **Strg + K** (am Handy die Lupe) durchsucht Kunden, Belege, Produkte und Ausgaben.
+- **Umsatz-Diagramm** auf der Startseite: Umsatz der letzten Monate, Top-Kunden und offene Posten.
+
 ## Angebote
 
 **Angebote** → **Neues Angebot**, analog zu Rechnungen. Nach Annahme durch den Kunden
@@ -157,6 +182,11 @@ exportieren** liefert Kontodaten und das eigene Aktivitätsprotokoll als JSON-Da
 - **Zwei-Faktor-Authentifizierung**: unter Einstellungen aktivierbar - QR-Code mit
   einer Authenticator-App (z.B. Google Authenticator) scannen und den 6-stelligen Code
   zur Bestätigung eingeben.
+- **Passwort vergessen**: auf der Anmeldeseite "Passwort vergessen?" - die Software sendet einen Link (eine Stunde gültig,
+  einmal verwendbar) an die Adresse des Kontos. Das klappt nur, wenn unter *Einstellungen → E-Mail-Versand* ein Postfach
+  hinterlegt ist; sonst setzt ein Admin das Passwort unter *Benutzer* zurück oder Sie nutzen den Notfall-Befehl (INSTALL.md).
+- **Logo, Stempel, Unterschrift**: beim Hochladen werden Bilder automatisch umgewandelt, überstehende Ränder abgeschnitten und
+  ein weißer/gekachelter Hintergrund transparent gemacht.
 - **Backup jetzt erstellen**: erstellt sofort ein ZIP-Backup (zusätzlich zu
   automatisierten, geplanten Backups, siehe [INSTALL.md](INSTALL.md)).
 - **Kunden importieren**: CSV-Datei mit Bestandskunden hochladen (z.B. beim Wechsel von

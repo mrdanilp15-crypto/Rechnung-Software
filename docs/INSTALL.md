@@ -155,7 +155,9 @@ npm run reset-password -- name@firma.de
 
 Das Passwort wird einmalig ausgegeben und sollte nach dem Login unter *Einstellungen → Passwort*
 sofort durch ein eigenes ersetzt werden. Weitere Benutzer kann ein Admin in der App selbst
-zurücksetzen (*Einstellungen → Benutzer*).
+zurücksetzen (*Einstellungen → Benutzer*). Mit eingerichtetem E-Mail-Versand (SMTP) und korrekt gesetztem
+`PUBLIC_APP_URL` können Benutzer ihr Passwort außerdem selbst über "Passwort vergessen?" auf der Anmeldeseite zurücksetzen
+(Link per E-Mail, eine Stunde gültig).
 
 ## 3. Backups im Detail
 
