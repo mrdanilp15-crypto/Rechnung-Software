@@ -13,6 +13,7 @@
  * Aufruf (im Portainer-Container-Terminal des Backend-Dienstes):
  *   npm run restore -- /app/backups/backup-2026-01-01T00-00-00-000Z.zip.enc --yes
  */
+import { libpqUrl } from "../src/utils/dbUrl";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -62,7 +63,7 @@ async function main() {
     const sqlFile = path.join(extractDir, "database.sql");
     if (fs.existsSync(sqlFile)) {
       console.log("Spiele Datenbank-Dump ein...");
-      await execFileAsync("psql", [env.DATABASE_URL, "-f", sqlFile]);
+      await execFileAsync("psql", [libpqUrl(env.DATABASE_URL), "-f", sqlFile]);
       console.log("Datenbank wiederhergestellt.");
     } else {
       console.warn("Kein database.sql im Backup gefunden - Datenbank wird übersprungen (SQLite-Backup? Bitte die kopierte .db-Datei manuell einspielen).");

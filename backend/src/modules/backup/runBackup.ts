@@ -6,6 +6,7 @@ import { zip } from "zip-a-folder";
 import { env } from "../../config/env";
 import { logger } from "../../utils/logger";
 import { encryptFileAes256Gcm } from "../../utils/fileCrypto";
+import { libpqUrl } from "../../utils/dbUrl";
 
 const execFileAsync = promisify(execFile);
 
@@ -71,7 +72,7 @@ export async function runBackup(): Promise<string> {
 async function dumpPostgres(stagingDir: string) {
   const outFile = path.join(stagingDir, "database.sql");
   try {
-    await execFileAsync("pg_dump", [env.DATABASE_URL, "--format=plain", "--no-owner", "--no-privileges", "--clean", "--if-exists", "-f", outFile]);
+    await execFileAsync("pg_dump", [libpqUrl(env.DATABASE_URL), "--format=plain", "--no-owner", "--no-privileges", "--clean", "--if-exists", "-f", outFile]);
   } catch (err) {
     logger.error({ err }, "pg_dump fehlgeschlagen - Backup enthält keinen Datenbank-Dump");
     throw err;

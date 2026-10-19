@@ -148,7 +148,9 @@ resetRouter.post("/execute", async (req, res) => {
     backupFile = path.basename(await runBackup());
   } catch (err: any) {
     logger.error({ err: err.message }, "Reset abgebrochen: Backup fehlgeschlagen");
-    throw new HttpError(500, "Das Sicherheits-Backup ist fehlgeschlagen - es wurde NICHTS gelöscht. Bitte Backup-Einstellungen prüfen.");
+    const reason = String(err?.stderr || err?.message || "unbekannt").split(/?
+/).filter(Boolean)[0]?.slice(0, 200);
+    throw new HttpError(500, `Das Sicherheits-Backup ist fehlgeschlagen - es wurde NICHTS gelöscht. Grund: ${reason}`);
   }
 
   const before = await counts(companyId);
