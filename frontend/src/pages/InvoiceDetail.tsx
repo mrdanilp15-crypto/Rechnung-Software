@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { useToast } from "../components/Toast";
+import { DunningPanel } from "../components/DunningPanel";
 
 interface InvoiceItem {
   id: string;
@@ -53,6 +54,8 @@ export default function InvoiceDetail() {
   const [emailSending, setEmailSending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [reminderText, setReminderText] = useState<string | null>(null);
+  const location = useLocation();
+  const [showDunning, setShowDunning] = useState(new URLSearchParams(location.search).get("dunning") === "1");
 
   function load() {
     api.get(`/invoices/${id}`).then((res) => {
@@ -183,8 +186,8 @@ export default function InvoiceDetail() {
           {!invoice.isCancellationDocument && (invoice.status === "SENT" || invoice.status === "OVERDUE") && (
             <>
               <button onClick={() => action("mark-paid")} className="bg-green-600 text-white px-3 py-1.5 rounded text-sm">{t("invoices.markPaid")}</button>
-              <button onClick={handleRemind} className="bg-yellow-100 text-yellow-800 px-3 py-1.5 rounded text-sm">
-                Zahlungserinnerung {invoice.reminderCount > 0 ? `(#${invoice.reminderCount + 1})` : ""}
+              <button onClick={() => setShowDunning((v) => !v)} className="bg-yellow-100 text-yellow-800 px-3 py-1.5 rounded text-sm">
+                Mahnung / Erinnerung {invoice.reminderCount > 0 ? `(Stufe ${invoice.reminderCount} erzeugt)` : ""}
               </button>
             </>
           )}
@@ -211,6 +214,8 @@ export default function InvoiceDetail() {
       </div>
 
       {actionError && <p className="text-red-600 text-sm mb-4">{actionError}</p>}
+
+      {showDunning && id && <DunningPanel invoiceId={id} onChanged={load} />}
 
       {reminderText && (
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 text-sm space-y-2">

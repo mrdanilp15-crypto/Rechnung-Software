@@ -87,6 +87,10 @@ export interface DocumentPdfInput {
   correctsDocumentNumber?: string | null;
   // Optisches Layout (siehe PDF_LAYOUTS) - rein gestalterisch, alle Pflichtangaben stehen in jedem Layout.
   layout?: PdfLayout | null;
+  // Für Mahnungen: keine Netto-/USt.-Aufschlüsselung (Forderungen und Zinsen sind keine umsatzsteuerpflichtigen Entgelte),
+  // stattdessen eine einzelne Summenzeile mit eigener Bezeichnung (z.B. "Gesamtforderung")
+  hideVatSummary?: boolean;
+  totalLabel?: { de: string; en: string };
   // Frei änderbare Begrüßung (über der Positionstabelle) und Schlusstext (unter den Summen).
   // Platzhalter wie {kunde} oder {faellig} werden beim Rendern ersetzt (siehe pdf/placeholders.ts).
   introText?: string | null;
@@ -408,7 +412,7 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
   }
 
   // ---------- Positionstabelle ----------
-  const showVatColumn = input.showPrices && !input.isSmallBusiness && input.items.some((i) => i.vatRateBps !== undefined);
+  const showVatColumn = input.showPrices && !input.isSmallBusiness && !input.hideVatSummary && input.items.some((i) => i.vatRateBps !== undefined);
   const col = input.showPrices
     ? {
         pos: { x: PAGE_MARGIN + 4, w: 22 },
@@ -510,7 +514,7 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
       netByRate.set(item.vatRateBps, (netByRate.get(item.vatRateBps) ?? 0) + (item.lineTotalCents ?? 0));
     }
     const rates = [...netByRate.keys()].sort((a, b) => b - a);
-    const showVatLines = !input.isSmallBusiness && !input.vatNoticeText && rates.length > 0;
+    const showVatLines = !input.isSmallBusiness && !input.hideVatSummary && !input.vatNoticeText && rates.length > 0;
 
     const noticeText = input.isSmallBusiness
       ? input.locale === "de"
@@ -520,7 +524,7 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
     setFont(false);
     doc.fontSize(8);
     const noticeHeight = noticeText ? doc.heightOfString(noticeText, { width: CONTENT_WIDTH }) + 10 : 0;
-    const summaryRows = (input.isSmallBusiness ? 0 : 1) + (showVatLines ? rates.length : 0);
+    const summaryRows = (input.isSmallBusiness || input.hideVatSummary ? 0 : 1) + (showVatLines ? rates.length : 0);
     ensureSpace(summaryRows * 15 + 34 + noticeHeight + 12);
 
     cursorY += 10;
@@ -535,7 +539,7 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
       cursorY += 15;
     };
 
-    if (!input.isSmallBusiness) row(t.subtotal, money(input.subtotalCents ?? 0));
+    if (!input.isSmallBusiness && !input.hideVatSummary) row(t.subtotal, money(input.subtotalCents ?? 0));
     if (showVatLines) {
       for (const rate of rates) {
         const vat = input.vatBreakdown?.[rate] ?? 0;
@@ -549,7 +553,7 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
     if (layout === "COMPACT") {
       doc.roundedRect(PAGE_MARGIN, cursorY, CONTENT_WIDTH, 30, 8).fill(tint(color, 0.1));
       setFont(true);
-      doc.fillColor("#4b5563").fontSize(9).text(t.grandTotal, PAGE_MARGIN + 14, cursorY + 11, { width: 150, lineBreak: false });
+      doc.fillColor("#4b5563").fontSize(9).text(input.totalLabel?.[input.locale] ?? t.grandTotal, PAGE_MARGIN + 14, cursorY + 11, { width: 150, lineBreak: false });
       doc.fillColor(accent).fontSize(15).text(money(input.totalCents ?? 0), valueX - 60, cursorY + 8, { width: valueW + 60, align: "right", lineBreak: false });
       cursorY += 30 + 10;
     } else {
@@ -557,7 +561,7 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
       doc.roundedRect(barX, cursorY, barW, 22, isBand ? 11 : 4).fill(isBand ? color : tint(color, 0.1));
       const totalColor = isBand ? onColor : accent;
       setFont(true);
-      doc.fillColor(totalColor).fontSize(11).text(t.grandTotal, labelX + (isBand ? 6 : 0), cursorY + 6, { width: labelW, lineBreak: false });
+      doc.fillColor(totalColor).fontSize(11).text(input.totalLabel?.[input.locale] ?? t.grandTotal, labelX + (isBand ? 6 : 0), cursorY + 6, { width: labelW, lineBreak: false });
       doc.text(money(input.totalCents ?? 0), valueX, cursorY + 6, { width: valueW - (isBand ? 6 : 0), align: "right", lineBreak: false });
       cursorY += 22 + 10;
     }

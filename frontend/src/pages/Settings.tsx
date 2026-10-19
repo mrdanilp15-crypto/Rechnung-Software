@@ -28,6 +28,13 @@ interface Company {
   managingDirector?: string;
   bankName?: string;
   paymentTermDays?: number;
+  dunningFee2Cents?: number;
+  dunningFee3Cents?: number;
+  baseInterestRatePercent?: number;
+  dunningDeadlineDays?: number;
+  dunningText1?: string;
+  dunningText2?: string;
+  dunningText3?: string;
   machineRateCentsPerHour?: number;
   laborRateCentsPerHour?: number;
   materialWastePercent?: number;
@@ -71,6 +78,7 @@ const TABS = [
   { key: "users", label: "Benutzer" },
   { key: "branding", label: "Logo & Stempel" },
   { key: "design", label: "Beleg-Design" },
+  { key: "dunning", label: "Mahnwesen" },
   { key: "email", label: "E-Mail-Versand" },
   { key: "security", label: "Sicherheit" },
   { key: "audit", label: "Protokoll" },
@@ -467,6 +475,52 @@ export default function Settings() {
       )}
 
       {tab === "users" && user?.role === "ADMIN" && <Users />}
+
+      {tab === "dunning" && user?.role === "ADMIN" && (
+        <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-5">
+          <h2 className="font-medium">Mahnwesen</h2>
+          <p className="text-sm text-slate-500 -mt-3">
+            Drei Stufen: Zahlungserinnerung (gebühren- und zinsfrei), 1. Mahnung und 2. (letzte) Mahnung. Ab Stufe 2 werden Verzugszinsen berechnet (Basiszinssatz + 5 Prozentpunkte bei Privatkunden,
+            + 9 Prozentpunkte bei Firmenkunden, §288 BGB) und bei Firmenkunden einmalig 40 € Verzugskostenpauschale (§288 Abs. 5 BGB). Mahngebühren dürfen nur tatsächlich entstandene Kosten ersetzen.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="block text-sm">
+              Mahngebühr 1. Mahnung (€)
+              <input type="number" min={0} step="0.01" value={(company.dunningFee2Cents ?? 500) / 100} onChange={(e) => setCompany({ ...company, dunningFee2Cents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+            <label className="block text-sm">
+              Mahngebühr 2. Mahnung (€)
+              <input type="number" min={0} step="0.01" value={(company.dunningFee3Cents ?? 1000) / 100} onChange={(e) => setCompany({ ...company, dunningFee3Cents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+            <label className="block text-sm">
+              Basiszinssatz der Bundesbank (%)
+              <input type="number" step="0.01" value={company.baseInterestRatePercent ?? 1.27} onChange={(e) => setCompany({ ...company, baseInterestRatePercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Ändert sich zum 1. Januar und 1. Juli - bitte bei der Bundesbank prüfen und hier aktuell halten.</span>
+            </label>
+            <label className="block text-sm">
+              Zahlungsfrist je Mahnung (Tage)
+              <input type="number" min={1} max={90} value={company.dunningDeadlineDays ?? 7} onChange={(e) => setCompany({ ...company, dunningDeadlineDays: Math.max(1, parseInt(e.target.value, 10) || 7) })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+          </div>
+          {(
+            [
+              ["Zahlungserinnerung (Stufe 1)", "dunningText1"],
+              ["1. Mahnung (Stufe 2)", "dunningText2"],
+              ["2. Mahnung, letzte (Stufe 3)", "dunningText3"],
+            ] as const
+          ).map(([title, key]) => (
+            <div key={key}>
+              <label className="block text-sm font-medium mb-1">Text: {title}</label>
+              <textarea rows={6} value={company[key] ?? ""} onChange={(e) => setCompany({ ...company, [key]: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
+            </div>
+          ))}
+          <PlaceholderHint />
+          {companyError && <p className="text-red-600 text-sm">{companyError}</p>}
+          <SaveButton status={companySave.status} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
+            {t("common.save")}
+          </SaveButton>
+        </form>
+      )}
 
       {tab === "audit" && user?.role === "ADMIN" && <AuditLog />}
 

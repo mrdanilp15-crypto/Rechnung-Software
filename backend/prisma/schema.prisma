@@ -49,6 +49,15 @@ model Company {
   laborRateCentsPerHour   Int   @default(0)
   materialWastePercent    Float @default(5)
   targetMarginPercent     Float @default(30)
+  // Mahnwesen: Mahngebühren (Auslagenersatz) je Stufe in Cent, Basiszinssatz der Bundesbank in Prozent (ändert sich
+  // halbjährlich - bitte aktuell halten), Zahlungsfrist je Mahnung in Tagen und die Texte der drei Stufen.
+  dunningFee2Cents        Int   @default(500)
+  dunningFee3Cents        Int   @default(1000)
+  baseInterestRatePercent Float @default(1.27)
+  dunningDeadlineDays     Int   @default(7)
+  dunningText1            String @default("Sehr geehrte Damen und Herren,\n\nbei der Durchsicht unserer Buchhaltung ist uns aufgefallen, dass die Rechnung {nummer} noch nicht beglichen wurde. Bitte überweisen Sie den offenen Betrag bis zum {faellig}.\n\nSollten Sie bereits gezahlt haben, betrachten Sie dieses Schreiben bitte als gegenstandslos.\n\nMit freundlichen Grüßen\n{firma}")
+  dunningText2            String @default("Sehr geehrte Damen und Herren,\n\ntrotz unserer Zahlungserinnerung konnten wir bisher keinen Zahlungseingang zur Rechnung {nummer} feststellen. Wir bitten Sie, den offenen Betrag einschließlich der aufgeführten Verzugskosten bis zum {faellig} zu überweisen.\n\nMit freundlichen Grüßen\n{firma}")
+  dunningText3            String @default("Sehr geehrte Damen und Herren,\n\ndies ist unsere letzte Mahnung zur Rechnung {nummer}. Bitte überweisen Sie den Gesamtbetrag bis zum {faellig}. Geht die Zahlung bis dahin nicht ein, müssen wir ohne weitere Ankündigung rechtliche Schritte einleiten (z.B. ein gerichtliches Mahnverfahren), wodurch Ihnen weitere Kosten entstehen.\n\nMit freundlichen Grüßen\n{firma}")
   // Optisches Layout der PDFs: "CLEAR" (klar, viel Weiß), "BAND" (farbiges Kopfband) oder
   // "COMPACT" (Karten, kompakt) - siehe modules/pdf/documentTemplate.ts. Rein gestalterisch.
   pdfLayout     String   @default("CLEAR")
@@ -104,6 +113,7 @@ model Company {
   orderConfirmations  OrderConfirmation[]
   numberSequences     NumberSequence[]
   auditLogs           AuditLog[]
+  dunnings            Dunning[]
   webhooks            Webhook[]
   settings            Setting[]
   expenses            Expense[]
@@ -367,6 +377,7 @@ model Invoice {
   updatedAt       DateTime      @updatedAt
 
   items           InvoiceItem[]
+  dunnings        Dunning[]
 
   @@unique([companyId, invoiceNumber])
   @@index([companyId, status])
@@ -609,4 +620,32 @@ model BankTransaction {
   importedAt   DateTime @default(now())
 
   @@index([companyId, bookingDate])
+}
+
+// ---------- Mahnwesen ----------
+// Jede erzeugte Zahlungserinnerung/Mahnung wird mit den berechneten Beträgen und dem Wortlaut festgehalten
+// (Handelsbrief, nachweispflichtig). Beträge sind kumulativ: Gebühren und Pauschale früherer Stufen sind enthalten.
+
+model Dunning {
+  id              String   @id @default(uuid())
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId       String
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceId       String
+  level           Int // 1 = Zahlungserinnerung, 2 = 1. Mahnung, 3 = 2. (letzte) Mahnung
+  principalCents  Int // offene Rechnungssumme
+  feeCents        Int // Mahngebühren (kumulativ)
+  interestCents   Int // Verzugszinsen bis zum Mahndatum
+  flatFeeCents    Int // Verzugskostenpauschale §288 Abs. 5 BGB (nur B2B, einmalig)
+  totalCents      Int
+  interestRateBps Int // Jahreszins in Basispunkten
+  daysOverdue     Int
+  newDueDate      DateTime
+  text            String
+  pdfPath         String?
+  sentByEmail     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([companyId, createdAt])
 }

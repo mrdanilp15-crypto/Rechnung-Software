@@ -68,10 +68,12 @@ export default function Dashboard() {
   const [revenue, setRevenue] = useState<RevenueStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [dunning, setDunning] = useState<{ invoiceId: string; invoiceNumber: string; customerName: string; totalCents: number; daysOverdue: number; nextLevel: number }[]>([]);
 
   useEffect(() => {
     api.get("/documents").then((res) => setRows(res.data)).finally(() => setLoading(false));
     api.get("/companies/me/revenue-status").then((res) => setRevenue(res.data));
+    api.get("/dunning/suggestions").then((res) => setDunning(res.data)).catch(() => setDunning([]));
     api.get("/documents/stats").then((res) => setStats(res.data)).catch(() => setStats(null));
   }, []);
 
@@ -129,6 +131,20 @@ export default function Dashboard() {
               <p className="text-xs text-slate-500 mt-1">noch nicht fertiggestellt</p>
             </Link>
           </div>
+
+          {dunning.length > 0 && (
+            <div className="mb-6 rounded-lg border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 p-4">
+              <h2 className="text-sm font-medium mb-2">Zahlung überfällig - Erinnerung/Mahnung fällig</h2>
+              <div className="space-y-1.5 text-sm">
+                {dunning.slice(0, 5).map((d) => (
+                  <Link key={d.invoiceId} to={`/invoices/${d.invoiceId}?dunning=1`} className="flex items-center justify-between gap-3 hover:underline">
+                    <span className="truncate">{d.invoiceNumber} · {d.customerName} · {d.daysOverdue} Tage überfällig</span>
+                    <span className="shrink-0">{format(d.totalCents)} <span className="text-brand ml-2">{d.nextLevel === 1 ? "Erinnerung" : `${d.nextLevel - 1}. Mahnung`} →</span></span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {stats && stats.months.some((m) => m.revenueCents > 0) && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6">
