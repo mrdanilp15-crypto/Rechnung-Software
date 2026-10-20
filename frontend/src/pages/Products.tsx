@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Fragment, FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Fuse from "fuse.js";
 import { api } from "../api/client";
@@ -6,7 +6,7 @@ import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
 import { MobileCard, MobileField } from "../components/MobileCard";
-import { calcCost, type CostRates, type PrinterCosts } from "../lib/cost";
+import { calcCost, feesAt, type CostRates, type PriceTier, type PrinterCosts } from "../lib/cost";
 
 interface Material {
   id: string;
@@ -36,14 +36,22 @@ interface Product {
   printTimeMinutes?: number;
   laborMinutes?: number;
   printerId?: string | null;
+  setupMinutes?: number;
+  packagingCents?: number;
+  extraMaterialPercent?: number;
+  priceTiers?: PriceTier[] | null;
   materials: ProductMaterial[];
+}
+interface TierRow {
+  minQuantity: string;
+  priceEur: string;
 }
 interface MaterialUsageRow {
   materialId: string;
   quantityPerUnit: string;
 }
 
-const emptyForm = { sku: "", name: "", description: "", unit: "Stk.", unitPriceEur: "0.00", vatRateBps: 1900, printTimeMinutes: "", laborMinutes: "", printerId: "" };
+const emptyForm = { sku: "", name: "", description: "", unit: "Stk.", unitPriceEur: "0.00", vatRateBps: 1900, printTimeMinutes: "", laborMinutes: "", printerId: "", setupMinutes: "", packagingEur: "", extraMaterialPercent: "" };
 
 export default function Products() {
   const { t } = useTranslation();
@@ -55,8 +63,10 @@ export default function Products() {
   const [form, setForm] = useState(emptyForm);
   const [materialRows, setMaterialRows] = useState<MaterialUsageRow[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [rates, setRates] = useState<Rates>({ machineRateCentsPerHour: 0, laborRateCentsPerHour: 0, materialWastePercent: 5, targetMarginPercent: 30, electricityCentsPerKwh: 35, overheadPercent: 5 });
+  const [rates, setRates] = useState<Rates>({ machineRateCentsPerHour: 0, laborRateCentsPerHour: 0, materialWastePercent: 5, targetMarginPercent: 30, electricityCentsPerKwh: 35, overheadPercent: 5, failRatePercent: 5, platformFeePercent: 0, priceRounding: "NONE", minPriceCents: 0 });
   const [printers, setPrinters] = useState<PrinterOption[]>([]);
+  const [tierRows, setTierRows] = useState<TierRow[]>([]);
+  const [calcQty, setCalcQty] = useState("1");
   const { status, run } = useSaveStatus();
   const showToast = useToast();
 
@@ -74,6 +84,10 @@ export default function Products() {
         targetMarginPercent: res.data.targetMarginPercent ?? 30,
         electricityCentsPerKwh: res.data.electricityCentsPerKwh ?? 35,
         overheadPercent: res.data.overheadPercent ?? 5,
+        failRatePercent: res.data.failRatePercent ?? 5,
+        platformFeePercent: res.data.platformFeePercent ?? 0,
+        priceRounding: res.data.priceRounding ?? "NONE",
+        minPriceCents: res.data.minPriceCents ?? 0,
       })
     );
     api.get("/printers").then((res) => setPrinters(res.data));
@@ -86,6 +100,8 @@ export default function Products() {
     setEditingId(null);
     setForm(emptyForm);
     setMaterialRows([]);
+    setTierRows([]);
+    setCalcQty("1");
     setShowForm(true);
   }
 
@@ -101,7 +117,12 @@ export default function Products() {
       printTimeMinutes: p.printTimeMinutes ? String(p.printTimeMinutes) : "",
       laborMinutes: p.laborMinutes ? String(p.laborMinutes) : "",
       printerId: p.printerId ?? "",
+      setupMinutes: p.setupMinutes ? String(p.setupMinutes) : "",
+      packagingEur: p.packagingCents ? String(p.packagingCents / 100) : "",
+      extraMaterialPercent: p.extraMaterialPercent ? String(p.extraMaterialPercent) : "",
     });
+    setTierRows((p.priceTiers ?? []).map((t) => ({ minQuantity: String(t.minQuantity), priceEur: (t.unitPriceCents / 100).toFixed(2) })));
+    setCalcQty("1");
     setMaterialRows(p.materials.map((m) => ({ materialId: m.materialId, quantityPerUnit: String(m.quantityPerUnit) })));
     setShowForm(true);
   }
@@ -131,6 +152,12 @@ export default function Products() {
       printTimeMinutes: parseFloat(form.printTimeMinutes) || 0,
       laborMinutes: parseFloat(form.laborMinutes) || 0,
       printerId: form.printerId || null,
+      setupMinutes: parseFloat(form.setupMinutes) || 0,
+      packagingCents: Math.round((parseFloat(form.packagingEur) || 0) * 100),
+      extraMaterialPercent: parseFloat(form.extraMaterialPercent) || 0,
+      priceTiers: tierRows
+        .map((r) => ({ minQuantity: parseFloat(r.minQuantity), unitPriceCents: Math.round((parseFloat(r.priceEur) || 0) * 100) }))
+        .filter((r) => r.minQuantity >= 2 && r.unitPriceCents > 0),
       materials: validMaterialRows.map((r) => ({ materialId: r.materialId, quantityPerUnit: parseFloat(r.quantityPerUnit) })),
     };
     try {
@@ -162,17 +189,18 @@ export default function Products() {
   }
 
   // Live-Kalkulation für das gerade bearbeitete Produkt
-  const liveCost = calcCost(
-    materialRows
-      .map((r) => ({ quantityPerUnit: parseFloat(r.quantityPerUnit) || 0, costPerUnitCents: materials.find((m) => m.id === r.materialId)?.costPerUnitCents ?? 0 }))
-      .filter((r) => r.quantityPerUnit > 0),
-    parseFloat(form.printTimeMinutes) || 0,
-    parseFloat(form.laborMinutes) || 0,
-    rates,
-    printers.find((pr) => pr.id === form.printerId)
-  );
+  function formExtras(quantity: number) {
+    return { setupMinutes: parseFloat(form.setupMinutes) || 0, packagingCents: Math.round((parseFloat(form.packagingEur) || 0) * 100), extraMaterialPercent: parseFloat(form.extraMaterialPercent) || 0, quantity };
+  }
+  const liveUsed = materialRows
+    .map((r) => ({ quantityPerUnit: parseFloat(r.quantityPerUnit) || 0, costPerUnitCents: materials.find((m) => m.id === r.materialId)?.costPerUnitCents ?? 0 }))
+    .filter((r) => r.quantityPerUnit > 0);
+  const costAtQuantity = (q: number) =>
+    calcCost(liveUsed, parseFloat(form.printTimeMinutes) || 0, parseFloat(form.laborMinutes) || 0, rates, printers.find((pr) => pr.id === form.printerId), formExtras(q));
+  const liveCost = costAtQuantity(Math.max(1, parseFloat(calcQty) || 1));
   const livePriceCents = Math.round(parseFloat(form.unitPriceEur) * 100) || 0;
-  const liveProfit = livePriceCents - liveCost.total;
+  const liveFees = feesAt(livePriceCents, rates);
+  const liveProfit = livePriceCents - liveFees - liveCost.total;
 
   const formatPrice = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
 
@@ -287,9 +315,30 @@ export default function Products() {
                 <p className="text-xs text-slate-500 mt-1">Ihre eigene Zeit, in der Sie arbeiten statt der Drucker: Platte vorbereiten, Stützen entfernen, schleifen, verpacken. Typisch 3-10 Minuten. Wird mit dem Arbeitsstundensatz bewertet.</p>
               </div>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Rüstzeit pro Auftrag (Minuten)</label>
+                <input type="number" min="0" step="any" value={form.setupMinutes} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, setupMinutes: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <p className="text-xs text-slate-500 mt-1">Zeit, die <strong>einmal pro Auftrag</strong> anfällt, egal wie viele Stück: Datei slicen, Platte und Material einrichten, Auftrag abwickeln. Verteilt sich auf die Stückzahl (Tabelle unten).</p>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Verpackung &amp; Versand pro {form.unit || "Einheit"} (€)</label>
+                <input type="number" min="0" step="0.01" value={form.packagingEur} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, packagingEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <p className="text-xs text-slate-500 mt-1">Karton, Polstermaterial, Etikett. Porto nur eintragen, wenn Sie den Versand <strong>nicht</strong> separat berechnen.</p>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Zusätzlicher Materialverlust (%)</label>
+                <input type="number" min="0" step="any" value={form.extraMaterialPercent} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, extraMaterialPercent: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <p className="text-xs text-slate-500 mt-1">Nur für Sonderfälle zusätzlich zum allgemeinen Ausschuss: z.B. Mehrfarbdruck mit AMS (Spülblock/Purge, oft 20-100 %) oder sehr viele Stützen. Sonst leer lassen.</p>
+              </div>
+            </div>
             {liveCost.total > 0 ? (
               <div className="text-sm space-y-1 bg-slate-50 dark:bg-slate-900/40 rounded p-3">
-                <div className="flex justify-between"><span className="text-slate-500">Material (inkl. {rates.materialWastePercent}% Ausschuss)</span><span>{formatPrice(liveCost.material)}</span></div>
+                <div className="flex items-center justify-between gap-2 pb-1">
+                  <label className="text-xs text-slate-500" htmlFor="calc-qty">Berechnet für Auftragsmenge (Stück) - bestimmt den Rüstzeit-Anteil</label>
+                  <input id="calc-qty" type="number" min="1" step="1" value={calcQty} onFocus={(e) => e.target.select()} onChange={(e) => setCalcQty(e.target.value)} className="w-20 px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-right" />
+                </div>
+                <div className="flex justify-between"><span className="text-slate-500">Material (inkl. {rates.materialWastePercent + (parseFloat(form.extraMaterialPercent) || 0)}% Ausschuss/Verlust)</span><span>{formatPrice(liveCost.material)}</span></div>
                 {form.printerId ? (
                   <>
                     <div className="flex justify-between"><span className="text-slate-500">Strom</span><span>{formatPrice(liveCost.electricity)}</span></div>
@@ -299,16 +348,26 @@ export default function Products() {
                 ) : (
                   <div className="flex justify-between"><span className="text-slate-500">Maschine (pauschal)</span><span>{formatPrice(liveCost.machineFlat)}</span></div>
                 )}
-                <div className="flex justify-between"><span className="text-slate-500">Arbeit</span><span>{formatPrice(liveCost.labor)}</span></div>
+                {rates.failRatePercent > 0 && <div className="flex justify-between"><span className="text-slate-500">Fehldrucke ({rates.failRatePercent}% auf Maschinenzeit)</span><span>{formatPrice(liveCost.failures)}</span></div>}
+                <div className="flex justify-between"><span className="text-slate-500">Arbeit{liveCost.setup > 0 ? ` (davon Rüstzeit ${formatPrice(liveCost.setup)})` : ""}</span><span>{formatPrice(liveCost.labor)}</span></div>
+                {liveCost.packaging > 0 && <div className="flex justify-between"><span className="text-slate-500">Verpackung &amp; Versand</span><span>{formatPrice(liveCost.packaging)}</span></div>}
                 {rates.overheadPercent > 0 && <div className="flex justify-between"><span className="text-slate-500">Gemeinkosten ({rates.overheadPercent}%)</span><span>{formatPrice(liveCost.overhead)}</span></div>}
                 <div className="flex justify-between font-medium border-t border-slate-200 dark:border-slate-700 pt-1"><span>Selbstkosten</span><span>{formatPrice(liveCost.total)}</span></div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500" title={`${rates.targetMarginPercent}% Aufschlag auf die Selbstkosten entsprechen ${(100 - 10000 / (100 + rates.targetMarginPercent)).toFixed(0)}% Gewinn vom Verkaufspreis`}>Preisvorschlag (netto, +{rates.targetMarginPercent}% auf Selbstkosten)</span>
+                  <span className="text-slate-500" title={`${rates.targetMarginPercent}% Aufschlag auf die Selbstkosten entsprechen ${(100 - 10000 / (100 + rates.targetMarginPercent)).toFixed(0)}% Gewinn vom Verkaufspreis`}>
+                    Preisvorschlag (netto, +{rates.targetMarginPercent}% auf Selbstkosten{rates.platformFeePercent > 0 ? `, ${rates.platformFeePercent}% Gebühren eingerechnet` : ""})
+                  </span>
                   <span className="flex items-center gap-2">
                     {formatPrice(liveCost.recommended)}
                     <button type="button" onClick={() => setForm((f) => ({ ...f, unitPriceEur: (liveCost.recommended / 100).toFixed(2) }))} className="text-brand hover:underline text-xs">Übernehmen</button>
                   </span>
                 </div>
+                {Math.abs(liveCost.recommended - liveCost.recommendedRaw) > 0.5 && (
+                  <p className="text-xs text-slate-500">
+                    {liveCost.recommendedRaw < rates.minPriceCents && liveCost.recommended === rates.minPriceCents ? `Mindestpreis ${formatPrice(rates.minPriceCents)} greift (rechnerisch ${formatPrice(liveCost.recommendedRaw)}).` : `Gerundet von ${formatPrice(liveCost.recommendedRaw)} (Einstellungen → Firma → Kalkulation).`}
+                  </p>
+                )}
+                {rates.platformFeePercent > 0 && livePriceCents > 0 && <div className="flex justify-between"><span className="text-slate-500">Plattform-/Zahlungsgebühren bei aktuellem Preis ({rates.platformFeePercent}%)</span><span>{formatPrice(liveFees)}</span></div>}
                 <div className={`flex justify-between font-medium ${liveProfit < 0 ? "text-red-600" : "text-green-600"}`}>
                   <span>Gewinn bei aktuellem Preis ({formatPrice(livePriceCents)})</span>
                   <span>{formatPrice(liveProfit)}{livePriceCents > 0 ? ` (${Math.round((liveProfit / livePriceCents) * 100)}% vom Preis)` : ""}</span>
@@ -318,6 +377,58 @@ export default function Products() {
             ) : (
               <p className="text-xs text-slate-500">Material oben, Druck-/Arbeitszeit hier eintragen und die Stundensätze unter Einstellungen → Firma hinterlegen - dann erscheinen Selbstkosten, Preisvorschlag und Gewinn.</p>
             )}
+            {liveCost.total > 0 && (parseFloat(form.setupMinutes) || 0) > 0 && (
+              <div className="text-sm bg-slate-50 dark:bg-slate-900/40 rounded p-3">
+                <div className="font-medium mb-1">Preis je Stück nach Auftragsmenge</div>
+                <div className="grid grid-cols-[repeat(4,auto)] gap-x-4 gap-y-0.5 justify-start text-xs sm:text-sm">
+                  <span className="text-slate-500">Menge</span><span className="text-slate-500 text-right">Selbstkosten</span><span className="text-slate-500 text-right">Preisvorschlag</span><span className="text-slate-500 text-right">Gewinn bei Preis</span>
+                  {[1, 5, 10, 25, 50, 100].map((q) => {
+                    const c = costAtQuantity(q);
+                    const p = livePriceCents - liveFees - c.total;
+                    return (
+                      <Fragment key={q}>
+                        <span>{q} Stk.</span><span className="text-right">{formatPrice(c.total)}</span><span className="text-right">{formatPrice(c.recommended)}</span><span className={`text-right ${p < 0 ? "text-red-600" : "text-green-600"}`}>{livePriceCents > 0 ? formatPrice(p) : "-"}</span>
+                      </Fragment>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Je mehr Stück pro Auftrag, desto kleiner der Rüstzeit-Anteil. Das können Sie unten als Staffelpreis weitergeben.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2">
+            <div className="flex justify-between items-center gap-2 flex-wrap">
+              <div className="text-sm font-medium">Staffelpreise (optional)</div>
+              <div className="flex gap-3 text-sm">
+                {liveCost.total > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const rows: TierRow[] = [];
+                      for (const q of [10, 50, 100]) {
+                        const price = costAtQuantity(q).recommended;
+                        const limit = rows.length ? Math.round(parseFloat(rows[rows.length - 1].priceEur) * 100) : livePriceCents || Infinity;
+                        if (price < limit) rows.push({ minQuantity: String(q), priceEur: (price / 100).toFixed(2) });
+                      }
+                      setTierRows(rows);
+                    }}
+                    className="text-brand hover:underline"
+                  >
+                    Aus Kalkulation vorschlagen
+                  </button>
+                )}
+                <button type="button" onClick={() => setTierRows((rows) => [...rows, { minQuantity: "", priceEur: "" }])} className="text-brand hover:underline">+ Staffel hinzufügen</button>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500">Günstigerer Stückpreis ab einer Mindestmenge, z.B. ab 10 Stück 9,00 €. Beim Erstellen eines Angebots oder einer Rechnung wird der Preis automatisch passend zur Menge gesetzt (einen von Hand geänderten Preis überschreibt das nicht). Preise netto. "Aus Kalkulation vorschlagen" setzt Staffeln ab 10, 50 und 100 Stück, sofern sie günstiger als der aktuelle Preis sind.</p>
+            {tierRows.map((row, idx) => (
+              <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                <input type="number" min="2" step="1" placeholder="Ab Menge (Stk.)" value={row.minQuantity} onFocus={(e) => e.target.select()} onChange={(e) => setTierRows((rows) => rows.map((r, i) => (i === idx ? { ...r, minQuantity: e.target.value } : r)))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <input type="number" min="0" step="0.01" placeholder="Preis pro Stück (€)" value={row.priceEur} onFocus={(e) => e.target.select()} onChange={(e) => setTierRows((rows) => rows.map((r, i) => (i === idx ? { ...r, priceEur: e.target.value } : r)))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <button type="button" onClick={() => setTierRows((rows) => rows.filter((_, i) => i !== idx))} className="text-red-500 px-2">✕</button>
+              </div>
+            ))}
           </div>
 
           <div className="flex gap-2">
@@ -372,16 +483,22 @@ export default function Products() {
                       p.printTimeMinutes ?? 0,
                       p.laborMinutes ?? 0,
                       rates,
-                      printers.find((pr) => pr.id === p.printerId)
+                      printers.find((pr) => pr.id === p.printerId),
+                      { setupMinutes: p.setupMinutes, packagingCents: p.packagingCents, extraMaterialPercent: p.extraMaterialPercent }
                     );
                     if (cost.total <= 0 || p.unitPriceCents <= 0) return null;
-                    const profit = p.unitPriceCents - cost.total;
+                    const profit = p.unitPriceCents - feesAt(p.unitPriceCents, rates) - cost.total;
                     return (
                       <div className={`text-xs ${profit < 0 ? "text-red-600" : "text-green-600"}`}>
-                        Kosten {formatPrice(cost.total)} · Gewinn {formatPrice(profit)} ({Math.round((profit / p.unitPriceCents) * 100)}%)
+                        Kosten {formatPrice(cost.total)}{(p.setupMinutes ?? 0) > 0 ? " (bei 1 Stk.)" : ""} · Gewinn {formatPrice(profit)} ({Math.round((profit / p.unitPriceCents) * 100)}%)
                       </div>
                     );
                   })()}
+                  {p.priceTiers && p.priceTiers.length > 0 && (
+                    <div className="text-xs text-slate-400 truncate">
+                      Staffelpreise: {p.priceTiers.map((t) => `ab ${t.minQuantity} Stk. ${formatPrice(t.unitPriceCents)}`).join(" · ")}
+                    </div>
+                  )}
                   {p.materials.length > 0 && (
                     <div className="text-xs text-slate-400 truncate">
                       Verbraucht: {p.materials.map((m) => `${m.quantityPerUnit}${m.material.unit} ${m.material.name}`).join(", ")}

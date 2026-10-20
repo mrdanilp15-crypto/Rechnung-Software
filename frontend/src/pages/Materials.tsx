@@ -127,7 +127,7 @@ export default function Materials() {
       <InfoBox title="Wozu dient Material?" defaultOpen>
         <p>Hier erfasst du <strong>Rohstoffe</strong>, die du selbst einkaufst (z.B. Filament) - getrennt von den Produkten, die du verkaufst.</p>
         <p>Trage beim Anlegen direkt ein, wie viel du hast und was du dafür insgesamt bezahlt hast (z.B. 1000g für 24,99€) - der Preis pro Einheit wird automatisch berechnet und eine passende Ausgabe angelegt (Finanzen → Ausgaben), du musst den Einkauf also nicht doppelt eintragen. Käufst du später nach, geht das genauso über <strong>"Nachbestellen"</strong>.</p>
-<p><strong>Wichtig für die Kalkulation:</strong> Als Preis pro Einheit gilt der Preis der <em>letzten</em> Bestellung. Wenn du nachbestellst und der Preis sich ändert, rechnen deine Produkte ab dann mit dem neuen Preis - auch für noch vorhandene Reste der alten Spule. Rabatte und Versandkosten gehören in den Gesamtpreis, damit der echte Einkaufspreis pro Gramm stimmt.</p>
+<p><strong>Wichtig für die Kalkulation:</strong> Beim Nachbestellen rechnet die Software mit dem <em>gleitenden Durchschnittspreis</em>: Reste der alten Spule behalten ihren alten Preis, die neue Lieferung ihren neuen - daraus entsteht ein gemeinsamer Preis pro Einheit (z.B. 500 g Rest zu 0,02 € + 1000 g für 30 € ergeben rund 0,0267 €/g). Rabatte und Versandkosten gehören in den Gesamtpreis, damit der echte Einkaufspreis stimmt. Bei "Bearbeiten" können Sie den Preis auch von Hand korrigieren.</p>
         <p>Bei <strong>Produkte</strong> kannst du hinterlegen, wie viel von welchem Material ein Produkt pro Stück verbraucht (z.B. "15g Filament pro Druck"). Beim Erstellen einer Rechnung wird der Bestand hier automatisch entsprechend reduziert.</p>
       </InfoBox>
 

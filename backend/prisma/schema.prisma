@@ -52,6 +52,13 @@ model Company {
   // Strompreis (Cent pro kWh) und Gemeinkosten-Aufschlag in Prozent (Miete, Software, Versicherung, Fehldruck-Risiko ...)
   electricityCentsPerKwh  Float @default(35)
   overheadPercent         Float @default(5)
+  // Fehldruckquote (Prozentaufschlag auf Strom, Abschreibung und Verschleiß), Plattform-/Zahlungsgebühren (Prozent vom
+  // Verkaufspreis), Rundung des Preisvorschlags (NONE, 5, 10, 50, 100 = auf volle Cent-Schritte aufrunden, 90/99 = Preis endet auf ,90/,99)
+  // und Mindestpreis je Einheit in Cent.
+  failRatePercent         Float  @default(5)
+  platformFeePercent      Float  @default(0)
+  priceRounding           String @default("NONE")
+  minPriceCents           Int    @default(0)
   // Mahnwesen: Mahngebühren (Auslagenersatz) je Stufe in Cent, Basiszinssatz der Bundesbank in Prozent (ändert sich
   // halbjährlich - bitte aktuell halten), Zahlungsfrist je Mahnung in Tagen und die Texte der drei Stufen.
   dunningFee2Cents        Int   @default(500)
@@ -259,6 +266,13 @@ model Product {
   // Auf welchem Drucker gedruckt wird (bestimmt Strom, Abschreibung, Verschleiß). Ohne Drucker gilt der pauschale Maschinenstundensatz.
   printer          Printer? @relation(fields: [printerId], references: [id], onDelete: SetNull)
   printerId        String?
+  // Rüstzeit einmal je Auftrag (Slicen, Platte vorbereiten) in Minuten, Verpackung/Versand je Einheit in Cent,
+  // zusätzlicher Materialverlust in Prozent (z.B. Spülmaterial bei Mehrfarbdruck) und Staffelpreise
+  // ([{ minQuantity, unitPriceCents }], netto je Einheit ab dieser Menge).
+  setupMinutes         Float @default(0)
+  packagingCents       Int   @default(0)
+  extraMaterialPercent Float @default(0)
+  priceTiers           Json?
   isArchived    Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

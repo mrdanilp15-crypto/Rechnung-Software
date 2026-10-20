@@ -151,6 +151,10 @@ In der Rechnungsdetailansicht:
     vorausgefüllten Drucker sind **Beispielwerte** - bitte an Ihre Maschinen anpassen.
   - **Strompreis und Gemeinkosten-Aufschlag** stehen unter *Einstellungen → Firma → Kalkulation*.
   - Im Produkt wählen Sie den Drucker aus. Ohne Drucker gilt der pauschale Maschinenstundensatz aus den Einstellungen.
+  - **Weitere Kostenpunkte pro Produkt:** Rüstzeit (einmal je Auftrag, verteilt sich auf die Stückzahl - eine Tabelle zeigt Selbstkosten und Preisvorschlag für 1 bis 100 Stück), Verpackung/Versand je Stück und zusätzlicher Materialverlust (z.B. Spülmaterial bei Mehrfarbdruck).
+  - **Firmenweit** (*Einstellungen → Firma → Kalkulation*): Fehldruckquote (Aufschlag auf Strom, Abschreibung und Verschleiß), Plattform-/Zahlungsgebühren (werden in den Preisvorschlag eingerechnet), Rundung des Preisvorschlags (z.B. auf ,90) und Mindestpreis.
+  - **Staffelpreise:** Im Produkt Preise ab einer Mindestmenge hinterlegen (Button "Aus Kalkulation vorschlagen"). In Angeboten, Aufträgen und Rechnungen setzt sich der Stückpreis passend zur Menge automatisch; ein von Hand geänderter Preis bleibt unangetastet.
+  - **Materialpreis:** Beim Nachbestellen gilt der gleitende Durchschnitt aus Restbestand und neuer Lieferung.
 - **Steuerberater-Paket** (*Finanzen → Steuerberater*): USt-Übersicht je Zeitraum (zur Orientierung - ersetzt keine
   Umsatzsteuer-Voranmeldung, es wird nach vereinbarten Entgelten gerechnet) und ein ZIP mit allen Rechnungs-PDFs, Belegliste und
   Ausgaben. Es ist **kein DATEV-Format**. Grenzüberschreitende Fälle (innergemeinschaftliche Lieferung, Reverse-Charge) lassen Sie

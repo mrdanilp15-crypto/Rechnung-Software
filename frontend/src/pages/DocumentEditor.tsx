@@ -92,6 +92,7 @@ interface Product {
   unitPriceCents: number;
   vatRateBps: number;
   unit: string;
+  priceTiers?: { minQuantity: number; unitPriceCents: number }[] | null;
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";

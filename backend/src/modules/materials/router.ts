@@ -4,6 +4,7 @@ import { prisma } from "../../db/prisma";
 import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
+import { weightedAverageCost } from "../../utils/materialCost";
 
 export const materialsRouter = Router();
 materialsRouter.use(requireAuth);
@@ -84,7 +85,7 @@ const restockSchema = z.object({
   vendor: z.string().optional(),
 });
 
-// Nachbestellung: erhöht den Bestand, aktualisiert den zuletzt gezahlten Preis pro Einheit
+// Nachbestellung: erhöht den Bestand, aktualisiert den Preis pro Einheit (gleitender Durchschnitt aus Rest und Lieferung)
 // und legt automatisch eine passende Ausgabe an (Kategorie "Material") - so muss der Einkauf
 // nicht zusätzlich manuell unter "Ausgaben" erfasst werden.
 materialsRouter.post("/:id/restock", async (req, res) => {
@@ -92,7 +93,7 @@ materialsRouter.post("/:id/restock", async (req, res) => {
   const material = await prisma.material.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!material) throw new HttpError(404, "Material nicht gefunden");
 
-  const costPerUnitCents = body.totalCostCents / body.quantity;
+  const costPerUnitCents = weightedAverageCost(material.stockQuantity, material.costPerUnitCents, body.quantity, body.totalCostCents);
 
   const [updated] = await prisma.$transaction([
     prisma.material.update({

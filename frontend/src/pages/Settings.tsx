@@ -42,6 +42,10 @@ interface Company {
   targetMarginPercent?: number;
   electricityCentsPerKwh?: number;
   overheadPercent?: number;
+  failRatePercent?: number;
+  platformFeePercent?: number;
+  priceRounding?: string;
+  minPriceCents?: number;
   pdfLayout?: "CLEAR" | "BAND" | "COMPACT";
   invoiceIntroText?: string;
   invoiceClosingText?: string;
@@ -368,12 +372,40 @@ export default function Settings() {
             <label className="block text-sm">
               Gemeinkosten-Aufschlag (%)
               <input type="number" min={0} step="0.5" value={company.overheadPercent ?? 5} onChange={(e) => setCompany({ ...company, overheadPercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Kosten, die nicht einem Produkt zuzuordnen sind: Miete/Raum, Software, Versicherung, Internet, Verpackungs- und Kleinmaterial, Gebühren (Shop, PayPal). Faustregel: Summe dieser Kosten pro Jahr ÷ Summe aller direkten Kosten pro Jahr. Für den Start 5-15 %.</span>
+              <span className="block text-xs text-slate-500 mt-0.5">Kosten, die nicht einem Produkt zuzuordnen sind: Miete/Raum, Software, Versicherung, Internet, Werkzeug, Buchhaltung. (Verpackung steht pro Produkt, Gebühren und Fehldrucke haben eigene Felder.) Faustregel: Summe dieser Kosten pro Jahr ÷ Summe aller direkten Kosten pro Jahr. Für den Start 5-15 %.</span>
             </label>
             <label className="block text-sm">
               Gewinnaufschlag (%)
               <input type="number" min={0} step="1" value={company.targetMarginPercent ?? 30} onChange={(e) => setCompany({ ...company, targetMarginPercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               <span className="block text-xs text-slate-500 mt-0.5">Wird auf die Selbstkosten aufgeschlagen und ergibt den Preisvorschlag. Achtung: 30 % <em>Aufschlag</em> sind nur rund 23 % <em>Gewinn vom Verkaufspreis</em> (Rechnung: Gewinn ÷ Preis). Aus dem Gewinn müssen noch Steuern und Rücklagen bezahlt werden.</span>
+            </label>
+            <label className="block text-sm">
+              Fehldruckquote (%)
+              <input type="number" min={0} step="0.5" value={company.failRatePercent ?? 5} onChange={(e) => setCompany({ ...company, failRatePercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Wie oft ein Druck misslingt: dann sind Druckzeit, Strom und Verschleiß verloren. Aufschlag auf diese Maschinenkosten (das verlorene Material deckt der Materialausschuss). Erfahrungswert: 3-10 %, bei neuen Materialien mehr.</span>
+            </label>
+            <label className="block text-sm">
+              Plattform-/Zahlungsgebühren (% vom Verkaufspreis)
+              <input type="number" min={0} max={90} step="0.1" value={company.platformFeePercent ?? 0} onChange={(e) => setCompany({ ...company, platformFeePercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Gebühren, die beim Verkauf anfallen (Etsy, eBay, PayPal, Kartenzahlung - zusammen oft 5-12 %). Der Preisvorschlag wird so erhöht, dass nach Abzug der Gebühren Ihr Gewinn bleibt. Bei Direktverkauf per Überweisung: 0.</span>
+            </label>
+            <label className="block text-sm">
+              Preisvorschlag runden
+              <select value={company.priceRounding ?? "NONE"} onChange={(e) => setCompany({ ...company, priceRounding: e.target.value })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                <option value="NONE">Nicht runden (auf den Cent genau)</option>
+                <option value="5">Auf 5 Cent aufrunden (7,43 → 7,45)</option>
+                <option value="10">Auf 10 Cent aufrunden (7,43 → 7,50)</option>
+                <option value="50">Auf 50 Cent aufrunden (7,43 → 7,50)</option>
+                <option value="100">Auf volle Euro aufrunden (7,43 → 8,00)</option>
+                <option value="90">Auf ,90 aufrunden (7,43 → 7,90)</option>
+                <option value="99">Auf ,99 aufrunden (7,43 → 7,99)</option>
+              </select>
+              <span className="block text-xs text-slate-500 mt-0.5">Es wird immer aufgerundet, nie ab. Die Rundung wirkt auf den Nettopreis (ohne USt.).</span>
+            </label>
+            <label className="block text-sm">
+              Mindestpreis je Einheit (€ netto)
+              <input type="number" min={0} step="0.01" value={(company.minPriceCents ?? 0) / 100} onChange={(e) => setCompany({ ...company, minPriceCents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Kein Preisvorschlag liegt darunter - auch nicht bei winzigen Teilen, bei denen sich Auftragsannahme, Versand und Abrechnung sonst nicht lohnen. 0 = kein Mindestpreis.</span>
             </label>
           </div>
           <h3 className="text-sm font-semibold pt-2">Bank &amp; Zahlung</h3>

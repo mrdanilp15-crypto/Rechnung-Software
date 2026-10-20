@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
+import { unitPriceForQuantity, type PriceTier } from "../lib/cost";
 
 export interface LineItem {
   // Stabiler, nur clientseitig genutzter Schlüssel für React-Listen (siehe unten) -
@@ -40,6 +41,7 @@ interface Product {
   unitPriceCents: number;
   vatRateBps: number;
   unit: string;
+  priceTiers?: PriceTier[] | null;
 }
 
 export function formatEuro(cents: number) {
@@ -89,11 +91,31 @@ export function PricedItemsEditor({
     updateItem(key, {
       productId: product.id,
       description: product.name,
-      unitPriceCents: product.unitPriceCents,
+      unitPriceCents: unitPriceForQuantity(product.unitPriceCents, product.priceTiers, items.find((i) => i._key === key)?.quantity ?? 1),
       vatRateBps: product.vatRateBps,
       unit: product.unit,
     });
   }
+
+  // Menge ändern: Hat das Produkt Staffelpreise und steht in der Zeile noch der dazu passende (nicht von Hand geänderte) Preis,
+  // wird der Preis der neuen Menge übernommen.
+  function setQuantity(item: LineItem, quantity: number) {
+    const patch: Partial<LineItem> = { quantity };
+    const product = item.productId ? products.find((p) => p.id === item.productId) : undefined;
+    if (product?.priceTiers?.length && item.unitPriceCents === unitPriceForQuantity(product.unitPriceCents, product.priceTiers, item.quantity)) {
+      patch.unitPriceCents = unitPriceForQuantity(product.unitPriceCents, product.priceTiers, quantity);
+    }
+    updateItem(item._key, patch);
+  }
+
+  const tierNote = (item: LineItem) => {
+    const product = item.productId ? products.find((p) => p.id === item.productId) : undefined;
+    if (!product?.priceTiers?.length) return null;
+    const hit = [...product.priceTiers].filter((t) => item.quantity >= t.minQuantity).sort((a, b) => b.minQuantity - a.minQuantity)[0];
+    if (hit && item.unitPriceCents === hit.unitPriceCents) return <span className="text-xs text-green-600 mt-1 block">Staffelpreis ab {hit.minQuantity} Stk.</span>;
+    const next = [...product.priceTiers].filter((t) => t.minQuantity > item.quantity).sort((a, b) => a.minQuantity - b.minQuantity)[0];
+    return next ? <span className="text-xs text-slate-500 mt-1 block">Ab {next.minQuantity} Stk.: {formatEuro(next.unitPriceCents)} pro {product.unit}</span> : null;
+  };
 
   // Tippt man den Namen eines Katalogprodukts vollständig ein, werden Preis, Einheit und USt. übernommen.
   function onDescription(item: LineItem, value: string) {
@@ -149,7 +171,7 @@ export function PricedItemsEditor({
                 {item.isDownPaymentDeduction && <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 shrink-0 mt-1.5">Abzug</span>}
                 <div className="flex-1 min-w-0">
                   <input list="pe-products" placeholder="Beschreibung oder Produkt eintippen" value={item.description} onChange={(e) => onDescription(item, e.target.value)} className={inputClass} />
-                  {productHint(item)}
+                  {productHint(item)}{showPrices && tierNote(item)}
                 </div>
                 <select value={item.productId || ""} onChange={(e) => applyProduct(item._key, e.target.value)} className={`${inputClass} !w-28 shrink-0 ${products.length ? "" : "hidden"}`} aria-label="Aus Katalog wählen">
                   <option value="">Katalog</option>
@@ -162,7 +184,7 @@ export function PricedItemsEditor({
               <div className={`grid ${showPrices ? "grid-cols-[1fr_0.8fr_1.2fr_0.9fr_1.1fr]" : "grid-cols-[1fr_1fr]"} gap-2 items-end pl-6`}>
                 <div>
                   <label className="block text-[11px] text-slate-500 mb-0.5">Menge</label>
-                  <input type="number" min={0} step="any" value={item.quantity} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { quantity: parseFloat(e.target.value) || 0 })} className={inputClass} />
+                  <input type="number" min={0} step="any" value={item.quantity} onFocus={(e) => e.target.select()} onChange={(e) => setQuantity(item, parseFloat(e.target.value) || 0)} className={inputClass} />
                 </div>
                 <div>
                   <label className="block text-[11px] text-slate-500 mb-0.5">Einheit</label>
@@ -213,10 +235,10 @@ export function PricedItemsEditor({
               </td>
               <td className="py-2 pr-2">
                 <input list="pe-products" value={item.description} onChange={(e) => onDescription(item, e.target.value)} className={inputClass} />
-                {productHint(item)}
+                {productHint(item)}{showPrices && tierNote(item)}
               </td>
               <td className="py-2 pr-2">
-                <input type="number" min={0} step="any" value={item.quantity} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { quantity: parseFloat(e.target.value) || 0 })} className={inputClass} />
+                <input type="number" min={0} step="any" value={item.quantity} onFocus={(e) => e.target.select()} onChange={(e) => setQuantity(item, parseFloat(e.target.value) || 0)} className={inputClass} />
               </td>
               <td className="py-2 pr-2">
                 <input type="number" min={0} step="0.01" value={item.unitPriceCents / 100} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { unitPriceCents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className={inputClass} />
@@ -257,12 +279,12 @@ export function PricedItemsEditor({
             <div>
               <label className="block text-xs text-slate-500 mb-1">Beschreibung</label>
               <input list="pe-products" value={item.description} onChange={(e) => onDescription(item, e.target.value)} className={inputClass} />
-              {productHint(item)}
+              {productHint(item)}{showPrices && tierNote(item)}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Menge</label>
-                <input type="number" min={0} step="any" value={item.quantity} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { quantity: parseFloat(e.target.value) || 0 })} className={inputClass} />
+                <input type="number" min={0} step="any" value={item.quantity} onFocus={(e) => e.target.select()} onChange={(e) => setQuantity(item, parseFloat(e.target.value) || 0)} className={inputClass} />
               </div>
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Preis (€)</label>
