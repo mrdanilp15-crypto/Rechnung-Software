@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useToast } from "../components/Toast";
+import { InfoBox } from "../components/InfoBox";
 import { printerHourlyCost } from "../lib/cost";
 
 interface Printer {
@@ -97,6 +98,15 @@ export default function Printers() {
         Der Strompreis ({electricity} ct/kWh) steht unter Einstellungen → Firma → Kalkulation.
       </p>
 
+      <InfoBox title="So kommen die Zahlen zustande - und wo sie hingehören">
+        <p><strong>1. Drucker anlegen</strong> (hier): Anschaffungspreis, Lebensdauer, Watt, Verschleiß. Daraus entstehen die Kosten pro Druckstunde.</p>
+        <p><strong>2. Strompreis, Arbeitsstundensatz, Gemeinkosten, Gewinnaufschlag</strong> stehen einmalig unter Einstellungen → Firma → Kalkulation.</p>
+        <p><strong>3. Material</strong> legen Sie unter "Material (Lager)" an (Gesamtpreis und Menge einer Spule eintragen, der Preis pro Gramm wird berechnet).</p>
+        <p><strong>4. Pro Produkt</strong> tragen Sie Materialverbrauch, Druckzeit und Arbeitszeit ein (Werte aus dem Slicer) und wählen den Drucker - die Software zeigt Selbstkosten, Preisvorschlag und Gewinn.</p>
+        <p><strong>Richtwerte:</strong> Lebensdauer eines Bambu/Prusa-Druckers 5.000-10.000 h, einfacher Drucker 3.000-5.000 h. Leistung im Betrieb meist 80-150 W (Datenblatt-Maximalwert liegt höher, da Heizphasen kurz sind). Verschleiß (Düsen, Bett, Riemen, Lager) 5-15 Cent pro Stunde. Ein Strommessgerät zwischen Steckdose und Drucker liefert den genauesten Wert.</p>
+        <p>Änderungen an Druckern oder Sätzen wirken auf die Kalkulation in der Produktverwaltung sofort. Bereits erstellte Rechnungen und Angebote ändern sich dadurch <strong>nicht</strong> - dort steht der damals eingetragene Preis.</p>
+      </InfoBox>
+
       {showForm && (
         <form onSubmit={submit} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-5 space-y-4">
           <h2 className="font-medium">{editingId ? "Drucker bearbeiten" : "Neuer Drucker"}</h2>
@@ -153,7 +163,7 @@ export default function Printers() {
               <div className="min-w-0">
                 <div className="font-medium">{p.name}</div>
                 <div className="text-xs text-slate-500">
-                  {money(p.purchasePriceCents, 0)} · {p.lifetimeHours} h Lebensdauer · {p.powerWatts} W · Verschleiß {money(p.wearCentsPerHour, 2)}/h
+                  {money(p.purchasePriceCents, 0)} · {p.lifetimeHours} h Lebensdauer · {p.powerWatts} W · Verschleiß {money(p.wearCentsPerHour, 3)}/h
                 </div>
                 <div className="text-xs text-slate-500">
                   = <strong>{money(h.total, 3)} pro Druckstunde</strong> (Strom {money(h.electricity, 3)}, Abschreibung {money(h.depreciation, 3)}, Verschleiß {money(h.wear, 3)})

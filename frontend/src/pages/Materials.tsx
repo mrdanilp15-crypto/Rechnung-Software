@@ -127,6 +127,7 @@ export default function Materials() {
       <InfoBox title="Wozu dient Material?" defaultOpen>
         <p>Hier erfasst du <strong>Rohstoffe</strong>, die du selbst einkaufst (z.B. Filament) - getrennt von den Produkten, die du verkaufst.</p>
         <p>Trage beim Anlegen direkt ein, wie viel du hast und was du dafür insgesamt bezahlt hast (z.B. 1000g für 24,99€) - der Preis pro Einheit wird automatisch berechnet und eine passende Ausgabe angelegt (Finanzen → Ausgaben), du musst den Einkauf also nicht doppelt eintragen. Käufst du später nach, geht das genauso über <strong>"Nachbestellen"</strong>.</p>
+<p><strong>Wichtig für die Kalkulation:</strong> Als Preis pro Einheit gilt der Preis der <em>letzten</em> Bestellung. Wenn du nachbestellst und der Preis sich ändert, rechnen deine Produkte ab dann mit dem neuen Preis - auch für noch vorhandene Reste der alten Spule. Rabatte und Versandkosten gehören in den Gesamtpreis, damit der echte Einkaufspreis pro Gramm stimmt.</p>
         <p>Bei <strong>Produkte</strong> kannst du hinterlegen, wie viel von welchem Material ein Produkt pro Stück verbraucht (z.B. "15g Filament pro Druck"). Beim Erstellen einer Rechnung wird der Bestand hier automatisch entsprechend reduziert.</p>
       </InfoBox>
 
@@ -146,11 +147,13 @@ export default function Materials() {
           <div>
             <label className="block text-sm mb-1">{editingId ? "Bestand (Korrektur)" : "Aktueller Bestand"}</label>
             <input type="number" step="any" min="0" value={form.stockQuantity} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, stockQuantity: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            <p className="text-xs text-slate-500 mt-1">{editingId ? "Nur ändern, wenn Sie nachgezählt/-gewogen haben (z.B. Spule wiegen minus Leerspule). Normalerweise bucht die Software den Verbrauch selbst." : "Menge in der oben gewählten Einheit, z.B. 1000 für eine 1-kg-Spule bei Einheit g."}</p>
           </div>
           {editingId ? (
             <div>
               <label className="block text-sm mb-1">Preis pro Einheit (€, Korrektur)</label>
               <input type="number" step="any" min="0" placeholder="z.B. 0,025" value={form.costPerUnitEur} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, costPerUnitEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <p className="text-xs text-slate-500 mt-1">Preis je {form.unit || "Einheit"}. Beispiel: 1 kg für 24,99 € = 0,02499 € pro g. Dieser Preis fließt in die Produktkalkulation ein.</p>
             </div>
           ) : (
             <div>

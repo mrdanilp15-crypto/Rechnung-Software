@@ -217,6 +217,7 @@ export default function Products() {
             <div>
               <label className="block text-sm mb-1">{t("products.unitPrice")} (€ pro Einheit)</label>
               <input type="number" step="0.01" value={form.unitPriceEur} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, unitPriceEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <p className="text-xs text-slate-500 mt-1">Verkaufspreis <strong>netto</strong> (ohne USt.). Den Preisvorschlag aus der Kalkulation unten können Sie mit "Übernehmen" eintragen.</p>
             </div>
             <div>
               <label className="block text-sm mb-1">{t("products.vatRate")}</label>
@@ -235,7 +236,8 @@ export default function Products() {
                 + Material hinzufügen
               </button>
             </div>
-            {materials.length === 0 && <p className="text-xs text-slate-500">Noch kein Material angelegt - siehe Menüpunkt "Material".</p>}
+            <p className="text-xs text-slate-500 mb-2">Wie viel Material ein Stück verbraucht - den Wert zeigt Ihr Slicer (Bambu Studio, Cura, PrusaSlicer) nach dem Slicen an, <strong>inklusive Stützstrukturen, Skirt und Purge</strong>. Beim Erstellen einer Rechnung wird der Bestand automatisch um diese Menge verringert.</p>
+            {materials.length === 0 && <p className="text-xs text-slate-500">Noch kein Material angelegt - siehe Katalog → Material (Lager).</p>}
             {materialRows.map((row, idx) => (
               <div key={idx} className="grid grid-cols-[1fr_140px_auto] gap-2 mb-2">
                 <select value={row.materialId} onChange={(e) => updateMaterialRow(idx, { materialId: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
@@ -260,6 +262,9 @@ export default function Products() {
 
           <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-3">
             <div className="text-sm font-medium">Kalkulation (optional)</div>
+            <p className="text-xs text-slate-500 -mt-2">
+              Ergebnis = Material (mit Ausschuss) + Strom + Abschreibung + Verschleiß + Arbeit + Gemeinkosten = <strong>Selbstkosten</strong>. Darauf kommt der Gewinnaufschlag = <strong>Preisvorschlag</strong>. Alle Sätze stehen unter Einstellungen → Firma → Kalkulation, die Maschinenwerte unter Katalog → Drucker.
+            </p>
             <div>
               <label className="block text-xs text-slate-500 mb-1">Drucker (bestimmt Strom, Abschreibung und Verschleiß)</label>
               <select value={form.printerId} onChange={(e) => setForm((f) => ({ ...f, printerId: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
@@ -274,10 +279,12 @@ export default function Products() {
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Druckzeit pro {form.unit || "Einheit"} (Minuten)</label>
                 <input type="number" min="0" step="any" value={form.printTimeMinutes} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, printTimeMinutes: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <p className="text-xs text-slate-500 mt-1">Reine Druckzeit laut Slicer. Beispiel: 2 h 30 min = 150. Bei Drucken auf mehreren Platten die Zeit je {form.unit || "Einheit"} umrechnen.</p>
               </div>
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Arbeitszeit pro {form.unit || "Einheit"} (Minuten, Nachbearbeitung/Verpackung)</label>
                 <input type="number" min="0" step="any" value={form.laborMinutes} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, laborMinutes: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <p className="text-xs text-slate-500 mt-1">Ihre eigene Zeit, in der Sie arbeiten statt der Drucker: Platte vorbereiten, Stützen entfernen, schleifen, verpacken. Typisch 3-10 Minuten. Wird mit dem Arbeitsstundensatz bewertet.</p>
               </div>
             </div>
             {liveCost.total > 0 ? (
@@ -296,7 +303,7 @@ export default function Products() {
                 {rates.overheadPercent > 0 && <div className="flex justify-between"><span className="text-slate-500">Gemeinkosten ({rates.overheadPercent}%)</span><span>{formatPrice(liveCost.overhead)}</span></div>}
                 <div className="flex justify-between font-medium border-t border-slate-200 dark:border-slate-700 pt-1"><span>Selbstkosten</span><span>{formatPrice(liveCost.total)}</span></div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Preisvorschlag (+{rates.targetMarginPercent}%)</span>
+                  <span className="text-slate-500" title={`${rates.targetMarginPercent}% Aufschlag auf die Selbstkosten entsprechen ${(100 - 10000 / (100 + rates.targetMarginPercent)).toFixed(0)}% Gewinn vom Verkaufspreis`}>Preisvorschlag (netto, +{rates.targetMarginPercent}% auf Selbstkosten)</span>
                   <span className="flex items-center gap-2">
                     {formatPrice(liveCost.recommended)}
                     <button type="button" onClick={() => setForm((f) => ({ ...f, unitPriceEur: (liveCost.recommended / 100).toFixed(2) }))} className="text-brand hover:underline text-xs">Übernehmen</button>
@@ -306,6 +313,7 @@ export default function Products() {
                   <span>Gewinn bei aktuellem Preis ({formatPrice(livePriceCents)})</span>
                   <span>{formatPrice(liveProfit)}{livePriceCents > 0 ? ` (${Math.round((liveProfit / livePriceCents) * 100)}% vom Preis)` : ""}</span>
                 </div>
+                <p className="text-xs text-slate-500 pt-1">"Gewinn" ist vor Steuern und Ihrem Unternehmerlohn - Einkommen-/Gewerbesteuer und Sozialabgaben sind darin nicht berücksichtigt. {liveCost.depreciation > 0 && "Die Abschreibung ist eine Rücklage für den nächsten Drucker, kein Geld, das Sie sofort ausgeben."}</p>
               </div>
             ) : (
               <p className="text-xs text-slate-500">Material oben, Druck-/Arbeitszeit hier eintragen und die Stundensätze unter Einstellungen → Firma hinterlegen - dann erscheinen Selbstkosten, Preisvorschlag und Gewinn.</p>

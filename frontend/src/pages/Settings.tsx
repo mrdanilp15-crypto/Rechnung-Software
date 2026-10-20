@@ -353,26 +353,27 @@ export default function Settings() {
             <label className="block text-sm">
               Arbeitsstundensatz (€ pro Stunde)
               <input type="number" min={0} step="0.01" value={(company.laborRateCentsPerHour ?? 0) / 100} onChange={(e) => setCompany({ ...company, laborRateCentsPerHour: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Was Ihre eigene Arbeitsstunde kosten soll (Vorbereiten, Nachbearbeiten, Verpacken). Mindestens der Betrag, den Sie sich als Lohn zahlen wollen - üblich sind 20-40 €/h.</span>
             </label>
             <label className="block text-sm">
               Materialausschuss (%)
               <input type="number" min={0} max={100} step="0.5" value={company.materialWastePercent ?? 5} onChange={(e) => setCompany({ ...company, materialWastePercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Aufschlag auf den Materialverbrauch für Fehldrucke, Stützstrukturen, Reste.</span>
+              <span className="block text-xs text-slate-500 mt-0.5">Aufschlag auf den Materialverbrauch für Fehldrucke, Spülmaterial (Purge), Reste und Trocknungsverluste. Wenn Stützstrukturen schon in der Slicer-Angabe stecken, genügen 3-8 %.</span>
             </label>
             <label className="block text-sm">
               Strompreis (Cent pro kWh)
               <input type="number" min={0} step="0.1" value={company.electricityCentsPerKwh ?? 35} onChange={(e) => setCompany({ ...company, electricityCentsPerKwh: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Ihr Preis pro Kilowattstunde laut Stromrechnung (Beispiel: 35 = 0,35 €/kWh).</span>
+              <span className="block text-xs text-slate-500 mt-0.5">Ihr Brutto-Arbeitspreis pro Kilowattstunde laut Stromrechnung, in Cent (Beispiel: 35 = 0,35 €/kWh). Bei Vorsteuerabzug den Nettopreis nehmen.</span>
             </label>
             <label className="block text-sm">
               Gemeinkosten-Aufschlag (%)
               <input type="number" min={0} step="0.5" value={company.overheadPercent ?? 5} onChange={(e) => setCompany({ ...company, overheadPercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Miete, Software, Versicherung, Verpackung, Fehldruck-Risiko - als Prozentaufschlag auf die direkten Kosten.</span>
+              <span className="block text-xs text-slate-500 mt-0.5">Kosten, die nicht einem Produkt zuzuordnen sind: Miete/Raum, Software, Versicherung, Internet, Verpackungs- und Kleinmaterial, Gebühren (Shop, PayPal). Faustregel: Summe dieser Kosten pro Jahr ÷ Summe aller direkten Kosten pro Jahr. Für den Start 5-15 %.</span>
             </label>
             <label className="block text-sm">
               Gewinnaufschlag (%)
               <input type="number" min={0} step="1" value={company.targetMarginPercent ?? 30} onChange={(e) => setCompany({ ...company, targetMarginPercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Wird auf die Selbstkosten aufgeschlagen, ergibt den Preisvorschlag.</span>
+              <span className="block text-xs text-slate-500 mt-0.5">Wird auf die Selbstkosten aufgeschlagen und ergibt den Preisvorschlag. Achtung: 30 % <em>Aufschlag</em> sind nur rund 23 % <em>Gewinn vom Verkaufspreis</em> (Rechnung: Gewinn ÷ Preis). Aus dem Gewinn müssen noch Steuern und Rücklagen bezahlt werden.</span>
             </label>
           </div>
           <h3 className="text-sm font-semibold pt-2">Bank &amp; Zahlung</h3>
