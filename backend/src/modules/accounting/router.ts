@@ -8,6 +8,7 @@ import { prisma } from "../../db/prisma";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
+import { env } from "../../config/env";
 import { generateAndStoreInvoicePdf } from "../invoices/pdfHelper";
 
 export const accountingRouter = Router();
@@ -127,7 +128,8 @@ accountingRouter.get("/package", requireRole("ADMIN", "BUCHHALTUNG"), async (req
     take: 5000,
   });
   const expenses = await prisma.expense.findMany({ where: { companyId, date: { gte: from, lt: to } }, orderBy: { date: "asc" } });
-  if (invoices.length === 0 && expenses.length === 0) throw new HttpError(404, `Für ${year} gibt es keine ausgestellten Rechnungen oder Ausgaben.`);
+  const archived = await prisma.archiveDocument.findMany({ where: { companyId, documentDate: { gte: from, lt: to } }, orderBy: { documentDate: "asc" }, take: 5000 });
+  if (invoices.length === 0 && expenses.length === 0 && archived.length === 0) throw new HttpError(404, `Für ${year} gibt es keine ausgestellten Rechnungen, Ausgaben oder Archiv-Dokumente.`);
 
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "steuerberater-"));
   const root = path.join(tmp, `steuerberater-${year}`);
@@ -185,6 +187,22 @@ accountingRouter.get("/package", requireRole("ADMIN", "BUCHHALTUNG"), async (req
     });
     fs.writeFileSync(path.join(root, "ausgaben.csv"), csv(expenseRows, ["Datum", "Lieferant", "Kategorie", "Beschreibung", "Brutto", "Steuersatz", "Netto", "Vorsteuer", "Belegdatei"]));
 
+    // Belegarchiv-Dokumente des Jahres (nach Belegdatum)
+    if (archived.length > 0) {
+      fs.mkdirSync(path.join(root, "archiv"), { recursive: true });
+      const archiveRoot = path.resolve(env.UPLOAD_DIR);
+      const archiveRows = archived.map((d) => {
+        const abs = path.resolve(archiveRoot, d.filePath);
+        let file = "";
+        if (abs.startsWith(archiveRoot + path.sep) && fs.existsSync(abs)) {
+          file = `${d.documentDate.toISOString().slice(0, 10)}_${safeName(d.title)}_${d.id.slice(0, 6)}${path.extname(d.filePath)}`;
+          fs.copyFileSync(abs, path.join(root, "archiv", file));
+        }
+        return { Datum: dateDe(d.documentDate), Titel: d.title, Kategorie: d.category, Aussteller: d.vendor ?? "", Betrag: d.amountCents == null ? "" : eurDe(d.amountCents), Tags: d.tags.join(", "), Notizen: d.notes ?? "", Datei: file ? `archiv/${file}` : "" };
+      });
+      fs.writeFileSync(path.join(root, "archiv.csv"), csv(archiveRows, ["Datum", "Titel", "Kategorie", "Aussteller", "Betrag", "Tags", "Notizen", "Datei"]));
+    }
+
     // Umsatzsteuer je Quartal + Jahr
     const vatRows: Record<string, unknown>[] = [];
     for (const period of ["q1", "q2", "q3", "q4", "year"]) {
@@ -215,6 +233,7 @@ accountingRouter.get("/package", requireRole("ADMIN", "BUCHHALTUNG"), async (req
         "umsatzsteuer-uebersicht.csv  Umsätze nach Steuersätzen/Befreiungen je Quartal und Jahr (Sollversteuerung, Rechnungsdatum)",
         "rechnungen/               Rechnungs-PDFs (PDF/A-3b, soweit eine Schrift eingebettet werden konnte)",
         "belege/                   hochgeladene Ausgabenbelege",
+        "archiv.csv, archiv/       Dokumente aus dem Belegarchiv mit Belegdatum im Jahr (Eingangsrechnungen, Quittungen, Verträge ...)",
         "",
         "Hinweise:",
         "- Dies ist KEIN DATEV-Buchungsstapel; Konten (SKR03/04) und Buchungsschlüssel ordnet die Kanzlei zu.",

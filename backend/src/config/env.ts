@@ -58,6 +58,8 @@ const envSchema = z.object({
 
   UPLOAD_DIR: z.string().default("./uploads"),
   MAX_UPLOAD_MB: z.coerce.number().default(5),
+  // Belegarchiv: Scans/PDFs sind oft größer als Logos und Stempel
+  ARCHIVE_MAX_UPLOAD_MB: z.coerce.number().default(25),
 
   LOG_LEVEL: z.string().default("info"),
   // Optional: zusätzlich zu stdout auch in eine Datei in einem gemounteten Volume

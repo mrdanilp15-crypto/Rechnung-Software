@@ -124,6 +124,7 @@ implementiert.
 | Mahnwesen mit drei Stufen, Verzugszinsen, Pauschale, Mahn-PDF | ✅ Basiszinssatz muss vom Nutzer gepflegt werden |
 | Anzahlungs- und Schlussrechnung (XRechnung: Typ 326 + BT-113) | ✅ mit KoSIT geprüft |
 | Wiederkehrende Rechnungen (erzeugen nur Entwürfe) | ✅ |
+| Belegarchiv: Dokumente ablegen, Volltextsuche (inkl. PDF-Text), Filter, Sortierung, ZIP-Export, Aufbewahrungsfristen | ✅ Ablage, kein revisionssicheres GoBD-Archiv (Dokumente änderbar/löschbar) |
 | Steuerberater-Paket, USt-Übersicht | 🟡 Orientierungshilfe, kein DATEV-Format, keine Voranmeldung |
 | Passwort vergessen per E-Mail | ✅ benötigt eingerichtetes SMTP |
 | Grenzüberschreitende USt. (ig. Lieferung, Reverse-Charge, Ausfuhr) | 🟡 Logik umgesetzt; im Einzelfall vom Steuerberater bestätigen lassen |

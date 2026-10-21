@@ -7,7 +7,7 @@ import { setLocale } from "../i18n";
 import { api } from "../api/client";
 import { GlobalSearch } from "./GlobalSearch";
 
-// Sechs Hauptpunkte statt zwölf: alle Belegarten stehen unter "Belege", Produkte und Material unter "Katalog".
+// Sieben Hauptpunkte statt zwölf: alle Belegarten stehen unter "Belege", Produkte und Material unter "Katalog".
 // "match" bestimmt, welche Unterseiten den Menüpunkt hervorheben.
 const navItems = [
   { to: "/", key: "start", match: [] as string[] },
@@ -15,6 +15,7 @@ const navItems = [
   { to: "/customers", key: "customers", match: ["/customers"] },
   { to: "/catalog", key: "catalog", match: ["/catalog", "/products", "/materials"] },
   { to: "/finance", key: "finance", match: ["/finance"] },
+  { to: "/archive", key: "archive", match: ["/archive"] },
   { to: "/settings", key: "settings", match: ["/settings", "/audit-log"] },
 ] as const;
 

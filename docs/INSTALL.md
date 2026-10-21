@@ -175,7 +175,7 @@ An die ZIP-Dateien kommt man je nach Betriebsart heran:
 - **Lokal ohne Docker**: `backend/backups/`.
 
 Jedes Backup enthält einen vollständigen PostgreSQL-Dump (`database.sql`, per
-`pg_dump`) sowie alle Uploads (Logo, Stempel, Unterschrift). Wiederherstellen:
+`pg_dump`) sowie alle Uploads (Logo, Stempel, Unterschrift, Belegarchiv). Wiederherstellen:
 
 ```bash
 psql "$DATABASE_URL" < database.sql

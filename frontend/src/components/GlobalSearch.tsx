@@ -17,6 +17,7 @@ const TYPE_LABEL: Record<string, string> = {
   order_confirmation: "Auftrag",
   delivery_note: "Lieferschein",
   product: "Produkt",
+  archive: "Archiv",
 };
 
 /**

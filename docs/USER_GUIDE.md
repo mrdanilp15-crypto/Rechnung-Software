@@ -159,6 +159,20 @@ In der Rechnungsdetailansicht:
   Umsatzsteuer-Voranmeldung, es wird nach vereinbarten Entgelten gerechnet) und ein ZIP mit allen Rechnungs-PDFs, Belegliste und
   Ausgaben. Es ist **kein DATEV-Format**. Grenzüberschreitende Fälle (innergemeinschaftliche Lieferung, Reverse-Charge) lassen Sie
   bitte von Ihrem Steuerberater bestätigen.
+- **Belegarchiv** (Menüpunkt *Belegarchiv*): Ablage für alle Unterlagen, die nicht in der Software entstehen - Eingangsrechnungen,
+  Quittungen, Kontoauszüge, Verträge, Versicherungen, Bescheide, Schriftverkehr. Hochladen per Klick oder Drag & Drop (bis zu 20 Dateien
+  gleichzeitig; PDF, Fotos, Word/Excel/LibreOffice, CSV, Text, XML, ZIP; je Datei max. 25 MB). Je Dokument: Titel, Kategorie, Belegdatum,
+  Aussteller, Betrag, Tags, Notiz.
+  - **Suche:** über Titel, Aussteller, Notizen, Tags, Dateiname **und den Text im PDF** (mehrere Suchwörter müssen alle vorkommen;
+    Scans und Fotos ohne Textebene findet man über Titel/Tags/Notizen - dort bitte einen aussagekräftigen Titel vergeben).
+  - **Filter und Sortierung:** Kategorie, Jahr, Zeitraum, Tag; sortierbar nach Belegdatum, Titel, Aussteller, Betrag, Hinzugefügt, Größe
+    (auch per Klick auf die Spaltenüberschriften).
+  - **Aufbewahrung:** Zu jeder Kategorie wird das Ende der gesetzlichen Frist angezeigt (Buchungsbelege 8 Jahre, Geschäftsbriefe 6 Jahre,
+    ab Ende des Belegjahres); vor dem Löschen erscheint eine Warnung. Doppelte Dateien werden erkannt und nicht erneut abgelegt.
+  - **Export:** "ZIP-Export" lädt die aktuelle Auswahl als ZIP mit Übersichtsliste (index.csv). Das Steuerberater-Paket enthält die
+    Archiv-Dokumente des gewählten Jahres. Die Dateien sind im täglichen Backup enthalten.
+  - Das Archiv ist eine Ablage, **kein revisionssicheres GoBD-Archiv**: Dokumente lassen sich bearbeiten und löschen (jede Änderung steht im
+    Audit-Log). Für die rechtssichere Aufbewahrung sorgt das Backup - bitte regelmäßig prüfen, dass es auch extern gesichert wird.
 - **Suche überall**: **Strg + K** (am Handy die Lupe) durchsucht Kunden, Belege, Produkte und Ausgaben.
 - **Umsatz-Diagramm** auf der Startseite: Umsatz der letzten Monate, Top-Kunden und offene Posten.
 
@@ -203,6 +217,7 @@ exportieren** liefert Kontodaten und das eigene Aktivitätsprotokoll als JSON-Da
   Verständnis-Häkchen, Passwort (und 2FA-Code), 30 Sekunden Bedenkzeit, Firmenname und Bestätigungssatz abtippen, zwei Rückfragen.
   Vorher wird automatisch ein Backup erstellt; schlägt es fehl, wird nichts gelöscht. Sobald echte Rechnungen existieren, sperren Sie die
   Funktion dauerhaft (Knopf im selben Bereich, oder `DISABLE_DATA_RESET=true` in der Server-Konfiguration).
+  Das **Belegarchiv bleibt vom Zurücksetzen unberührt**.
 - **Backup jetzt erstellen**: erstellt sofort ein ZIP-Backup (zusätzlich zu
   automatisierten, geplanten Backups, siehe [INSTALL.md](INSTALL.md)).
 - **Kunden importieren**: CSV-Datei mit Bestandskunden hochladen (z.B. beim Wechsel von

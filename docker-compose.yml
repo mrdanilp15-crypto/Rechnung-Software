@@ -80,6 +80,7 @@ services:
       S3_REGION: ${S3_REGION:-eu-central-1}
       UPLOAD_DIR: /app/uploads
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-5}
+      ARCHIVE_MAX_UPLOAD_MB: ${ARCHIVE_MAX_UPLOAD_MB:-25}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_DIR: /app/logs
       BACKUP_ENCRYPTION_ENABLED: ${BACKUP_ENCRYPTION_ENABLED:-true}

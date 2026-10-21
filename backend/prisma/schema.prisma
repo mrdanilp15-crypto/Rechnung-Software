@@ -123,6 +123,7 @@ model Company {
   orderConfirmations  OrderConfirmation[]
   numberSequences     NumberSequence[]
   printers            Printer[]
+  archiveDocuments    ArchiveDocument[]
   auditLogs           AuditLog[]
   dunnings            Dunning[]
   recurringInvoices   RecurringInvoice[]
@@ -743,4 +744,33 @@ model RecurringInvoice {
   updatedAt     DateTime  @updatedAt
 
   @@index([companyId, isActive, nextRunDate])
+}
+
+// ---------- Belegarchiv ----------
+// Eigene Ablage für Dokumente des Unternehmens (Eingangsrechnungen, Quittungen, Verträge, Bescheide ...) als PDF, Foto
+// oder Office-Datei. Die Datei liegt unter UPLOAD_DIR/archive/<Firma>/; contentText enthält den aus PDFs/Textdateien
+// gelesenen Text für die Volltextsuche. sha256 erkennt doppelt hochgeladene Dateien.
+
+model ArchiveDocument {
+  id           String   @id @default(uuid())
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId    String
+  title        String
+  category     String   @default("SONSTIGES")
+  documentDate DateTime @default(now())
+  vendor       String? // Aussteller/Absender
+  amountCents  Int?
+  notes        String?
+  tags         String[] @default([])
+  fileName     String
+  filePath     String
+  mimeType     String
+  sizeBytes    Int
+  sha256       String
+  contentText  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([companyId, documentDate])
+  @@index([companyId, sha256])
 }
