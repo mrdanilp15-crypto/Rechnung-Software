@@ -35,6 +35,7 @@ interface BankTransaction {
 
 const formatEuro = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
 const emptyExpense = { date: new Date().toISOString().slice(0, 10), vendor: "", category: "Material", amountEur: "0.00", description: "" };
+const RECEIPT_TYPES = ".pdf,.png,.jpg,.jpeg,.webp";
 
 export default function Finance() {
   const [tab, setTab] = useState<"euer" | "expenses" | "bank" | "tax">("euer");
@@ -44,6 +45,7 @@ export default function Finance() {
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [form, setForm] = useState(emptyExpense);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [bankMessage, setBankMessage] = useState<string | null>(null);
   const expenseSave = useSaveStatus();
 
@@ -65,16 +67,17 @@ export default function Finance() {
 
   async function handleAddExpense(e: FormEvent) {
     e.preventDefault();
-    await expenseSave.run(() =>
-      api.post("/expenses", {
-        date: form.date,
-        vendor: form.vendor,
-        category: form.category,
-        amountCents: Math.round(parseFloat(form.amountEur) * 100),
-        description: form.description || undefined,
-      })
-    );
+    // multipart, damit optional der Beleg (PDF/Foto) mitgeschickt werden kann; er landet zusätzlich im Belegarchiv
+    const body = new FormData();
+    body.append("date", form.date);
+    body.append("vendor", form.vendor);
+    body.append("category", form.category);
+    body.append("amountCents", String(Math.round(parseFloat(form.amountEur) * 100)));
+    if (form.description) body.append("description", form.description);
+    if (receiptFile) body.append("receipt", receiptFile);
+    await expenseSave.run(() => api.post("/expenses", body, { headers: { "Content-Type": "multipart/form-data" } }));
     setForm(emptyExpense);
+    setReceiptFile(null);
     setShowExpenseForm(false);
     loadExpenses();
     loadSummary();
@@ -211,6 +214,11 @@ export default function Finance() {
                 <label className="block text-sm mb-1">Beschreibung (optional)</label>
                 <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm mb-1">Beleg (optional: PDF oder Foto)</label>
+                <input type="file" accept={RECEIPT_TYPES} onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)} className="w-full text-sm" />
+                <p className="text-xs text-slate-500 mt-1">Der Beleg bleibt an dieser Ausgabe hängen und wird zusätzlich im <strong>Belegarchiv</strong> abgelegt (durchsuchbar, inkl. Text im PDF). Maximal 25 MB.</p>
+              </div>
               <div className="sm:col-span-2 flex gap-2">
                 <SaveButton status={expenseSave.status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">Speichern</SaveButton>
                 <button type="button" onClick={() => setShowExpenseForm(false)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Abbrechen</button>
@@ -219,7 +227,16 @@ export default function Finance() {
           )}
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
             {expenses.map((exp) => {
-              const deleteBtn = <button onClick={() => handleDeleteExpense(exp)} className="text-red-600 hover:underline">Löschen</button>;
+              const deleteBtn = (
+                <span className="flex gap-3 justify-end">
+                  {exp.receiptPath && (
+                    <PdfLink url={`/expenses/${exp.id}/receipt`} filename={`beleg-${exp.vendor}`} className="text-brand hover:underline">
+                      Beleg
+                    </PdfLink>
+                  )}
+                  <button onClick={() => handleDeleteExpense(exp)} className="text-red-600 hover:underline">Löschen</button>
+                </span>
+              );
               return (
                 <div key={exp.id}>
                   {/* Desktop */}

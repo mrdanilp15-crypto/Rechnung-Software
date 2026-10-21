@@ -20,6 +20,7 @@ interface ArchiveDoc {
   fileName: string;
   mimeType: string;
   sizeBytes: number;
+  expenseId: string | null;
   snippet: string | null;
 }
 interface Facets {
@@ -27,6 +28,7 @@ interface Facets {
   years: number[];
   tags: { tag: string; count: number }[];
   totalCount: number;
+  pendingExpenseReceipts: number;
   totalSizeBytes: number;
   maxUploadMb: number;
   allowedExtensions: string[];
@@ -73,6 +75,7 @@ export default function Archive() {
   const [form, setForm] = useState(emptyUpload);
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<{ ok: string[]; warn: string[] } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -236,6 +239,21 @@ export default function Archive() {
     showToast("Dokument gelöscht", "success");
   }
 
+  async function importExpenseReceipts() {
+    setImporting(true);
+    try {
+      const { data } = await api.post("/archive/import-expense-receipts");
+      const done = data.created + data.linked;
+      showToast(`${done} Beleg(e) übernommen${data.missing ? `, ${data.missing} Datei(en) nicht gefunden` : ""}`, done ? "success" : "info");
+      loadFirstPage();
+      loadFacets();
+    } catch (err: any) {
+      alert(err.response?.data?.error || "Übernahme fehlgeschlagen.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
   async function exportZip() {
     try {
       const res = await api.get("/archive/export/zip", { params: queryParams(), responseType: "blob" });
@@ -320,7 +338,7 @@ export default function Archive() {
         <p><strong>Suche:</strong> Sie finden Dokumente über Titel, Aussteller, Notizen, Tags, Dateiname <em>und über den Text im PDF</em> (bei Scans/Fotos ohne Textebene nur über Titel, Aussteller, Tags und Notizen - deshalb dort bitte einen aussagekräftigen Titel vergeben). Mehrere Suchwörter müssen alle vorkommen.</p>
         <p><strong>Filtern &amp; Sortieren:</strong> nach Kategorie, Jahr, Zeitraum und Tag; sortieren per Klick auf die Spaltenüberschriften. <strong>Tags</strong> sind eigene Schlagworte (z.B. "strom", "büro", "2026"), per Klick auf einen Tag filtern Sie danach.</p>
         <p><strong>Aufbewahrung:</strong> Buchungsbelege (Rechnungen, Quittungen, Kontoauszüge) müssen 8 Jahre, Geschäftsbriefe 6 Jahre aufbewahrt werden - jeweils ab Ende des Kalenderjahres des Belegdatums. Das Archiv zeigt die Frist an und warnt vor dem Löschen. Die Dateien sind im täglichen Backup enthalten. Alles Weitere (z.B. Verfahrensdokumentation) klären Sie bitte mit Ihrem Steuerberater.</p>
-        <p>Dieselbe Datei kann nicht doppelt abgelegt werden - die Software erkennt Duplikate. Dokumente, die schon als Beleg an einer <em>Ausgabe</em> (Finanzen → Ausgaben) hängen, bleiben dort; für die Ablage hier laden Sie sie bitte zusätzlich hoch.</p>
+        <p>Dieselbe Datei kann nicht doppelt abgelegt werden - die Software erkennt Duplikate. Belege, die Sie bei einer <em>Ausgabe</em> (Finanzen → Ausgaben) hochladen, werden automatisch auch hier abgelegt (Kennzeichnung "aus Ausgabe"); bisherige übernehmen Sie über den Hinweis oben auf dieser Seite.</p>
       </InfoBox>
 
       {showUpload && (
@@ -398,6 +416,17 @@ export default function Archive() {
         </form>
       )}
 
+      {facets && facets.pendingExpenseReceipts > 0 && (
+        <div className="rounded-lg border border-blue-200 dark:border-slate-600 bg-blue-50 dark:bg-slate-800/60 p-3 mb-4 text-sm flex flex-wrap items-center justify-between gap-3">
+          <span>
+            <strong>{facets.pendingExpenseReceipts}</strong> Beleg(e) von Ausgaben (Finanzen → Ausgaben) liegen noch nicht im Archiv. Neue Ausgaben mit Beleg werden automatisch abgelegt, die bisherigen übernehmen Sie hier mit einem Klick (die Dateien an den Ausgaben bleiben unverändert).
+          </span>
+          <button type="button" onClick={importExpenseReceipts} disabled={importing} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded disabled:opacity-60 shrink-0">
+            {importing ? "Wird übernommen ..." : "Jetzt ins Archiv übernehmen"}
+          </button>
+        </div>
+      )}
+
       <datalist id="archive-tags">{facets?.tags.map((t) => <option key={t.tag} value={t.tag} />)}</datalist>
 
       {/* Suche und Filter */}
@@ -457,7 +486,7 @@ export default function Archive() {
               <div className="hidden md:grid items-start gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "minmax(0,1fr) 190px 95px 100px 190px" }}>
                 <div className="min-w-0">
                   <div className="font-medium truncate"><span className="mr-1.5">{iconFor(d.mimeType)}</span><Highlight text={d.title} query={q} /></div>
-                  <div className="text-xs text-slate-500 truncate">{d.fileName} · {formatBytes(d.sizeBytes)}</div>
+                  <div className="text-xs text-slate-500 truncate">{d.fileName} · {formatBytes(d.sizeBytes)}{d.expenseId ? " · aus Ausgabe" : ""}</div>
                   {d.notes && <div className="text-xs text-slate-500 truncate" title={d.notes}>{d.notes}</div>}
                   {tagChips(d)}
                   {snippetLine(d)}
@@ -476,7 +505,7 @@ export default function Archive() {
                 subtitle={[categoryLabel(d.category), d.vendor, formatDate(d.documentDate)].filter(Boolean).join(" · ")}
                 actions={actionsFor(d)}
               >
-                <div className="text-xs text-slate-500 mt-1">{d.fileName} · {formatBytes(d.sizeBytes)}{d.amountCents != null ? ` · ${money(d.amountCents)}` : ""}</div>
+                <div className="text-xs text-slate-500 mt-1">{d.fileName} · {formatBytes(d.sizeBytes)}{d.amountCents != null ? ` · ${money(d.amountCents)}` : ""}{d.expenseId ? " · aus Ausgabe" : ""}</div>
                 {tagChips(d)}
                 {snippetLine(d)}
               </MobileCard>

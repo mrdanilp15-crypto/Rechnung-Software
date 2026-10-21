@@ -169,6 +169,10 @@ In der Rechnungsdetailansicht:
     (auch per Klick auf die Spaltenüberschriften).
   - **Aufbewahrung:** Zu jeder Kategorie wird das Ende der gesetzlichen Frist angezeigt (Buchungsbelege 8 Jahre, Geschäftsbriefe 6 Jahre,
     ab Ende des Belegjahres); vor dem Löschen erscheint eine Warnung. Doppelte Dateien werden erkannt und nicht erneut abgelegt.
+  - **Belege von Ausgaben:** Bei *Finanzen → Ausgaben → Neue Ausgabe* können Sie den Beleg (PDF oder Foto, bis 25 MB) gleich mit hochladen. Er hängt
+    an der Ausgabe ("Beleg"-Link in der Liste) und wird **automatisch zusätzlich im Belegarchiv abgelegt** (Kennzeichnung "aus Ausgabe", Kategorie
+    Eingangsrechnung, Tags "ausgabe" und die Ausgabenkategorie). Löschen Sie später die Ausgabe, bleibt die Archiv-Kopie bestehen. Belege, die schon
+    vor dieser Funktion an Ausgaben hingen, übernehmen Sie über den Hinweis oben im Archiv ("Jetzt ins Archiv übernehmen").
   - **Export:** "ZIP-Export" lädt die aktuelle Auswahl als ZIP mit Übersichtsliste (index.csv). Das Steuerberater-Paket enthält die
     Archiv-Dokumente des gewählten Jahres. Die Dateien sind im täglichen Backup enthalten.
   - Das Archiv ist eine Ablage, **kein revisionssicheres GoBD-Archiv**: Dokumente lassen sich bearbeiten und löschen (jede Änderung steht im

@@ -768,6 +768,8 @@ model ArchiveDocument {
   sizeBytes    Int
   sha256       String
   contentText  String?
+  // Stammt aus dem Beleg einer Ausgabe (Finanzen → Ausgaben); bewusst ohne Fremdschlüssel: das Archiv-Dokument bleibt auch bestehen, wenn die Ausgabe gelöscht wird.
+  expenseId    String?  @unique
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

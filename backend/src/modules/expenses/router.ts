@@ -9,6 +9,8 @@ import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { env } from "../../config/env";
+import { importExpenseReceipt } from "../archive/service";
+import { logger } from "../../utils/logger";
 
 export const expensesRouter = Router();
 expensesRouter.use(requireAuth);
@@ -16,7 +18,7 @@ expensesRouter.use(requireAuth);
 fs.mkdirSync(env.UPLOAD_DIR, { recursive: true });
 const upload = multer({
   dest: env.UPLOAD_DIR,
-  limits: { fileSize: env.MAX_UPLOAD_MB * 1024 * 1024 },
+  limits: { fileSize: env.ARCHIVE_MAX_UPLOAD_MB * 1024 * 1024 }, // Handyfotos von Belegen sind oft größer als 5 MB
   fileFilter: (_req, file, cb) => {
     const allowed = ["image/png", "image/jpeg", "image/webp", "application/pdf"];
     cb(null, allowed.includes(file.mimetype));
@@ -62,6 +64,8 @@ expensesRouter.post("/", upload.single("receipt"), async (req, res) => {
     data: { ...body, companyId: req.auth!.companyId, receiptPath },
   });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "expense.create", entityType: "Expense", entityId: expense.id });
+  // Beleg zusätzlich im Belegarchiv ablegen (durchsuchbar); ein Fehler dabei darf das Anlegen der Ausgabe nicht verhindern
+  if (receiptPath) await importExpenseReceipt(expense).catch((err) => logger.warn({ err: (err as Error).message, expenseId: expense.id }, "Beleg konnte nicht ins Archiv übernommen werden"));
   res.status(201).json(expense);
 });
 

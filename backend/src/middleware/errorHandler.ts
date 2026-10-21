@@ -22,7 +22,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, next: Ne
   }
   // Datei-Uploads (Logo, Stempel, CSV ...): verständliche Meldung statt "Interner Serverfehler"
   if (err instanceof MulterError) {
-    if (err.code === "LIMIT_FILE_SIZE") return res.status(413).json({ error: `Die Datei ist zu groß (maximal ${req.baseUrl.startsWith("/api/archive") ? env.ARCHIVE_MAX_UPLOAD_MB : env.MAX_UPLOAD_MB} MB).` });
+    if (err.code === "LIMIT_FILE_SIZE") return res.status(413).json({ error: `Die Datei ist zu groß (maximal ${(req.baseUrl.startsWith("/api/archive") || req.baseUrl.startsWith("/api/expenses")) ? env.ARCHIVE_MAX_UPLOAD_MB : env.MAX_UPLOAD_MB} MB).` });
     return res.status(400).json({ error: "Die Datei konnte nicht verarbeitet werden." });
   }
   if (err instanceof HttpError) {

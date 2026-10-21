@@ -7,14 +7,13 @@ import os from "os";
 import path from "path";
 import { Prisma } from "@prisma/client";
 import { zip } from "zip-a-folder";
-import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import { prisma } from "../../db/prisma";
 import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { env } from "../../config/env";
-import { logger } from "../../utils/logger";
 import { ALLOWED_EXTENSIONS, detectFileType, parseTags, safeFileName, snippetFor } from "./fileType";
+import { absolutePath, extractText, importExpenseReceipt, pendingExpenseReceipts, root } from "./service";
 
 /**
  * Belegarchiv: Ablage für Dokumente des Unternehmens (Eingangsrechnungen, Quittungen, Verträge, Bescheide ...) mit Suche
@@ -42,37 +41,6 @@ export const ARCHIVE_CATEGORIES = [
 const TMP_DIR = path.join(env.UPLOAD_DIR, "archive", "_tmp");
 fs.mkdirSync(TMP_DIR, { recursive: true });
 const upload = multer({ dest: TMP_DIR, limits: { fileSize: env.ARCHIVE_MAX_UPLOAD_MB * 1024 * 1024, files: 20 } });
-
-const MAX_TEXT_CHARS = 100_000;
-
-const root = () => path.resolve(env.UPLOAD_DIR);
-function absolutePath(relative: string): string {
-  const abs = path.resolve(root(), relative);
-  if (!abs.startsWith(root() + path.sep)) throw new HttpError(400, "Ungültiger Dateipfad");
-  return abs;
-}
-
-/** Text aus PDFs/Textdateien für die Volltextsuche. Scans ohne Textebene liefern nichts - die Datei bleibt trotzdem über Titel/Tags/Notizen auffindbar. */
-async function extractText(filePath: string, mime: string, isText: boolean): Promise<string | null> {
-  try {
-    const data = fs.readFileSync(filePath);
-    let text = "";
-    if (mime === "application/pdf") {
-      const parsed = await Promise.race([
-        pdfParse(data),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Zeitüberschreitung beim Lesen des PDFs")), 20_000)),
-      ]);
-      text = parsed.text;
-    } else if (isText) {
-      text = data.toString("utf8");
-    }
-    text = text.replace(/\u0000/g, "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
-    return text ? text.slice(0, MAX_TEXT_CHARS) : null;
-  } catch (err) {
-    logger.warn({ err: (err as Error).message }, "Text aus Archivdatei konnte nicht gelesen werden");
-    return null;
-  }
-}
 
 // ---------- Abfragen ----------
 
@@ -131,7 +99,7 @@ function buildOrderBy(query: ListQuery): Prisma.ArchiveDocumentOrderByWithRelati
 
 const listSelect = {
   id: true, title: true, category: true, documentDate: true, vendor: true, amountCents: true, notes: true, tags: true,
-  fileName: true, mimeType: true, sizeBytes: true, createdAt: true, updatedAt: true,
+  fileName: true, mimeType: true, sizeBytes: true, expenseId: true, createdAt: true, updatedAt: true,
 } satisfies Prisma.ArchiveDocumentSelect;
 
 archiveRouter.get("/", async (req, res) => {
@@ -154,21 +122,35 @@ archiveRouter.get("/", async (req, res) => {
 // Auswahlwerte für die Filter: Kategorien mit Anzahl, vorhandene Jahre, häufige Tags, Gesamtgröße
 archiveRouter.get("/facets", async (req, res) => {
   const companyId = req.auth!.companyId;
-  const [cats, years, tags, size] = await Promise.all([
+  const [cats, years, tags, size, pending] = await Promise.all([
     prisma.archiveDocument.groupBy({ by: ["category"], where: { companyId }, _count: { _all: true } }),
     prisma.$queryRaw<{ y: number }[]>(Prisma.sql`SELECT DISTINCT EXTRACT(YEAR FROM "documentDate")::int AS y FROM "ArchiveDocument" WHERE "companyId" = ${companyId} ORDER BY y DESC`),
     prisma.$queryRaw<{ tag: string; n: bigint }[]>(Prisma.sql`SELECT tag, COUNT(*) AS n FROM (SELECT unnest(tags) AS tag FROM "ArchiveDocument" WHERE "companyId" = ${companyId}) t GROUP BY tag ORDER BY n DESC, tag LIMIT 50`),
     prisma.archiveDocument.aggregate({ where: { companyId }, _sum: { sizeBytes: true }, _count: { _all: true } }),
+    pendingExpenseReceipts(companyId),
   ]);
   res.json({
     categories: Object.fromEntries(cats.map((c) => [c.category, c._count._all])),
     years: years.map((y) => y.y),
     tags: tags.map((t) => ({ tag: t.tag, count: Number(t.n) })),
     totalCount: size._count._all,
+    pendingExpenseReceipts: pending.length,
     totalSizeBytes: size._sum.sizeBytes ?? 0,
     maxUploadMb: env.ARCHIVE_MAX_UPLOAD_MB,
     allowedExtensions: ALLOWED_EXTENSIONS,
   });
+});
+
+// Belege von Ausgaben (Finanzen → Ausgaben) ins Archiv übernehmen. Neue Ausgaben mit Beleg landen automatisch dort;
+// dieser Aufruf holt die bisherigen nach (wiederholbar, bereits Übernommenes wird übersprungen).
+archiveRouter.post("/import-expense-receipts", async (req, res) => {
+  const companyId = req.auth!.companyId;
+  const result = { created: 0, linked: 0, already: 0, missing: 0 };
+  for (const expense of await pendingExpenseReceipts(companyId)) {
+    result[await importExpenseReceipt(expense)]++;
+  }
+  await writeAuditLog({ req, companyId, userId: req.auth!.sub, action: "archive.import_expense_receipts", entityType: "Company", entityId: companyId, metadata: result });
+  res.json(result);
 });
 
 // ---------- Hochladen ----------
