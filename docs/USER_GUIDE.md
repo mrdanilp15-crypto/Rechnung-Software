@@ -154,11 +154,21 @@ In der Rechnungsdetailansicht:
   - **Weitere Kostenpunkte pro Produkt:** Rüstzeit (einmal je Auftrag, verteilt sich auf die Stückzahl - eine Tabelle zeigt Selbstkosten und Preisvorschlag für 1 bis 100 Stück), Verpackung/Versand je Stück und zusätzlicher Materialverlust (z.B. Spülmaterial bei Mehrfarbdruck).
   - **Firmenweit** (*Einstellungen → Firma → Kalkulation*): Fehldruckquote (Aufschlag auf Strom, Abschreibung und Verschleiß), Plattform-/Zahlungsgebühren (werden in den Preisvorschlag eingerechnet), Rundung des Preisvorschlags (z.B. auf ,90) und Mindestpreis.
   - **Staffelpreise:** Im Produkt Preise ab einer Mindestmenge hinterlegen (Button "Aus Kalkulation vorschlagen"). In Angeboten, Aufträgen und Rechnungen setzt sich der Stückpreis passend zur Menge automatisch; ein von Hand geänderter Preis bleibt unangetastet.
+  - **Druckplatte:** Passen mehrere gleiche Teile auf eine Platte, tragen Sie im Produkt "Stück pro Druckplatte" ein. Druckzeit und Materialverbrauch geben Sie dann
+    für die ganze Platte ein (so wie der Slicer sie anzeigt), die Software verteilt sie auf die Stück. Gespeichert und im Lager abgebucht wird je Stück.
+  - **Veredelung / Nachbearbeitung:** Zusatzkosten je Stück als eigene Posten (z.B. Lackieren 40 €, Klarlack 2 €); sie erscheinen einzeln in der Kostenaufstellung.
+  - **Materialpreis überschreiben:** Je Materialzeile im Produkt lässt sich ein eigener Preis pro Einheit eintragen (leer = Lagerpreis), z.B. für ein Sondermaterial.
   - **Materialpreis:** Beim Nachbestellen gilt der gleitende Durchschnitt aus Restbestand und neuer Lieferung.
+- **Finanzdiagramm** (*Finanzen → EÜR-Übersicht*): Einnahmen (Monat des Zahlungseingangs), Ausgaben (Monat des Belegdatums) und Gewinn pro Monat, dazu die noch offenen
+  (unbezahlten) Rechnungen.
 - **Steuerberater-Paket** (*Finanzen → Steuerberater*): USt-Übersicht je Zeitraum (zur Orientierung - ersetzt keine
   Umsatzsteuer-Voranmeldung, es wird nach vereinbarten Entgelten gerechnet) und ein ZIP mit allen Rechnungs-PDFs, Belegliste und
   Ausgaben. Es ist **kein DATEV-Format**. Grenzüberschreitende Fälle (innergemeinschaftliche Lieferung, Reverse-Charge) lassen Sie
   bitte von Ihrem Steuerberater bestätigen.
+- **Produktionsboard** (Menüpunkt *Produktion*): Jede Auftragsbestätigung erscheint als Karte in den Spalten **Erstellt → In Produktion → Versandbereit → Versendet**.
+  Karten per Ziehen oder mit den Pfeil-Knöpfen (auch am Handy) verschieben; eine Notiz pro Karte (z.B. Farbe, Sendungsnummer). Die Karte zeigt Positionen, Betrag,
+  gewünschtes Lieferdatum (rot, wenn überschritten) und eine geschätzte Druckzeit (wenn der Positionstext dem Namen eines Produkts mit Druckzeit entspricht).
+  Versendete Aufträge verschwinden nach 14 Tagen vom Board. Der Produktionsstatus ändert weder Beleg noch Materialbestand.
 - **Darstellung** (*Einstellungen → Darstellung*, nur Admin): **Akzentfarbe** für Knöpfe, Menü, Links und Diagramme (acht Vorschläge oder eigene Farbe)
   und **Stil des dunklen Designs** (warm = braune Töne, kühl = Blau-Schwarz). Gilt für alle Benutzer und Geräte; die PDF-Belege haben ihre eigene
   Farbe unter "Logo & Stempel". Hell/Dunkel wechseln Sie unten im Menü (Mond/Sonne, je Gerät). Am Handy gibt es eine Leiste unten mit Start, Belege,

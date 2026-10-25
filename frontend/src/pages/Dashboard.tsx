@@ -144,12 +144,14 @@ export default function Dashboard() {
   const [revenue, setRevenue] = useState<RevenueStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [production, setProduction] = useState<{ productionStatus: string }[]>([]);
   const [dunning, setDunning] = useState<{ invoiceId: string; invoiceNumber: string; customerName: string; totalCents: number; daysOverdue: number; nextLevel: number }[]>([]);
 
   useEffect(() => {
     api.get("/documents").then((res) => setRows(res.data)).finally(() => setLoading(false));
     api.get("/companies/me/revenue-status").then((res) => setRevenue(res.data));
     api.get("/dunning/suggestions").then((res) => setDunning(res.data)).catch(() => setDunning([]));
+    api.get("/production").then((res) => setProduction(res.data.items)).catch(() => setProduction([]));
     api.get("/documents/stats").then((res) => setStats(res.data)).catch(() => setStats(null));
   }, []);
 
@@ -277,6 +279,21 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-3">
+              {production.length > 0 && (
+                <Link to="/production" className={`${card} block hover:shadow-md transition-shadow`}>
+                  <h2 className="text-sm font-medium mb-2">Produktion</h2>
+                  <div className="space-y-1.5 text-sm">
+                    {([["CREATED", "Erstellt", "bg-slate-400"], ["IN_PRODUCTION", "In Produktion", "bg-amber-500"], ["READY_TO_SHIP", "Versandbereit", "bg-blue-500"]] as const).map(([key, label, dot]) => (
+                      <div key={key} className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${dot}`} />
+                        <span className="text-slate-600 dark:text-slate-300">{label}</span>
+                        <span className="ml-auto font-medium">{production.filter((p) => p.productionStatus === key).length}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-brand mt-2">Zum Produktionsboard →</p>
+                </Link>
+              )}
               {stats && (
                 <div className={card}>
                   <h2 className="text-sm font-medium mb-2">Beste Kunden {now.getFullYear()}</h2>

@@ -25,6 +25,7 @@ import { recurringRouter } from "./modules/recurring/router";
 import { resetRouter } from "./modules/reset/router";
 import { printersRouter } from "./modules/printers/router";
 import { archiveRouter } from "./modules/archive/router";
+import { productionRouter } from "./modules/production/router";
 import { usersRouter } from "./modules/users/router";
 import { companiesRouter } from "./modules/companies/router";
 import { customersRouter } from "./modules/customers/router";
@@ -115,6 +116,7 @@ export function createApp() {
   app.use("/api/reset", resetRouter);
   app.use("/api/printers", printersRouter);
   app.use("/api/archive", archiveRouter);
+  app.use("/api/production", productionRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

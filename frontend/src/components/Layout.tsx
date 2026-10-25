@@ -14,6 +14,7 @@ import { setAppearanceFromCompany } from "../theme/appearance";
 const navItems: readonly { to: string; key: string; icon: IconName; match: readonly string[] }[] = [
   { to: "/", key: "start", icon: "home", match: [] },
   { to: "/documents", key: "documents", icon: "document", match: ["/documents", "/invoices", "/quotes", "/order-confirmations", "/delivery-notes", "/recurring"] },
+  { to: "/production", key: "production", icon: "board", match: ["/production"] },
   { to: "/customers", key: "customers", icon: "users", match: ["/customers"] },
   { to: "/catalog", key: "catalog", icon: "cube", match: ["/catalog", "/products", "/materials"] },
   { to: "/finance", key: "finance", icon: "chart", match: ["/finance"] },
@@ -173,7 +174,7 @@ export default function Layout() {
       {/* Mobil: feste Leiste unten mit den wichtigsten Bereichen (große Tippflächen), "Mehr" öffnet das ganze Menü */}
       {!inEditor && (
         <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 h-16 grid grid-cols-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pb-[env(safe-area-inset-bottom)]" aria-label="Hauptmenü">
-          {navItems.slice(0, 4).map((item) => {
+          {["start", "documents", "production", "customers"].map((k) => navItems.find((n) => n.key === k)!).map((item) => {
             const active = item.to === "/" ? location.pathname === "/" : [item.to, ...item.match].some((m) => location.pathname === m || location.pathname.startsWith(`${m}/`));
             return (
               <NavLink key={item.to} to={item.to} className={`flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${active ? "text-brand" : "text-slate-500"}`}>

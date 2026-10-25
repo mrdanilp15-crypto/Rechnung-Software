@@ -20,6 +20,7 @@ import Catalog from "./pages/Catalog";
 import RecurringPage from "./pages/Recurring";
 import Finance from "./pages/Finance";
 import Archive from "./pages/Archive";
+import Production from "./pages/Production";
 import AuditLog from "./pages/AuditLog";
 import Settings from "./pages/Settings";
 
@@ -85,6 +86,7 @@ export default function App() {
         <Route path="/order-confirmations/:id/edit" element={<DocumentEditor kind="confirmation" />} />
         <Route path="/finance" element={<Finance />} />
         <Route path="/archive" element={<Archive />} />
+        <Route path="/production" element={<Production />} />
         <Route path="/audit-log" element={<AuditLog />} />
         <Route path="/settings" element={<Settings />} />
       </Route>

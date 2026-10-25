@@ -8,6 +8,7 @@
  * Fehldrucke    = (Strom + Abschreibung + Verschleiß bzw. pauschale Maschine) × Fehldruckquote%
  * Arbeit        = (Arbeitsminuten + Rüstzeit ÷ Menge) ÷ 60 × Arbeitsstundensatz
  * Verpackung    = Verpackung/Versand je Einheit
+ * Weitere Kosten = Summe der Nachbearbeitungs-/Veredelungsposten je Einheit (z.B. Lackieren, Klarlack, Magnete)
  * Gemeinkosten  = (Summe der obigen) × Gemeinkosten%
  * Selbstkosten  = Summe inkl. Gemeinkosten
  * Preisvorschlag = Selbstkosten × (1 + Gewinnaufschlag%) ÷ (1 − Plattformgebühr%), danach gerundet und mindestens Mindestpreis
@@ -41,6 +42,7 @@ export interface CostRates {
 export interface CostExtras {
   setupMinutes?: number; // einmal je Auftrag
   packagingCents?: number; // je Einheit
+  extraCostsCents?: number; // Veredelung/Nachbearbeitung je Einheit (Summe aller Posten)
   extraMaterialPercent?: number; // zusätzlicher Materialverlust (z.B. Spülmaterial bei Mehrfarbdruck)
   quantity?: number; // Auftragsmenge, auf die sich die Rüstzeit verteilt (Standard 1)
 }
@@ -55,6 +57,7 @@ export interface CostResult {
   labor: number;
   setup: number; // Anteil der Rüstzeit je Einheit (in labor enthalten, nur zur Anzeige)
   packaging: number;
+  extras: number; // Veredelung/Nachbearbeitung
   overhead: number;
   total: number;
   /** Preisvorschlag vor Rundung */
@@ -81,26 +84,27 @@ export function calcCost(
   laborMinutes: number,
   rates: CostRates,
   printer?: PrinterCosts | null,
-  extras: CostExtras = {}
+  extras_: CostExtras = {}
 ): CostResult {
   const printHours = Math.max(0, printMinutes) / 60;
-  const quantity = Math.max(1, extras.quantity ?? 1);
-  const material = used.reduce((s, m) => s + m.quantityPerUnit * m.costPerUnitCents, 0) * (1 + (rates.materialWastePercent + (extras.extraMaterialPercent ?? 0)) / 100);
+  const quantity = Math.max(1, extras_.quantity ?? 1);
+  const material = used.reduce((s, m) => s + m.quantityPerUnit * m.costPerUnitCents, 0) * (1 + (rates.materialWastePercent + (extras_.extraMaterialPercent ?? 0)) / 100);
   const electricity = printer ? printHours * (printer.powerWatts / 1000) * rates.electricityCentsPerKwh : 0;
   const depreciation = printer && printer.lifetimeHours > 0 ? printHours * (printer.purchasePriceCents / printer.lifetimeHours) : 0;
   const wear = printer ? printHours * printer.wearCentsPerHour : 0;
   const machineFlat = printer ? 0 : printHours * rates.machineRateCentsPerHour;
   const failures = (electricity + depreciation + wear + machineFlat) * (rates.failRatePercent / 100);
-  const setup = ((Math.max(0, extras.setupMinutes ?? 0) / 60) * rates.laborRateCentsPerHour) / quantity;
+  const setup = ((Math.max(0, extras_.setupMinutes ?? 0) / 60) * rates.laborRateCentsPerHour) / quantity;
   const labor = (Math.max(0, laborMinutes) / 60) * rates.laborRateCentsPerHour + setup;
-  const packaging = Math.max(0, extras.packagingCents ?? 0);
-  const subtotal = material + electricity + depreciation + wear + machineFlat + failures + labor + packaging;
+  const packaging = Math.max(0, extras_.packagingCents ?? 0);
+  const extras = Math.max(0, extras_.extraCostsCents ?? 0);
+  const subtotal = material + electricity + depreciation + wear + machineFlat + failures + labor + packaging + extras;
   const overhead = subtotal * (rates.overheadPercent / 100);
   const total = subtotal + overhead;
   const feeFactor = 1 - Math.min(rates.platformFeePercent, 90) / 100;
   const recommendedRaw = (total * (1 + rates.targetMarginPercent / 100)) / feeFactor;
   const recommended = total > 0 ? Math.max(roundPrice(recommendedRaw, rates.priceRounding), rates.minPriceCents) : 0;
-  return { material, electricity, depreciation, wear, machineFlat, failures, labor, setup, packaging, overhead, total, recommendedRaw, recommended };
+  return { material, electricity, depreciation, wear, machineFlat, failures, labor, setup, packaging, extras, overhead, total, recommendedRaw, recommended };
 }
 
 /** Gebühren (Plattform/Zahlung), die bei diesem Verkaufspreis anfallen. */

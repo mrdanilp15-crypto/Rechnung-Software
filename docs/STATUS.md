@@ -124,6 +124,9 @@ implementiert.
 | Mahnwesen mit drei Stufen, Verzugszinsen, Pauschale, Mahn-PDF | ✅ Basiszinssatz muss vom Nutzer gepflegt werden |
 | Anzahlungs- und Schlussrechnung (XRechnung: Typ 326 + BT-113) | ✅ mit KoSIT geprüft |
 | Wiederkehrende Rechnungen (erzeugen nur Entwürfe) | ✅ |
+| Produktionsboard (Erstellt, In Produktion, Versandbereit, Versendet) aus Auftragsbestätigungen | ✅ |
+| Plattenkalkulation: Stück pro Platte, Veredelungsposten, Materialpreis überschreiben | ✅ |
+| Finanzdiagramm: Einnahmen, Ausgaben, Gewinn pro Monat | ✅ |
 | Oberfläche: wählbare Akzentfarbe, warmes/kühles dunkles Design, Menü-Symbole, Handy-Leiste unten, Dashboard mit Kennzahlen/Diagrammen, einheitliche Status-Chips | ✅ |
 | Belege an Ausgaben (Upload im Ausgabenformular) landen automatisch im Belegarchiv; bisherige per Knopfdruck übernehmbar | ✅ |
 | Belegarchiv: Dokumente ablegen, Volltextsuche (inkl. PDF-Text), Filter, Sortierung, ZIP-Export, Aufbewahrungsfristen | ✅ Ablage, kein revisionssicheres GoBD-Archiv (Dokumente änderbar/löschbar) |

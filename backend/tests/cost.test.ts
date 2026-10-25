@@ -69,6 +69,11 @@ describe("Erweiterte Kalkulation", () => {
     expect(c.packaging).toBe(80);
     expect(c.total).toBeCloseTo(120 + 80);
   });
+  it("Veredelungsposten gehen als Fremdkosten in die Selbstkosten ein und werden mit Gemeinkosten belegt", () => {
+    const c = calcCost([], 0, 0, { ...base, overheadPercent: 10 }, null, { extraCostsCents: 4000 + 200 });
+    expect(c.extras).toBe(4200);
+    expect(c.total).toBeCloseTo(4620);
+  });
   it("Plattformgebühr wird in den Preisvorschlag eingerechnet, sodass nach Gebühren der Gewinn bleibt", () => {
     const r = { ...base, targetMarginPercent: 25, platformFeePercent: 10 };
     const c = calcCost([{ quantityPerUnit: 1, costPerUnitCents: 1000 }], 0, 0, r);

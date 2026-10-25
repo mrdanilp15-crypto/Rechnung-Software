@@ -5,6 +5,7 @@ import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { TaxPanel } from "../components/TaxPanel";
+import { FinanceChart, FinanceLegend, type FinanceMonth } from "../components/FinanceChart";
 
 interface Expense {
   id: string;
@@ -22,6 +23,9 @@ interface EuerSummary {
   expenseCents: number;
   surplusCents: number;
   expensesByCategory: Record<string, number>;
+  months: FinanceMonth[];
+  openReceivablesCents: number;
+  openReceivablesCount: number;
 }
 
 interface BankTransaction {
@@ -148,7 +152,7 @@ export default function Finance() {
           </div>
           {summary && (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white dark:bg-slate-800 rounded-lg p-5 shadow">
                   <p className="text-sm text-slate-500">Einnahmen (bezahlte Rechnungen)</p>
                   <p className="text-2xl font-semibold text-green-600">{formatEuro(summary.incomeCents)}</p>
@@ -158,9 +162,22 @@ export default function Finance() {
                   <p className="text-2xl font-semibold text-red-600">{formatEuro(summary.expenseCents)}</p>
                 </div>
                 <div className="bg-white dark:bg-slate-800 rounded-lg p-5 shadow">
-                  <p className="text-sm text-slate-500">Überschuss</p>
-                  <p className="text-2xl font-semibold">{formatEuro(summary.surplusCents)}</p>
+                  <p className="text-sm text-slate-500">Überschuss (Gewinn vor Steuern)</p>
+                  <p className={`text-2xl font-semibold ${summary.surplusCents < 0 ? "text-red-600" : ""}`}>{formatEuro(summary.surplusCents)}</p>
                 </div>
+                <div className="bg-white dark:bg-slate-800 rounded-lg p-5 shadow" title="Rechnungen, die versendet, aber noch nicht bezahlt sind - zählen erst bei Zahlungseingang zur EÜR">
+                  <p className="text-sm text-slate-500">Noch offen (nicht bezahlt)</p>
+                  <p className="text-2xl font-semibold text-slate-700 dark:text-slate-200">{formatEuro(summary.openReceivablesCents)}</p>
+                  <p className="text-xs text-slate-500 mt-1">{summary.openReceivablesCount} Rechnung{summary.openReceivablesCount === 1 ? "" : "en"}</p>
+                </div>
+              </div>
+              <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6">
+                <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
+                  <h2 className="font-medium text-sm">Einnahmen, Ausgaben und Gewinn pro Monat {year}</h2>
+                  <FinanceLegend />
+                </div>
+                {summary.months?.some((m) => m.incomeCents || m.expenseCents) ? <FinanceChart months={summary.months} /> : <p className="text-sm text-slate-500 py-6 text-center">Für {year} gibt es noch keine bezahlten Rechnungen oder Ausgaben.</p>}
+                <p className="text-xs text-slate-500 mt-1">Einnahmen zählen im Monat des Zahlungseingangs, Ausgaben im Monat des Belegdatums. Gewinn = Einnahmen minus Ausgaben, vor Steuern.</p>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4">
                 <h2 className="font-medium mb-2 text-sm">Ausgaben nach Kategorie</h2>

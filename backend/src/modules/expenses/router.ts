@@ -127,8 +127,14 @@ async function computeEuer(companyId: string, year: number) {
   const expensesByCategory: Record<string, number> = {};
   for (const e of expenses) expensesByCategory[e.category] = (expensesByCategory[e.category] ?? 0) + e.amountCents;
 
+  // Monatsverlauf für das Diagramm: Einnahmen nach Zahlungseingang, Ausgaben nach Belegdatum
+  const months = Array.from({ length: 12 }, (_, i) => ({ month: i + 1, incomeCents: 0, expenseCents: 0 }));
+  for (const inv of paidInvoices) if (inv.paidAt) months[inv.paidAt.getMonth()].incomeCents += inv.totalCents;
+  for (const e of expenses) months[e.date.getMonth()].expenseCents += e.amountCents;
+
   return {
     year,
+    months,
     incomeCents,
     expenseCents,
     surplusCents: incomeCents - expenseCents,
@@ -142,7 +148,13 @@ expensesRouter.get("/euer/summary", async (req, res) => {
   const year = Number(req.query.year) || new Date().getFullYear();
   const summary = await computeEuer(req.auth!.companyId, year);
   const { paidInvoices, expenses, ...rest } = summary;
-  res.json(rest);
+  // Noch nicht bezahlte Rechnungen (Forderungen) - gehören nicht zur EÜR, sind aber für die Liquidität wichtig
+  const open = await prisma.invoice.aggregate({
+    where: { companyId: req.auth!.companyId, isCancellationDocument: false, status: { in: ["SENT", "OVERDUE"] } },
+    _sum: { totalCents: true },
+    _count: { _all: true },
+  });
+  res.json({ ...rest, openReceivablesCents: open._sum.totalCents ?? 0, openReceivablesCount: open._count._all });
 });
 
 expensesRouter.get("/euer/export", async (req, res) => {

@@ -277,6 +277,10 @@ model Product {
   packagingCents       Int   @default(0)
   extraMaterialPercent Float @default(0)
   priceTiers           Json?
+  // Druckplatte: Stück pro Platte (Zeit und Materialverbrauch werden auf der Platte erfasst und durch diese Zahl geteilt gespeichert)
+  // und weitere Kosten je Stück als [{ label, amountCents }] (z.B. Lackieren, Klarlack, Magnete)
+  piecesPerPlate       Int   @default(1)
+  extraCosts           Json?
   isArchived    Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -345,6 +349,8 @@ model ProductMaterial {
   materialId      String
   // Verbrauchte Menge (in Material.unit) pro einer verkauften Einheit des Produkts.
   quantityPerUnit Float
+  // Eigener Preis je Material-Einheit nur für dieses Produkt (statt des Lagerpreises), z.B. für einen Sonderauftrag; null = Lagerpreis
+  costOverrideCents Float?
 
   @@unique([productId, materialId])
   @@index([productId])
@@ -586,6 +592,11 @@ model OrderConfirmation {
   pdfPath       String?
   // Siehe Kommentar bei DeliveryNote.voidedAt - gleiches Prinzip.
   voidedAt      DateTime?
+  // Produktionsboard: CREATED -> IN_PRODUCTION -> READY_TO_SHIP -> SHIPPED (siehe modules/production)
+  productionStatus    String    @default("CREATED")
+  productionNote      String?
+  productionUpdatedAt DateTime?
+  shippedAt           DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

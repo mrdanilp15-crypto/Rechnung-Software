@@ -26,6 +26,7 @@ productsRouter.get("/", async (req, res) => {
 const materialUsageSchema = z.object({
   materialId: z.string(),
   quantityPerUnit: z.number().positive(),
+  costOverrideCents: z.number().min(0).nullish(),
 });
 
 const productSchema = z.object({
@@ -42,6 +43,8 @@ const productSchema = z.object({
   packagingCents: z.number().int().min(0).max(100_000_000).optional(),
   extraMaterialPercent: z.number().min(0).max(500).optional(),
   // Staffelpreise: netto je Einheit ab der jeweiligen Menge (aufsteigend, Menge mindestens 2)
+  piecesPerPlate: z.number().int().min(1).max(10000).optional(),
+  extraCosts: z.array(z.object({ label: z.string().trim().min(1).max(60), amountCents: z.number().int().min(0).max(100_000_000) })).max(10).nullish(),
   priceTiers: z
     .array(z.object({ minQuantity: z.number().min(2).max(1_000_000), unitPriceCents: z.number().int().min(0) }))
     .max(10)
@@ -66,13 +69,21 @@ function tiersForDb(tiers: { minQuantity: number; unitPriceCents: number }[] | n
   return [...tiers].sort((a, b) => a.minQuantity - b.minQuantity);
 }
 
+// Weitere Kosten je Stück: leere Liste/null löscht sie
+function extraCostsForDb(list: { label: string; amountCents: number }[] | null | undefined) {
+  if (list === undefined) return undefined;
+  if (!list || list.length === 0) return Prisma.DbNull;
+  return list;
+}
+
 productsRouter.post("/", async (req, res) => {
   const body = productSchema.parse(req.body);
-  const { materials, priceTiers, ...productData } = body;
+  const { materials, priceTiers, extraCosts, ...productData } = body;
   const product = await prisma.product.create({
     data: {
       ...productData,
       priceTiers: tiersForDb(priceTiers),
+      extraCosts: extraCostsForDb(extraCosts),
       companyId: req.auth!.companyId,
       ...(productData.printerId ? { printerId: await validPrinterId(req.auth!.companyId, productData.printerId) } : { printerId: null }),
       materials: materials ? { create: materials } : undefined,
@@ -85,7 +96,7 @@ productsRouter.post("/", async (req, res) => {
 
 productsRouter.patch("/:id", async (req, res) => {
   const body = productSchema.partial().parse(req.body);
-  const { materials, priceTiers, ...productData } = body;
+  const { materials, priceTiers, extraCosts, ...productData } = body;
   const existing = await prisma.product.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!existing) throw new HttpError(404, "Produkt nicht gefunden");
   const updated = await prisma.product.update({
@@ -93,6 +104,7 @@ productsRouter.patch("/:id", async (req, res) => {
     data: {
       ...productData,
       priceTiers: tiersForDb(priceTiers),
+      extraCosts: extraCostsForDb(extraCosts),
       ...(productData.printerId !== undefined ? { printerId: productData.printerId ? await validPrinterId(req.auth!.companyId, productData.printerId) : null } : {}),
       // Rezept immer komplett ersetzen, wenn mitgeschickt - einfacher und weniger
       // fehleranfällig als einzelne Zeilen abzugleichen (analog zu Positionslisten bei
