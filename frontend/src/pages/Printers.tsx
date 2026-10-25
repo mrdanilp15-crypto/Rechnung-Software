@@ -3,6 +3,8 @@ import { api } from "../api/client";
 import { useToast } from "../components/Toast";
 import { InfoBox } from "../components/InfoBox";
 import { printerHourlyCost } from "../lib/cost";
+import { useAuthStore } from "../store/authStore";
+import { CAMERA_MODELS, PrinterLiveCard, type LiveStatus } from "../components/PrinterLive";
 
 interface Printer {
   id: string;
@@ -13,12 +15,21 @@ interface Printer {
   wearCentsPerHour: number;
   notes?: string | null;
   _count?: { products: number };
+  connectionType: "NONE" | "BAMBU_LAN";
+  model: string | null;
+  host: string | null;
+  serial: string | null;
+  hasAccessCode: boolean;
+  liveEnabled: boolean;
+  trackedMinutes: number;
 }
+
+const MODELS: [string, string][] = [["X1C", "X1 Carbon"], ["X1E", "X1E"], ["P1P", "P1P"], ["P1S", "P1S"], ["P2S", "P2S"], ["A1", "A1"], ["A1MINI", "A1 mini"], ["H2D", "H2D"], ["H2S", "H2S"], ["OTHER", "Anderes Modell"]];
 
 const inputClass = "mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800";
 const money = (cents: number, digits = 2) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(cents / 100);
 
-const emptyForm = { name: "", price: "500", lifetime: "5000", watts: "120", wear: "0.10", notes: "" };
+const emptyForm = { name: "", price: "500", lifetime: "5000", watts: "120", wear: "0.10", notes: "", connectionType: "NONE" as "NONE" | "BAMBU_LAN", model: "P1S", host: "", serial: "", accessCode: "", liveEnabled: true };
 
 /** Drucker/Maschinen mit eigenen Kostenwerten - jeder Drucker lässt sich einzeln anpassen. */
 export default function Printers() {
@@ -30,10 +41,24 @@ export default function Printers() {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const isAdmin = useAuthStore((s) => s.user?.role) === "ADMIN";
+  const [liveMap, setLiveMap] = useState<Record<string, LiveStatus>>({});
+  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [clearCode, setClearCode] = useState(false);
 
   function load() {
     api.get("/printers").then((r) => setPrinters(r.data));
   }
+  function loadLive() {
+    api.get("/printers/live").then((r) => setLiveMap(r.data)).catch(() => {});
+  }
+  // Live-Status alle 4 Sekunden aktualisieren, solange die Seite sichtbar ist
+  useEffect(() => {
+    loadLive();
+    const timer = setInterval(() => { if (!document.hidden) loadLive(); }, 4000);
+    return () => clearInterval(timer);
+  }, []);
   useEffect(() => {
     load();
     api.get("/companies/me").then((r) => setElectricity(r.data.electricityCentsPerKwh ?? 35));
@@ -42,12 +67,16 @@ export default function Printers() {
   function startCreate() {
     setEditingId(null);
     setForm(emptyForm);
+    setTestResult(null);
+    setClearCode(false);
     setError(null);
     setShowForm(true);
   }
   function startEdit(p: Printer) {
     setEditingId(p.id);
-    setForm({ name: p.name, price: String(p.purchasePriceCents / 100), lifetime: String(p.lifetimeHours), watts: String(p.powerWatts), wear: String(p.wearCentsPerHour / 100), notes: p.notes ?? "" });
+    setForm({ name: p.name, price: String(p.purchasePriceCents / 100), lifetime: String(p.lifetimeHours), watts: String(p.powerWatts), wear: String(p.wearCentsPerHour / 100), notes: p.notes ?? "", connectionType: p.connectionType, model: p.model ?? "P1S", host: p.host ?? "", serial: p.serial ?? "", accessCode: "", liveEnabled: p.connectionType === "NONE" ? true : p.liveEnabled });
+    setTestResult(null);
+    setClearCode(false);
     setError(null);
     setShowForm(true);
   }
@@ -67,7 +96,15 @@ export default function Printers() {
     if (draft.lifetimeHours <= 0) return setError("Die Lebensdauer muss größer als 0 Stunden sein.");
     setBusy(true);
     try {
-      const payload = { name: form.name.trim(), ...draft, notes: form.notes.trim() || null };
+      const payload: Record<string, unknown> = { name: form.name.trim(), ...draft, notes: form.notes.trim() || null };
+      if (isAdmin) {
+        payload.connectionType = form.connectionType;
+        if (form.connectionType === "BAMBU_LAN") {
+          Object.assign(payload, { model: form.model, host: form.host.trim(), serial: form.serial.trim(), liveEnabled: form.liveEnabled });
+          if (form.accessCode.trim()) payload.accessCode = form.accessCode.trim();
+          if (clearCode) payload.clearAccessCode = true;
+        }
+      }
       if (editingId) await api.patch(`/printers/${editingId}`, payload);
       else await api.post("/printers", payload);
       setShowForm(false);
@@ -77,6 +114,19 @@ export default function Printers() {
       setError(err.response?.data?.error || "Speichern fehlgeschlagen.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function testConnection() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const { data } = await api.post("/printers/test-connection", { printerId: editingId ?? undefined, host: form.host.trim(), serial: form.serial.trim(), accessCode: form.accessCode.trim() || undefined });
+      setTestResult(data.ok ? { ok: true, text: `Verbindung steht - Drucker meldet: ${data.status.stateLabel}${data.status.nozzleTemp !== null ? `, Düse ${Math.round(data.status.nozzleTemp)} °C` : ""}.` } : { ok: false, text: data.reason });
+    } catch (err: any) {
+      setTestResult({ ok: false, text: err.response?.data?.details?.fieldErrors ? Object.values(err.response.data.details.fieldErrors as Record<string, string[]>).flat().join(" ") : err.response?.data?.error || "Test fehlgeschlagen." });
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -105,6 +155,14 @@ export default function Printers() {
         <p><strong>4. Pro Produkt</strong> tragen Sie Materialverbrauch, Druckzeit und Arbeitszeit ein (Werte aus dem Slicer) und wählen den Drucker - die Software zeigt Selbstkosten, Preisvorschlag und Gewinn.</p>
         <p><strong>Richtwerte:</strong> Lebensdauer eines Bambu/Prusa-Druckers 5.000-10.000 h, einfacher Drucker 3.000-5.000 h. Leistung im Betrieb meist 80-150 W (Datenblatt-Maximalwert liegt höher, da Heizphasen kurz sind). Verschleiß (Düsen, Bett, Riemen, Lager) 5-15 Cent pro Stunde. Ein Strommessgerät zwischen Steckdose und Drucker liefert den genauesten Wert.</p>
         <p>Änderungen an Druckern oder Sätzen wirken auf die Kalkulation in der Produktverwaltung sofort. Bereits erstellte Rechnungen und Angebote ändern sich dadurch <strong>nicht</strong> - dort steht der damals eingetragene Preis.</p>
+      </InfoBox>
+
+      <InfoBox title="Live-Anbindung für Bambu Lab (Fortschritt, Temperaturen, AMS, Kamera)">
+        <p>Bei Bambu-Lab-Druckern kann die Software im <strong>LAN-Modus</strong> den Zustand direkt vom Drucker lesen: Fortschritt und Restzeit, Temperaturen, die Spulen im AMS (Material, Farbe, Füllstand), bei P1P/P1S/A1/A1 mini ein Kamerabild. Aus den erkannten Drucken entstehen außerdem ein <strong>Druckverlauf und die tatsächlichen Betriebsstunden</strong> je Drucker.</p>
+        <p><strong>Nur lesend:</strong> Die Software sendet nie Befehle (Pause, Stopp, Start) an den Drucker.</p>
+        <p><strong>Einrichten (am Drucker):</strong> Einstellungen → WLAN/Netzwerk: <em>LAN-Modus</em> aktivieren; dort stehen die <strong>IP-Adresse</strong> und der <strong>Zugangscode</strong> (8 Zeichen). Die <strong>Seriennummer</strong> finden Sie unter Einstellungen → Gerät (oder auf dem Aufkleber). Tragen Sie die drei Werte im Formular unten ein und klicken Sie "Verbindung testen".</p>
+        <p><strong>Voraussetzungen:</strong> Der Server, auf dem diese Software läuft, muss den Drucker im Netzwerk erreichen (typisch: gleiches Heimnetz). Läuft die Software in der Cloud oder bei einem Hoster, ist das nicht der Fall - dann ist ein VPN (z.B. Tailscale) nötig. Der Drucker sollte eine feste IP-Adresse haben (im Router reservieren). Je nach Modell und Firmware kann der LAN-Modus die Verbindung zur Bambu-Cloud (Handy-App von unterwegs) einschränken; Bambu ändert dieses Verhalten gelegentlich per Firmware. Bitte beim ersten Einrichten ausprobieren.</p>
+        <p>Der Zugangscode wird verschlüsselt gespeichert und nie wieder angezeigt. Einrichten dürfen nur Administratoren.</p>
       </InfoBox>
 
       {showForm && (
@@ -141,6 +199,57 @@ export default function Printers() {
             Notiz (optional)
             <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={inputClass} />
           </label>
+          {isAdmin && (
+            <fieldset className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-3">
+              <legend className="px-1 text-sm font-medium">Live-Anbindung (optional)</legend>
+              <label className="block text-sm">
+                Anbindung
+                <select value={form.connectionType} onChange={(e) => setForm({ ...form, connectionType: e.target.value as "NONE" | "BAMBU_LAN" })} className={inputClass}>
+                  <option value="NONE">Keine</option>
+                  <option value="BAMBU_LAN">Bambu Lab im LAN-Modus</option>
+                </select>
+              </label>
+              {form.connectionType === "BAMBU_LAN" && (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="block text-sm">
+                      Modell
+                      <select value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} className={inputClass}>
+                        {MODELS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+                      </select>
+                      <span className="block text-xs text-slate-500 mt-0.5">{CAMERA_MODELS.includes(form.model) ? "Für dieses Modell ist ein Kamerabild möglich." : "Kamerabild nur bei P1P, P1S, A1 und A1 mini (andere Modelle nutzen einen Videostrom)."}</span>
+                    </label>
+                    <label className="block text-sm">
+                      IP-Adresse des Druckers
+                      <input value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} placeholder="z.B. 192.168.1.50" className={inputClass} inputMode="decimal" />
+                      <span className="block text-xs text-slate-500 mt-0.5">Nur Adressen aus dem eigenen Netz (192.168.x.x, 10.x.x.x ...).</span>
+                    </label>
+                    <label className="block text-sm">
+                      Seriennummer
+                      <input value={form.serial} onChange={(e) => setForm({ ...form, serial: e.target.value })} placeholder="z.B. 01P00A123456789" className={inputClass} autoCapitalize="characters" />
+                    </label>
+                    <label className="block text-sm">
+                      Zugangscode (8 Zeichen)
+                      <input type="password" autoComplete="new-password" value={form.accessCode} onChange={(e) => setForm({ ...form, accessCode: e.target.value })} placeholder={editingId && printers.find((x) => x.id === editingId)?.hasAccessCode ? "gespeichert - leer lassen zum Behalten" : "aus den Netzwerk-Einstellungen am Drucker"} className={inputClass} />
+                      {editingId && printers.find((x) => x.id === editingId)?.hasAccessCode && (
+                        <label className="flex items-center gap-2 text-xs text-slate-500 mt-1"><input type="checkbox" checked={clearCode} onChange={(e) => setClearCode(e.target.checked)} />gespeicherten Zugangscode löschen</label>
+                      )}
+                    </label>
+                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={form.liveEnabled} onChange={(e) => setForm({ ...form, liveEnabled: e.target.checked })} />
+                    Live-Verbindung aktiv (Status anzeigen, Druckverlauf erfassen)
+                  </label>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button type="button" onClick={testConnection} disabled={testing || !form.host.trim() || !form.serial.trim() || (!form.accessCode.trim() && !(editingId && printers.find((x) => x.id === editingId)?.hasAccessCode))} className="px-4 py-2 rounded-lg text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50">
+                      {testing ? "Testet ... (bis 10 s)" : "Verbindung testen"}
+                    </button>
+                    {testResult && <span className={`text-sm ${testResult.ok ? "text-green-600" : "text-red-600"}`}>{testResult.text}</span>}
+                  </div>
+                </>
+              )}
+            </fieldset>
+          )}
           <div className="text-sm rounded bg-slate-50 dark:bg-slate-900/40 p-3 space-y-1">
             <div className="font-medium">Kosten pro Druckstunde (Vorschau)</div>
             <div className="flex justify-between"><span className="text-slate-500">Strom ({form.watts || 0} W × {electricity} ct/kWh)</span><span>{money(live.electricity, 3)}</span></div>
@@ -159,8 +268,8 @@ export default function Printers() {
         {printers.map((p) => {
           const h = printerHourlyCost(p, electricity);
           return (
-            <div key={p.id} className="px-4 py-3 text-sm flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0">
+            <div key={p.id} className="px-4 py-3 text-sm flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1 basis-80">
                 <div className="font-medium">{p.name}</div>
                 <div className="text-xs text-slate-500">
                   {money(p.purchasePriceCents, 0)} · {p.lifetimeHours} h Lebensdauer · {p.powerWatts} W · Verschleiß {money(p.wearCentsPerHour, 3)}/h
@@ -170,6 +279,9 @@ export default function Printers() {
                   {p._count?.products ? ` · von ${p._count.products} Produkt(en) genutzt` : ""}
                 </div>
                 {p.notes && <div className="text-xs text-amber-600 dark:text-amber-400">{p.notes}</div>}
+                {p.connectionType === "BAMBU_LAN" && p.liveEnabled && liveMap[p.id] && (
+                  <PrinterLiveCard printerId={p.id} status={liveMap[p.id]} model={p.model} trackedMinutes={p.trackedMinutes} lifetimeHours={p.lifetimeHours} />
+                )}
               </div>
               <div className="flex gap-3">
                 <button onClick={() => startEdit(p)} className="text-brand hover:underline">Bearbeiten</button>

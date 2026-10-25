@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { Icon, type IconName } from "../components/Icon";
 import { StatusChip } from "../components/StatusChip";
+import { formatMinutes, type LiveStatus } from "../components/PrinterLive";
 
 interface DocRow {
   kind: "INVOICE" | "QUOTE" | "ORDER_CONFIRMATION" | "DELIVERY_NOTE";
@@ -145,6 +146,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<Stats | null>(null);
   const [production, setProduction] = useState<{ productionStatus: string }[]>([]);
+  const [livePrinters, setLivePrinters] = useState<{ id: string; name: string; status: LiveStatus }[]>([]);
   const [dunning, setDunning] = useState<{ invoiceId: string; invoiceNumber: string; customerName: string; totalCents: number; daysOverdue: number; nextLevel: number }[]>([]);
 
   useEffect(() => {
@@ -153,6 +155,23 @@ export default function Dashboard() {
     api.get("/dunning/suggestions").then((res) => setDunning(res.data)).catch(() => setDunning([]));
     api.get("/production").then((res) => setProduction(res.data.items)).catch(() => setProduction([]));
     api.get("/documents/stats").then((res) => setStats(res.data)).catch(() => setStats(null));
+  }, []);
+
+  // Drucker mit Live-Anbindung: alle 10 Sekunden aktualisieren, solange die Seite sichtbar ist
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPrinters() {
+      try {
+        const [list, live] = await Promise.all([api.get("/printers"), api.get("/printers/live")]);
+        if (cancelled) return;
+        setLivePrinters(list.data.filter((p: { id: string; liveEnabled: boolean }) => p.liveEnabled && live.data[p.id]).map((p: { id: string; name: string }) => ({ id: p.id, name: p.name, status: live.data[p.id] })));
+      } catch {
+        if (!cancelled) setLivePrinters([]);
+      }
+    }
+    loadPrinters();
+    const timer = setInterval(() => { if (!document.hidden) loadPrinters(); }, 10000);
+    return () => { cancelled = true; clearInterval(timer); };
   }, []);
 
   // Korrekturbelege (Storno/Gutschrift) tragen negative Beträge und stehen neben dem stornierten Original -
@@ -279,6 +298,31 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-3">
+              {livePrinters.length > 0 && (
+                <Link to="/catalog?tab=printers" className={`${card} block hover:shadow-md transition-shadow`}>
+                  <h2 className="text-sm font-medium mb-2">Drucker live</h2>
+                  <div className="space-y-3 text-sm">
+                    {livePrinters.map(({ id, name, status }) => {
+                      const online = status.connection === "online";
+                      const active = online && (status.state === "RUNNING" || status.state === "PREPARE" || status.state === "PAUSE");
+                      return (
+                        <div key={id}>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate font-medium">{name}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${active ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : online ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300"}`}>{online ? status.stateLabel : "Offline"}</span>
+                          </div>
+                          {active && (
+                            <>
+                              <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden mt-1.5"><div className="h-full bg-brand" style={{ width: `${status.progressPercent ?? 0}%` }} /></div>
+                              <div className="text-xs text-slate-500 mt-1 truncate">{status.jobName ?? "Druck"} · {status.progressPercent ?? 0} %{status.remainingMinutes !== null ? ` · noch ${formatMinutes(status.remainingMinutes)}` : ""}</div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Link>
+              )}
               {production.length > 0 && (
                 <Link to="/production" className={`${card} block hover:shadow-md transition-shadow`}>
                   <h2 className="text-sm font-medium mb-2">Produktion</h2>

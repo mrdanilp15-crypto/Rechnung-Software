@@ -60,6 +60,8 @@ const envSchema = z.object({
   MAX_UPLOAD_MB: z.coerce.number().default(5),
   // Belegarchiv: Scans/PDFs sind oft größer als Logos und Stempel
   ARCHIVE_MAX_UPLOAD_MB: z.coerce.number().default(25),
+  // Live-Anbindung der Bambu-Lab-Drucker (MQTT im LAN). Mit false wird keine Verbindung zu Druckern aufgebaut.
+  PRINTER_MONITOR_ENABLED: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
 
   LOG_LEVEL: z.string().default("info"),
   // Optional: zusätzlich zu stdout auch in eine Datei in einem gemounteten Volume

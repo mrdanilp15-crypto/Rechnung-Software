@@ -192,3 +192,13 @@ Optional zusätzlich in S3-kompatiblen Speicher hochladen: `S3_*`-Variablen setz
 - Bestehende Kundendaten importieren: Einstellungen → Daten → "Kunden importieren"
   (Frontend) bzw. `POST /api/import/customers` mit einer CSV-Datei (Spalten: `name,
   email,phone,street,postalCode,city,country`).
+
+## Drucker-Live-Anbindung (Bambu Lab)
+
+Die Live-Anzeige (Fortschritt, Temperaturen, AMS, Kamerabild) verbindet sich vom **Server aus** mit dem Drucker (MQTT/TLS auf Port 8883, Kamera auf Port 6000, beides nur lesend).
+Dafür muss der Container den Drucker im Netzwerk erreichen:
+
+- Läuft der Server im selben Heimnetz wie die Drucker (NAS, Mini-PC, Raspberry Pi), funktioniert das ohne weitere Einstellung - Docker erlaubt ausgehende Verbindungen ins lokale Netz.
+- Läuft der Server außerhalb (Hoster, Cloud), ist der Drucker nicht erreichbar. Dann ein VPN (z.B. Tailscale, Adressen aus 100.64.0.0/10 werden akzeptiert) zwischen Server und Heimnetz einrichten.
+- Der Drucker braucht eine feste IP-Adresse (im Router reservieren). In der App sind nur private Adressen (192.168.x.x, 10.x.x.x, 172.16-31.x.x, 100.64-127.x.x) und Namen auf .local/.lan/.fritz.box erlaubt.
+- Mit `PRINTER_MONITOR_ENABLED=false` (in `.env` bzw. im Stack) wird die Funktion komplett abgeschaltet.

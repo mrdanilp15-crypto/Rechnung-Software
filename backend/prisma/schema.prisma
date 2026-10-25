@@ -337,11 +337,20 @@ model Printer {
   powerWatts         Float    @default(120) // durchschnittliche Leistungsaufnahme beim Drucken -> Stromkosten
   wearCentsPerHour   Float    @default(10) // Verschleiß/Wartung (Düse, Bett, Riemen, Lager ...) je Druckstunde in Cent
   notes              String?
+  // Live-Anbindung (nur lesend): NONE oder BAMBU_LAN (Bambu Lab im LAN-Modus). Der Zugangscode wird verschlüsselt gespeichert
+  // und nie an den Browser ausgeliefert.
+  connectionType     String   @default("NONE")
+  model              String?
+  host               String?
+  serial             String?
+  accessCodeEncrypted String?
+  liveEnabled        Boolean  @default(false)
   isArchived         Boolean  @default(false)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   products           Product[]
+  jobs               PrinterJob[]
 
   @@index([companyId])
 }
@@ -846,5 +855,21 @@ model Supplier {
   expenses       Expense[]
   materials      Material[]
 
+  @@index([companyId])
+}
+
+// Druckaufträge, die über die Live-Anbindung erkannt wurden (Start, Ende, Ergebnis) - Grundlage für die Betriebsstunden je Drucker.
+model PrinterJob {
+  id        String    @id @default(uuid())
+  companyId String
+  printer   Printer   @relation(fields: [printerId], references: [id], onDelete: Cascade)
+  printerId String
+  name      String?
+  startedAt DateTime
+  endedAt   DateTime?
+  result    String? // FINISHED | FAILED | CANCELLED | UNKNOWN
+  minutes   Int? // Dauer inklusive Pausen
+
+  @@index([printerId, startedAt])
   @@index([companyId])
 }

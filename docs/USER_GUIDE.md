@@ -165,6 +165,18 @@ In der Rechnungsdetailansicht:
   Umsatzsteuer-Voranmeldung, es wird nach vereinbarten Entgelten gerechnet) und ein ZIP mit allen Rechnungs-PDFs, Belegliste und
   Ausgaben. Es ist **kein DATEV-Format**. Grenzüberschreitende Fälle (innergemeinschaftliche Lieferung, Reverse-Charge) lassen Sie
   bitte von Ihrem Steuerberater bestätigen.
+- **Drucker-Live-Anbindung (Bambu Lab, nur lesend)** (*Katalog → Drucker → Bearbeiten → Live-Anbindung*, nur Administratoren): Zeigt im LAN-Modus direkt vom Drucker Zustand,
+  Fortschritt mit Restzeit, Schicht, Temperaturen (Düse, Bett, Gehäuse), die **AMS-Spulen** (Material, Farbe, Füllstand, aktive Spule, Feuchte-Stufe), Fehlercodes und bei
+  **P1P, P1S, A1 und A1 mini ein Kamerabild** (Einzelbild per Knopfdruck). Auf der Startseite zeigt eine Karte "Drucker live" alle verbundenen Drucker.
+  - **Einrichten:** Am Drucker unter Einstellungen → WLAN/Netzwerk den *LAN-Modus* aktivieren - dort stehen IP-Adresse und der 8-stellige *Zugangscode*; die Seriennummer steht unter
+    Einstellungen → Gerät. Im Drucker-Formular Modell, IP-Adresse, Seriennummer und Zugangscode eintragen, "Verbindung testen", speichern.
+  - **Nur lesend:** Die Software sendet nie Befehle (Pause/Stopp/Start) an den Drucker; der Zugangscode wird verschlüsselt gespeichert und nie angezeigt.
+  - **Druckverlauf und Betriebsstunden:** Erkannte Drucke (Start, Ende, Ergebnis fertig/abgebrochen/fehlgeschlagen) werden gespeichert; je Drucker sehen Sie die erfassten
+    Druckstunden im Vergleich zur eingetragenen Lebensdauer. Die Zählung beginnt mit der Einrichtung und enthält Pausen.
+  - **Voraussetzungen:** Der Server muss den Drucker im Netzwerk erreichen (gleiches Heimnetz oder VPN, z.B. Tailscale); feste IP-Adresse im Router reservieren; es sind nur
+    Adressen aus dem eigenen Netz erlaubt. Je nach Modell/Firmware schränkt der LAN-Modus die Bambu-Cloud (Handy-App von unterwegs) ein - Bambu ändert das gelegentlich.
+    Pro Drucker besteht eine dauerhafte Verbindung; gleichzeitige Verbindungen anderer Programme (Home Assistant, Bambu Studio im LAN) können sich je nach Modell gegenseitig verdrängen.
+  - Kamerabild bei X1/P2S/H2 (Videostrom) wird nicht unterstützt. Andere Hersteller (Prusa, Creality ...) sind nicht angebunden.
 - **Produktionsboard** (Menüpunkt *Produktion*): Jede Auftragsbestätigung erscheint als Karte in den Spalten **Erstellt → In Produktion → Versandbereit → Versendet**.
   Karten per Ziehen oder mit den Pfeil-Knöpfen (auch am Handy) verschieben; eine Notiz pro Karte (z.B. Farbe, Sendungsnummer). Die Karte zeigt Positionen, Betrag,
   gewünschtes Lieferdatum (rot, wenn überschritten) und eine geschätzte Druckzeit (wenn der Positionstext dem Namen eines Produkts mit Druckzeit entspricht).
