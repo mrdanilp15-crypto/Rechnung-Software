@@ -6,8 +6,10 @@ import "./index.css";
 import App from "./App";
 import { ToastProvider } from "./components/Toast";
 import { installNumberInputHelpers } from "./numberInputs";
+import { applyAppearance, cachedAppearance } from "./theme/appearance";
 
 installNumberInputHelpers();
+applyAppearance(cachedAppearance());
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

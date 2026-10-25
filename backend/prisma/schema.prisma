@@ -55,6 +55,9 @@ model Company {
   // Fehldruckquote (Prozentaufschlag auf Strom, Abschreibung und Verschleiß), Plattform-/Zahlungsgebühren (Prozent vom
   // Verkaufspreis), Rundung des Preisvorschlags (NONE, 5, 10, 50, 100 = auf volle Cent-Schritte aufrunden, 90/99 = Preis endet auf ,90/,99)
   // und Mindestpreis je Einheit in Cent.
+  // Darstellung der Oberfläche: Akzentfarbe (#rrggbb) und Stil des dunklen Designs ("warm" oder "cool")
+  uiAccent                String @default("#2563eb")
+  uiDarkStyle             String @default("warm")
   failRatePercent         Float  @default(5)
   platformFeePercent      Float  @default(0)
   priceRounding           String @default("NONE")

@@ -6,6 +6,7 @@ import { RowActionsMenu, RowAction } from "../components/RowActionsMenu";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { useToast } from "../components/Toast";
 import { RecurringDialog } from "../components/RecurringDialog";
+import { StatusChip } from "../components/StatusChip";
 
 type Kind = "INVOICE" | "QUOTE" | "ORDER_CONFIRMATION" | "DELIVERY_NOTE";
 
@@ -38,21 +39,6 @@ const kindLabel = (row: { kind: Kind; invoiceKind?: string }) =>
 
 const money = (cents: number | null) => (cents === null ? "-" : new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100));
 const formatDate = (iso?: string | null) => (iso ? new Intl.DateTimeFormat("de-DE").format(new Date(iso)) : "-");
-
-function statusInfo(row: DocRow): { label: string; className: string } {
-  if (row.isCancellationDocument) return { label: "Korrekturbeleg", className: "bg-amber-100 text-amber-800" };
-  switch (row.status) {
-    case "DRAFT": return { label: "Entwurf", className: "bg-amber-100 text-amber-800" };
-    case "SENT": return row.kind === "INVOICE" || row.kind === "QUOTE" ? { label: "Versendet", className: "bg-blue-100 text-blue-700" } : { label: "Fertig", className: "bg-green-100 text-green-700" };
-    case "PAID": return { label: "Bezahlt", className: "bg-green-100 text-green-700" };
-    case "OVERDUE": return { label: "Überfällig", className: "bg-red-100 text-red-700" };
-    case "CANCELLED": return { label: "Storniert", className: "bg-slate-100 text-slate-500 line-through" };
-    case "ACCEPTED": return { label: "Angenommen", className: "bg-green-100 text-green-700" };
-    case "DECLINED": return { label: "Abgelehnt", className: "bg-red-100 text-red-700" };
-    case "EXPIRED": return { label: "Abgelaufen", className: "bg-slate-100 text-slate-500" };
-    default: return { label: row.status, className: "bg-slate-100 text-slate-600" };
-  }
-}
 
 const ROW_COLUMNS = "90px 130px 1fr 90px 100px 110px 230px";
 
@@ -252,8 +238,7 @@ export default function Documents() {
           <span></span>
         </div>
         {visible.map((row) => {
-          const st = statusInfo(row);
-          const badge = <span className={`px-2 py-0.5 rounded-full text-xs ${st.className}`}>{st.label}</span>;
+          const badge = <StatusChip status={row.status} kind={row.kind} isCancellationDocument={row.isCancellationDocument} />;
           const actions = (
             <div className="flex gap-2 justify-end items-center flex-wrap">
               {row.hasNext && <span className="text-xs text-green-600" title="Daraus wurde bereits ein Folgebeleg erstellt">✓ weitergeführt</span>}

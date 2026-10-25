@@ -11,6 +11,7 @@ import Users from "./Users";
 import { useToast } from "../components/Toast";
 import { PlaceholderHint } from "../components/DocumentTexts";
 import AuditLog from "./AuditLog";
+import { ACCENTS, applyAppearance, cacheAppearance, DEFAULT_APPEARANCE, type DarkStyle } from "../theme/appearance";
 
 interface Company {
   name: string;
@@ -42,6 +43,8 @@ interface Company {
   targetMarginPercent?: number;
   electricityCentsPerKwh?: number;
   overheadPercent?: number;
+  uiAccent?: string;
+  uiDarkStyle?: string;
   failRatePercent?: number;
   platformFeePercent?: number;
   priceRounding?: string;
@@ -84,6 +87,7 @@ const TABS = [
   { key: "password", label: "Passwort" },
   { key: "users", label: "Benutzer" },
   { key: "branding", label: "Logo & Stempel" },
+  { key: "appearance", label: "Darstellung" },
   { key: "design", label: "Beleg-Design" },
   { key: "dunning", label: "Mahnwesen" },
   { key: "email", label: "E-Mail-Versand" },
@@ -126,6 +130,16 @@ export default function Settings() {
   useEffect(() => {
     if (user?.role === "ADMIN") api.get("/auth/me").then((res) => setTotpEnabled(res.data.totpEnabled));
   }, [user?.role]);
+
+  // Vorschau: Auswahl sofort anwenden (gespeichert wird erst mit "Speichern")
+  function pickAppearance(patch: { uiAccent?: string; uiDarkStyle?: DarkStyle }) {
+    if (!company) return;
+    const next = { ...company, ...patch };
+    setCompany(next);
+    const a = { accent: next.uiAccent ?? DEFAULT_APPEARANCE.accent, darkStyle: (next.uiDarkStyle === "cool" ? "cool" : "warm") as DarkStyle };
+    applyAppearance(a);
+    cacheAppearance(a);
+  }
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -569,6 +583,72 @@ export default function Settings() {
       )}
 
       {tab === "audit" && user?.role === "ADMIN" && <AuditLog />}
+
+      {tab === "appearance" && user?.role === "ADMIN" && (
+        <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-6">
+          <div>
+            <h2 className="font-medium">Darstellung des Programms</h2>
+            <p className="text-sm text-slate-500">Gilt für alle Benutzer und Geräte. Die Belege (PDF) haben ihre eigene Farbe unter "Logo &amp; Stempel" - hier geht es nur um die Oberfläche. Änderungen sehen Sie sofort; mit "Speichern" werden sie dauerhaft übernommen.</p>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold mb-2">Akzentfarbe</h3>
+            <div className="flex flex-wrap gap-2">
+              {ACCENTS.map((a) => {
+                const selected = (company.uiAccent ?? DEFAULT_APPEARANCE.accent).toLowerCase() === a.hex;
+                return (
+                  <button
+                    key={a.hex}
+                    type="button"
+                    onClick={() => pickAppearance({ uiAccent: a.hex })}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm ${selected ? "border-brand ring-2 ring-brand/40" : "border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
+                    aria-pressed={selected}
+                  >
+                    <span className="w-5 h-5 rounded-full shrink-0" style={{ background: a.hex }} />
+                    {a.label}
+                  </button>
+                );
+              })}
+              <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700">
+                <input type="color" value={company.uiAccent ?? DEFAULT_APPEARANCE.accent} onChange={(e) => pickAppearance({ uiAccent: e.target.value })} className="w-6 h-6 rounded border-0 p-0 bg-transparent cursor-pointer" />
+                Eigene Farbe
+              </label>
+            </div>
+            <p className="text-xs text-slate-500 mt-2">Gilt für Knöpfe, Menü, Links und Diagramme. Wählen Sie eine Farbe, auf der weiße Schrift gut lesbar ist (nicht zu hell).</p>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold mb-2">Dunkles Design</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
+              {(
+                [
+                  ["warm", "Warm", "Braune, weiche Töne - wirkt wie eine Werkstatt, schont die Augen.", "#1d1611", "#2a2118"],
+                  ["cool", "Kühl", "Klassisches Blau-Schwarz.", "#0f172a", "#1e293b"],
+                ] as const
+              ).map(([key, title, text, bg, card]) => {
+                const selected = (company.uiDarkStyle ?? DEFAULT_APPEARANCE.darkStyle) === key;
+                return (
+                  <button key={key} type="button" onClick={() => pickAppearance({ uiDarkStyle: key })} className={`text-left rounded-lg border p-3 ${selected ? "border-brand ring-2 ring-brand/40" : "border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`} aria-pressed={selected}>
+                    <span className="flex gap-1 mb-2 rounded-md p-2" style={{ background: bg }}>
+                      <span className="h-6 w-1/3 rounded" style={{ background: card }} />
+                      <span className="h-6 flex-1 rounded" style={{ background: card }} />
+                      <span className="h-6 w-6 rounded" style={{ background: "rgb(var(--brand))" }} />
+                    </span>
+                    <span className="block font-medium text-sm">{title}</span>
+                    <span className="block text-xs text-slate-500">{text}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-slate-500 mt-2">Den Wechsel zwischen hell und dunkel finden Sie unten im Menü (Mond/Sonne) - er gilt je Gerät.</p>
+          </div>
+
+          {companyError && <p className="text-red-600 text-sm">{companyError}</p>}
+          <SaveButton status={companySave.status} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
+            {t("common.save")}
+          </SaveButton>
+        </form>
+      )}
 
       {tab === "design" && user?.role === "ADMIN" && (
         <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-5">

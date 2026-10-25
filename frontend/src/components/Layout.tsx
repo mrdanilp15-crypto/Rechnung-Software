@@ -6,18 +6,20 @@ import { useDarkMode } from "../theme/useDarkMode";
 import { setLocale } from "../i18n";
 import { api } from "../api/client";
 import { GlobalSearch } from "./GlobalSearch";
+import { Icon, type IconName } from "./Icon";
+import { setAppearanceFromCompany } from "../theme/appearance";
 
 // Sieben Hauptpunkte statt zwölf: alle Belegarten stehen unter "Belege", Produkte und Material unter "Katalog".
 // "match" bestimmt, welche Unterseiten den Menüpunkt hervorheben.
-const navItems = [
-  { to: "/", key: "start", match: [] as string[] },
-  { to: "/documents", key: "documents", match: ["/documents", "/invoices", "/quotes", "/order-confirmations", "/delivery-notes", "/recurring"] },
-  { to: "/customers", key: "customers", match: ["/customers"] },
-  { to: "/catalog", key: "catalog", match: ["/catalog", "/products", "/materials"] },
-  { to: "/finance", key: "finance", match: ["/finance"] },
-  { to: "/archive", key: "archive", match: ["/archive"] },
-  { to: "/settings", key: "settings", match: ["/settings", "/audit-log"] },
-] as const;
+const navItems: readonly { to: string; key: string; icon: IconName; match: readonly string[] }[] = [
+  { to: "/", key: "start", icon: "home", match: [] },
+  { to: "/documents", key: "documents", icon: "document", match: ["/documents", "/invoices", "/quotes", "/order-confirmations", "/delivery-notes", "/recurring"] },
+  { to: "/customers", key: "customers", icon: "users", match: ["/customers"] },
+  { to: "/catalog", key: "catalog", icon: "cube", match: ["/catalog", "/products", "/materials"] },
+  { to: "/finance", key: "finance", icon: "chart", match: ["/finance"] },
+  { to: "/archive", key: "archive", icon: "archive", match: ["/archive"] },
+  { to: "/settings", key: "settings", icon: "cog", match: ["/settings", "/audit-log"] },
+];
 
 export default function Layout() {
   const { t, i18n } = useTranslation();
@@ -43,6 +45,11 @@ export default function Layout() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Akzentfarbe und Dunkel-Stil der Firma übernehmen (gelten auf allen Geräten)
+  useEffect(() => {
+    api.get("/companies/me").then((res) => setAppearanceFromCompany(res.data)).catch(() => {});
+  }, []);
+
   useEffect(() => {
     setMobileNavOpen(false);
     setQuickOpen(false);
@@ -53,7 +60,7 @@ export default function Layout() {
   const sidebarContent = (
     <>
       <div className="flex items-center justify-between mb-6 md:block">
-        <h1 className="text-lg font-semibold text-brand">{t("app.title")}</h1>
+        <h1 className="text-lg font-semibold text-brand tracking-tight">{t("app.title")}</h1>
         <button
           onClick={() => setMobileNavOpen(false)}
           className="md:hidden w-8 h-8 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
@@ -65,9 +72,9 @@ export default function Layout() {
       <button
         type="button"
         onClick={() => setSearchOpen(true)}
-        className="mb-3 w-full flex items-center justify-between px-3 py-2 rounded-md text-sm border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
+        className="mb-3 w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
       >
-        <span>Suchen ...</span>
+        <span className="flex items-center gap-2"><Icon name="search" className="w-4 h-4" />Suchen ...</span>
         <span className="text-xs hidden md:inline">Strg K</span>
       </button>
       <nav className="flex flex-col gap-1 flex-1">
@@ -78,13 +85,14 @@ export default function Layout() {
             end={item.to === "/"}
             className={({ isActive }) => {
               const active = isActive || item.match.some((m) => location.pathname === m || location.pathname.startsWith(`${m}/`));
-              return `px-3 py-2 rounded-md text-sm ${
+              return `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 active
-                  ? "bg-brand text-white"
+                  ? "bg-brand text-white shadow-sm"
                   : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
               }`;
             }}
           >
+            <Icon name={item.icon} className="w-5 h-5 shrink-0" />
             {t(`nav.${item.key}`)}
           </NavLink>
         ))}
@@ -92,8 +100,8 @@ export default function Layout() {
       <div className="flex flex-col gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
         <div className="flex items-center justify-between text-sm">
           <span>{t("settings.darkMode")}</span>
-          <button onClick={toggle} className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800">
-            {isDark ? "🌙" : "☀️"}
+          <button onClick={toggle} className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700" aria-label={t("settings.darkMode")}>
+            <Icon name={isDark ? "moon" : "sun"} className="w-4 h-4" />
           </button>
         </div>
         <div className="flex items-center justify-between text-sm">
@@ -158,13 +166,32 @@ export default function Layout() {
 
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-      <main className="flex-1 p-4 pt-20 md:p-6 md:pt-6 overflow-auto min-w-0">
+      <main className={`flex-1 p-4 pt-20 md:p-8 md:pt-8 overflow-auto min-w-0 ${inEditor ? "" : "pb-24 md:pb-8"}`}>
         <Outlet />
       </main>
 
+      {/* Mobil: feste Leiste unten mit den wichtigsten Bereichen (große Tippflächen), "Mehr" öffnet das ganze Menü */}
+      {!inEditor && (
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 h-16 grid grid-cols-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pb-[env(safe-area-inset-bottom)]" aria-label="Hauptmenü">
+          {navItems.slice(0, 4).map((item) => {
+            const active = item.to === "/" ? location.pathname === "/" : [item.to, ...item.match].some((m) => location.pathname === m || location.pathname.startsWith(`${m}/`));
+            return (
+              <NavLink key={item.to} to={item.to} className={`flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${active ? "text-brand" : "text-slate-500"}`}>
+                <Icon name={item.icon} className="w-6 h-6" />
+                {t(`nav.${item.key}`)}
+              </NavLink>
+            );
+          })}
+          <button type="button" onClick={() => setMobileNavOpen(true)} className="flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-slate-500">
+            <Icon name="more" className="w-6 h-6" />
+            Mehr
+          </button>
+        </nav>
+      )}
+
       {/* Mobil: "+"-Knopf für die häufigsten Aktionen */}
       {!inEditor && (
-        <div className="md:hidden fixed bottom-5 right-5 z-20">
+        <div className="md:hidden fixed bottom-20 right-4 z-20">
           {quickOpen && (
             <div className="absolute bottom-14 right-0 w-52 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 text-sm">
               <button onClick={() => navigate("/invoices/new")} className="block w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700">Neue Rechnung</button>

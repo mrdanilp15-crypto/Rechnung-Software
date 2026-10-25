@@ -104,5 +104,13 @@ documentsRouter.get("/stats", async (req, res) => {
     }
   }
   const topCustomers = [...byCustomer.values()].sort((a, b) => b.revenueCents - a.revenueCents).slice(0, 10);
-  res.json({ months, topCustomers, yearRevenueCents });
+  // Ausgaben je Monat (Belegdatum, brutto) für das Diagramm "Einnahmen und Ausgaben"
+  const expenses = await prisma.expense.findMany({ where: { companyId, date: { gte: start } }, select: { date: true, amountCents: true } });
+  const expenseMonths = months.map((m) => ({ month: m.month, expenseCents: 0 }));
+  for (const e of expenses) {
+    const key = `${e.date.getFullYear()}-${String(e.date.getMonth() + 1).padStart(2, "0")}`;
+    const bucket = expenseMonths.find((m) => m.month === key);
+    if (bucket) bucket.expenseCents += e.amountCents;
+  }
+  res.json({ months, expenseMonths, topCustomers, yearRevenueCents });
 });

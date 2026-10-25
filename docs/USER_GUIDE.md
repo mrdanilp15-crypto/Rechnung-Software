@@ -159,6 +159,11 @@ In der Rechnungsdetailansicht:
   Umsatzsteuer-Voranmeldung, es wird nach vereinbarten Entgelten gerechnet) und ein ZIP mit allen Rechnungs-PDFs, Belegliste und
   Ausgaben. Es ist **kein DATEV-Format**. Grenzüberschreitende Fälle (innergemeinschaftliche Lieferung, Reverse-Charge) lassen Sie
   bitte von Ihrem Steuerberater bestätigen.
+- **Darstellung** (*Einstellungen → Darstellung*, nur Admin): **Akzentfarbe** für Knöpfe, Menü, Links und Diagramme (acht Vorschläge oder eigene Farbe)
+  und **Stil des dunklen Designs** (warm = braune Töne, kühl = Blau-Schwarz). Gilt für alle Benutzer und Geräte; die PDF-Belege haben ihre eigene
+  Farbe unter "Logo & Stempel". Hell/Dunkel wechseln Sie unten im Menü (Mond/Sonne, je Gerät). Am Handy gibt es eine Leiste unten mit Start, Belege,
+  Kunden, Katalog und "Mehr" (öffnet das ganze Menü). Die **Startseite** zeigt Umsatz, Ausgaben und Ergebnis des Monats, offene Posten, ein
+  Diagramm Umsatz/Ausgaben der letzten 12 Monate, die Rechnungen nach Status und die letzte Aktivität.
 - **Belegarchiv** (Menüpunkt *Belegarchiv*): Ablage für alle Unterlagen, die nicht in der Software entstehen - Eingangsrechnungen,
   Quittungen, Kontoauszüge, Verträge, Versicherungen, Bescheide, Schriftverkehr. Hochladen per Klick oder Drag & Drop (bis zu 20 Dateien
   gleichzeitig; PDF, Fotos, Word/Excel/LibreOffice, CSV, Text, XML, ZIP; je Datei max. 25 MB). Je Dokument: Titel, Kategorie, Belegdatum,

@@ -57,6 +57,8 @@ const updateCompanySchema = z.object({
   targetMarginPercent: z.number().min(0).max(1000).optional(),
   electricityCentsPerKwh: z.number().min(0).max(10_000).optional(),
   overheadPercent: z.number().min(0).max(1000).optional(),
+  uiAccent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  uiDarkStyle: z.enum(["warm", "cool"]).optional(),
   failRatePercent: z.number().min(0).max(500).optional(),
   platformFeePercent: z.number().min(0).max(90).optional(),
   priceRounding: z.enum(["NONE", "5", "10", "50", "100", "90", "99"]).optional(),

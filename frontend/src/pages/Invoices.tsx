@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { InfoBox } from "../components/InfoBox";
 import { MobileCard, MobileField } from "../components/MobileCard";
+import { StatusChip } from "../components/StatusChip";
 
 interface Invoice {
   id: string;
@@ -16,14 +17,6 @@ interface Invoice {
   isCancellationDocument?: boolean;
   customer: { name: string };
 }
-
-const statusColors: Record<string, string> = {
-  DRAFT: "bg-slate-200 text-slate-700",
-  SENT: "bg-blue-100 text-blue-700",
-  PAID: "bg-green-100 text-green-700",
-  OVERDUE: "bg-red-100 text-red-700",
-  CANCELLED: "bg-slate-100 text-slate-400 line-through",
-};
 
 const ROW_COLUMNS = "28px 130px 1fr 100px 100px 110px 100px 70px";
 const formatDate = (iso?: string) => (iso ? new Intl.DateTimeFormat("de-DE").format(new Date(iso)) : "-");
@@ -130,13 +123,7 @@ export default function Invoices() {
           {invoices.map((inv) => {
             // Korrekturbelege (Storno/Gutschrift) erhalten statt "Versendet" eine eigene Kennzeichnung -
             // sonst sind sie in der Liste nicht von normalen Rechnungen zu unterscheiden.
-            const statusBadge = inv.isCancellationDocument ? (
-              <span className="px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800">{t("invoices.creditNote")}</span>
-            ) : (
-              <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[inv.status] ?? ""}`}>
-                {t(`invoices.${inv.status.toLowerCase()}`)}
-              </span>
-            );
+            const statusBadge = <StatusChip status={inv.status} kind="INVOICE" isCancellationDocument={inv.isCancellationDocument} />;
             const emailStatus = inv.emailStatus === "SENT" ? "✓ gesendet" : inv.emailStatus === "FAILED" ? "✕ Fehler" : "-";
             const checkbox = (
               <input

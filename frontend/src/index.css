@@ -2,6 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Farben als RGB-Tripel, damit Tailwind Deckkraft-Varianten (z.B. bg-slate-900/40) bilden kann. Die Akzentfarbe (--brand) wird zur Laufzeit
+   aus den Einstellungen gesetzt (src/theme/appearance.ts); die Werte hier gelten bis dahin. */
+:root {
+  --brand: var(--brand-light, 37 99 235);
+  --brand-dark: var(--brand-dark-light, 29 78 216);
+  --slate-50: 248 250 252;
+  --slate-100: 241 245 249;
+  --slate-200: 226 232 240;
+  --slate-300: 203 213 225;
+  --slate-400: 148 163 184;
+  --slate-500: 100 116 139;
+  --slate-600: 71 85 105;
+  --slate-700: 51 65 85;
+  --slate-800: 30 41 59;
+  --slate-900: 15 23 42;
+  --slate-950: 2 6 23;
+}
+/* Im dunklen Design ist die Akzentfarbe etwas heller, damit Text und Knöpfe auf dunklem Grund gut lesbar bleiben */
+html.dark {
+  --brand: var(--brand-dm, 59 130 246);
+  --brand-dark: var(--brand-dark-dm, 37 99 235);
+}
+/* Dunkles Design "warm": braune Töne statt Blau-Schwarz (Auswahl unter Einstellungen -> Darstellung) */
+html.dark.theme-warm {
+  --slate-50: 250 246 241;
+  --slate-100: 241 235 226;
+  --slate-200: 229 220 207;
+  --slate-300: 205 191 174;
+  --slate-400: 179 163 146;
+  --slate-500: 154 136 120;
+  --slate-600: 94 78 66;
+  --slate-700: 62 49 39;
+  --slate-800: 42 33 26;
+  --slate-900: 29 22 17;
+  --slate-950: 22 17 13;
+}
+/* Im dunklen Design heben feine Rahmen die Karten ab (Schatten sieht man auf dunklem Grund kaum) */
+html.dark .shadow {
+  box-shadow: 0 0 0 1px rgb(var(--slate-700) / 0.7);
+}
+
 /* Ohne color-scheme rendert Chrome/Edge native Formularelemente (Dropdown-Popups,
    Datepicker) weiterhin mit hellem OS-Standard-Hintergrund, während der geerbte
    Textcolor aus dem Dark-Theme (fast weiß) übernommen wird -> unlesbarer Text auf
