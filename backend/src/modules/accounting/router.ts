@@ -9,6 +9,7 @@ import { requireAuth, requireRole } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { env } from "../../config/env";
+import { bookValueAtYearEnd, depreciationForYear } from "../assets/depreciation";
 import { generateAndStoreInvoicePdf } from "../invoices/pdfHelper";
 
 export const accountingRouter = Router();
@@ -203,6 +204,25 @@ accountingRouter.get("/package", requireRole("ADMIN", "BUCHHALTUNG"), async (req
       fs.writeFileSync(path.join(root, "archiv.csv"), csv(archiveRows, ["Datum", "Titel", "Kategorie", "Aussteller", "Betrag", "Tags", "Notizen", "Datei"]));
     }
 
+    // Anlageverzeichnis: alle bis zum Jahresende angeschafften Güter mit AfA des Jahres und Restbuchwert
+    const assets = await prisma.asset.findMany({ where: { companyId, purchaseDate: { lt: to } }, orderBy: { purchaseDate: "asc" } });
+    if (assets.length > 0) {
+      const assetRows = assets.map((a) => {
+        const input = { purchaseDate: a.purchaseDate, costCents: a.costCents, method: a.method as "GWG" | "LINEAR", usefulLifeYears: a.usefulLifeYears };
+        return {
+          Bezeichnung: a.name,
+          Anschaffung: dateDe(a.purchaseDate),
+          Anschaffungskosten: eurDe(a.costCents),
+          Methode: a.method === "GWG" ? "GWG (Sofortabzug)" : "linear",
+          Nutzungsdauer_Jahre: a.usefulLifeYears ?? "",
+          AfA_im_Jahr: eurDe(depreciationForYear(input, year)?.amountCents ?? 0),
+          Restbuchwert_Jahresende: eurDe(bookValueAtYearEnd(input, year)),
+          Notizen: a.notes ?? "",
+        };
+      });
+      fs.writeFileSync(path.join(root, "anlagenverzeichnis.csv"), csv(assetRows, ["Bezeichnung", "Anschaffung", "Anschaffungskosten", "Methode", "Nutzungsdauer_Jahre", "AfA_im_Jahr", "Restbuchwert_Jahresende", "Notizen"]));
+    }
+
     // Umsatzsteuer je Quartal + Jahr
     const vatRows: Record<string, unknown>[] = [];
     for (const period of ["q1", "q2", "q3", "q4", "year"]) {
@@ -233,6 +253,7 @@ accountingRouter.get("/package", requireRole("ADMIN", "BUCHHALTUNG"), async (req
         "umsatzsteuer-uebersicht.csv  Umsätze nach Steuersätzen/Befreiungen je Quartal und Jahr (Sollversteuerung, Rechnungsdatum)",
         "rechnungen/               Rechnungs-PDFs (PDF/A-3b, soweit eine Schrift eingebettet werden konnte)",
         "belege/                   hochgeladene Ausgabenbelege",
+        "anlagenverzeichnis.csv    Anlagegüter mit Abschreibung (AfA) im Jahr und Restbuchwert; mit einer Anlage verknüpfte Ausgaben stehen in ausgaben.csv mit dem vollen Betrag, zählen in der EÜR aber nur als AfA",
         "archiv.csv, archiv/       Dokumente aus dem Belegarchiv mit Belegdatum im Jahr (Eingangsrechnungen, Quittungen, Verträge ...)",
         "",
         "Hinweise:",

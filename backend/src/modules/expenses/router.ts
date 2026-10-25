@@ -10,6 +10,7 @@ import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { env } from "../../config/env";
 import { importExpenseReceipt } from "../archive/service";
+import { depreciationForYear } from "../assets/depreciation";
 import { logger } from "../../utils/logger";
 
 export const expensesRouter = Router();
@@ -32,7 +33,8 @@ expensesRouter.get("/", async (req, res) => {
     where.date = { gte: new Date(Number(year), 0, 1), lt: new Date(Number(year) + 1, 0, 1) };
   }
   const expenses = await prisma.expense.findMany({ where, orderBy: { date: "desc" } });
-  res.json(expenses);
+  const linked = new Set((await prisma.asset.findMany({ where: { companyId: req.auth!.companyId, expenseId: { not: null } }, select: { expenseId: true } })).map((a) => a.expenseId));
+  res.json(expenses.map((e) => ({ ...e, inAssetRegister: linked.has(e.id) })));
 });
 
 const expenseSchema = z.object({
@@ -42,7 +44,21 @@ const expenseSchema = z.object({
   amountCents: z.number().int().positive(),
   vatRateBps: z.number().int().min(0).max(10000).default(1900),
   description: z.string().optional(),
+  supplierId: z.string().nullish(),
 });
+
+// Lieferant der Ausgabe: ausdrücklich gewählt oder - bei gleichem Namen wie ein Lieferant - automatisch verknüpft
+async function resolveSupplierId(companyId: string, vendor: string | undefined, supplierId: string | null | undefined): Promise<string | null | undefined> {
+  if (supplierId) {
+    const s = await prisma.supplier.findFirst({ where: { id: supplierId, companyId }, select: { id: true } });
+    if (!s) throw new HttpError(400, "Lieferant nicht gefunden");
+    return s.id;
+  }
+  if (supplierId === null) return null;
+  if (!vendor) return undefined;
+  const byName = await prisma.supplier.findFirst({ where: { companyId, isArchived: false, name: { equals: vendor.trim(), mode: "insensitive" } }, select: { id: true } });
+  return byName?.id;
+}
 
 expensesRouter.post("/", upload.single("receipt"), async (req, res) => {
   const body = expenseSchema.parse({
@@ -60,8 +76,9 @@ expensesRouter.post("/", upload.single("receipt"), async (req, res) => {
     receiptPath = finalPath;
   }
 
+  const supplierId = await resolveSupplierId(req.auth!.companyId, body.vendor, body.supplierId);
   const expense = await prisma.expense.create({
-    data: { ...body, companyId: req.auth!.companyId, receiptPath },
+    data: { ...body, supplierId: supplierId ?? null, companyId: req.auth!.companyId, receiptPath },
   });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "expense.create", entityType: "Expense", entityId: expense.id });
   // Beleg zusätzlich im Belegarchiv ablegen (durchsuchbar); ein Fehler dabei darf das Anlegen der Ausgabe nicht verhindern
@@ -73,7 +90,8 @@ expensesRouter.patch("/:id", async (req, res) => {
   const existing = await prisma.expense.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!existing) throw new HttpError(404, "Ausgabe nicht gefunden");
   const body = expenseSchema.partial().parse(req.body);
-  const updated = await prisma.expense.update({ where: { id: existing.id }, data: body });
+  const supplierId = await resolveSupplierId(req.auth!.companyId, body.vendor, body.supplierId);
+  const updated = await prisma.expense.update({ where: { id: existing.id }, data: { ...body, ...(supplierId !== undefined ? { supplierId } : {}) } });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "expense.update", entityType: "Expense", entityId: existing.id });
   res.json(updated);
 });
@@ -117,20 +135,40 @@ async function computeEuer(companyId: string, year: number) {
     ...paidOriginals,
     ...refunds.map((r) => ({ invoiceNumber: r.invoiceNumber, paidAt: r.issueDate as Date | null, totalCents: r.totalCents, customer: r.customer })),
   ];
+  // Anlagegüter: Statt der vollen Anschaffungsausgabe zählt die Abschreibung (AfA) des Jahres bzw. bei GWG der Sofortabzug.
+  // Ausgaben, die mit einer Anlage verknüpft sind, werden deshalb hier nicht noch einmal gezählt.
+  const assets = await prisma.asset.findMany({ where: { companyId } });
+  const linkedExpenseIds = assets.map((a) => a.expenseId).filter((id): id is string => !!id);
   const expenses = await prisma.expense.findMany({
-    where: { companyId, date: { gte: yearStart, lt: yearEnd } },
+    where: { companyId, date: { gte: yearStart, lt: yearEnd }, ...(linkedExpenseIds.length ? { id: { notIn: linkedExpenseIds } } : {}) },
   });
+  const afaItems = assets
+    .map((a) => ({ asset: a, afa: depreciationForYear({ purchaseDate: a.purchaseDate, costCents: a.costCents, method: a.method as "GWG" | "LINEAR", usefulLifeYears: a.usefulLifeYears }, year) }))
+    .filter((x) => x.afa && x.afa.amountCents > 0)
+    .map((x) => ({ name: x.asset.name, method: x.asset.method, purchaseDate: x.asset.purchaseDate, amountCents: x.afa!.amountCents, months: x.afa!.months }));
 
   const incomeCents = paidInvoices.reduce((sum, i) => sum + i.totalCents, 0);
-  const expenseCents = expenses.reduce((sum, e) => sum + e.amountCents, 0);
+  const afaCents = afaItems.reduce((sum, a) => sum + a.amountCents, 0);
+  const expenseCents = expenses.reduce((sum, e) => sum + e.amountCents, 0) + afaCents;
 
   const expensesByCategory: Record<string, number> = {};
   for (const e of expenses) expensesByCategory[e.category] = (expensesByCategory[e.category] ?? 0) + e.amountCents;
+  if (afaCents > 0) expensesByCategory["Abschreibung (AfA/GWG)"] = afaCents;
 
   // Monatsverlauf für das Diagramm: Einnahmen nach Zahlungseingang, Ausgaben nach Belegdatum
   const months = Array.from({ length: 12 }, (_, i) => ({ month: i + 1, incomeCents: 0, expenseCents: 0 }));
   for (const inv of paidInvoices) if (inv.paidAt) months[inv.paidAt.getMonth()].incomeCents += inv.totalCents;
   for (const e of expenses) months[e.date.getMonth()].expenseCents += e.amountCents;
+  // AfA gleichmäßig auf die Monate verteilen, in denen das Gut im Jahr genutzt wird (GWG: Anschaffungsmonat)
+  for (const a of afaItems) {
+    if (a.method === "GWG") {
+      months[a.purchaseDate.getMonth()].expenseCents += a.amountCents;
+    } else {
+      const first = a.purchaseDate.getFullYear() === year ? a.purchaseDate.getMonth() : 0;
+      const active = 12 - first;
+      for (let m = first; m < 12; m++) months[m].expenseCents += Math.round(a.amountCents / active);
+    }
+  }
 
   return {
     year,
@@ -139,15 +177,17 @@ async function computeEuer(companyId: string, year: number) {
     expenseCents,
     surplusCents: incomeCents - expenseCents,
     expensesByCategory,
+    afaCents,
     paidInvoices,
     expenses,
+    afaItems,
   };
 }
 
 expensesRouter.get("/euer/summary", async (req, res) => {
   const year = Number(req.query.year) || new Date().getFullYear();
   const summary = await computeEuer(req.auth!.companyId, year);
-  const { paidInvoices, expenses, ...rest } = summary;
+  const { paidInvoices, expenses, afaItems, ...rest } = summary;
   // Noch nicht bezahlte Rechnungen (Forderungen) - gehören nicht zur EÜR, sind aber für die Liquidität wichtig
   const open = await prisma.invoice.aggregate({
     where: { companyId: req.auth!.companyId, isCancellationDocument: false, status: { in: ["SENT", "OVERDUE"] } },
@@ -159,7 +199,7 @@ expensesRouter.get("/euer/summary", async (req, res) => {
 
 expensesRouter.get("/euer/export", async (req, res) => {
   const year = Number(req.query.year) || new Date().getFullYear();
-  const { paidInvoices, expenses } = await computeEuer(req.auth!.companyId, year);
+  const { paidInvoices, expenses, afaItems } = await computeEuer(req.auth!.companyId, year);
 
   const rows = [
     ...paidInvoices.map((i) => ({
@@ -175,6 +215,13 @@ expensesRouter.get("/euer/export", async (req, res) => {
       beschreibung: `${e.vendor}${e.description ? " - " + e.description : ""}`,
       kategorie: e.category,
       betragEur: (-e.amountCents / 100).toFixed(2),
+    })),
+    ...afaItems.map((a) => ({
+      typ: "Ausgabe",
+      datum: `${year}-12-31`,
+      beschreibung: `${a.method === "GWG" ? "GWG-Sofortabzug" : "Abschreibung (AfA)"}: ${a.name} (angeschafft ${a.purchaseDate.toISOString().slice(0, 10)})`,
+      kategorie: "Abschreibung (AfA/GWG)",
+      betragEur: (-a.amountCents / 100).toFixed(2),
     })),
   ].sort((a, b) => a.datum.localeCompare(b.datum));
 

@@ -13,9 +13,10 @@ interface Material {
   unit: string;
   stockQuantity: number;
   costPerUnitCents: number;
+  supplierId?: string | null;
 }
 
-const emptyForm = { name: "", unit: "g", stockQuantity: "0", initialCostEur: "", costPerUnitEur: "" };
+const emptyForm = { name: "", unit: "g", stockQuantity: "0", initialCostEur: "", costPerUnitEur: "", supplierId: "" };
 const emptyRestock = { quantity: "", totalCostEur: "", vendor: "" };
 
 const formatEuro = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
@@ -32,6 +33,7 @@ export default function Materials() {
   const [form, setForm] = useState(emptyForm);
   const [restockingId, setRestockingId] = useState<string | null>(null);
   const [restockForm, setRestockForm] = useState(emptyRestock);
+  const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const createSave = useSaveStatus();
   const restockSave = useSaveStatus();
@@ -41,6 +43,9 @@ export default function Materials() {
     api.get("/materials").then((res) => setMaterials(res.data));
   }
   useEffect(load, []);
+  useEffect(() => {
+    api.get("/suppliers").then((res) => setSuppliers(res.data)).catch(() => setSuppliers([]));
+  }, []);
 
   function startCreate() {
     setEditingId(null);
@@ -56,6 +61,7 @@ export default function Materials() {
       stockQuantity: String(m.stockQuantity),
       initialCostEur: "",
       costPerUnitEur: m.costPerUnitCents ? String(m.costPerUnitCents / 100) : "",
+      supplierId: m.supplierId ?? "",
     });
     setShowForm(true);
   }
@@ -64,7 +70,7 @@ export default function Materials() {
     e.preventDefault();
     setError(null);
     const stockQuantity = parseFloat(form.stockQuantity) || 0;
-    const payload: Record<string, unknown> = { name: form.name, unit: form.unit, stockQuantity };
+    const payload: Record<string, unknown> = { name: form.name, unit: form.unit, stockQuantity, supplierId: form.supplierId || null };
     if (editingId) {
       if (form.costPerUnitEur) payload.costPerUnitCents = parseFloat(form.costPerUnitEur) * 100;
     } else {
@@ -162,6 +168,14 @@ export default function Materials() {
               <p className="text-xs text-slate-500 mt-1">Was du für den oben angegebenen Bestand insgesamt bezahlt hast - der Preis/Einheit wird automatisch berechnet, eine Ausgabe automatisch angelegt.</p>
             </div>
           )}
+          <div className="sm:col-span-3">
+            <label className="block text-sm mb-1">Lieferant (optional)</label>
+            <select value={form.supplierId} onChange={(e) => setForm((f) => ({ ...f, supplierId: e.target.value }))} className="w-full sm:max-w-sm px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+              <option value="">Kein Lieferant</option>
+              {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            <p className="text-xs text-slate-500 mt-1">Wo Sie dieses Material normalerweise kaufen. Nachbestellungen werden auf diesen Lieferanten gebucht (Lieferanten pflegen Sie unter Katalog → Lieferanten).</p>
+          </div>
           <div className="sm:col-span-3 flex gap-2">
             <SaveButton status={createSave.status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">{editingId ? "Speichern" : "Anlegen"}</SaveButton>
             <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Abbrechen</button>
@@ -197,7 +211,7 @@ export default function Materials() {
           <div key={m.id}>
             {/* Desktop */}
             <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
-              <span className="font-medium truncate">{m.name}</span>
+              <span className="min-w-0"><span className="block font-medium truncate">{m.name}</span>{m.supplierId && <span className="block text-xs text-slate-500 truncate">{suppliers.find((s) => s.id === m.supplierId)?.name}</span>}</span>
               <span className="text-right">{stockValue}</span>
               <span className="text-right text-slate-500">{formatUnitPrice(m.costPerUnitCents)}/{m.unit}</span>
               {actions}

@@ -26,6 +26,9 @@ import { resetRouter } from "./modules/reset/router";
 import { printersRouter } from "./modules/printers/router";
 import { archiveRouter } from "./modules/archive/router";
 import { productionRouter } from "./modules/production/router";
+import { assetsRouter } from "./modules/assets/router";
+import { suppliersRouter } from "./modules/suppliers/router";
+import { orderImportRouter } from "./modules/orderImport/router";
 import { usersRouter } from "./modules/users/router";
 import { companiesRouter } from "./modules/companies/router";
 import { customersRouter } from "./modules/customers/router";
@@ -117,6 +120,9 @@ export function createApp() {
   app.use("/api/printers", printersRouter);
   app.use("/api/archive", archiveRouter);
   app.use("/api/production", productionRouter);
+  app.use("/api/assets", assetsRouter);
+  app.use("/api/suppliers", suppliersRouter);
+  app.use("/api/order-import", orderImportRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

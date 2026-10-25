@@ -9,6 +9,7 @@ export const ARCHIVE_CATEGORIES: { key: string; label: string; years: number; hi
   { key: "STEUER", label: "Steuer & Finanzamt", years: 10, hint: "Empfehlung: 10 Jahre (Steuerbescheide, Jahresabschlüsse)" },
   { key: "KORRESPONDENZ", label: "Geschäftsbrief / Korrespondenz", years: 6, hint: "Handelsbrief: 6 Jahre (§ 147 AO)" },
   { key: "ANGEBOT", label: "Angebot / Auftrag", years: 6, hint: "Handelsbrief: 6 Jahre (§ 147 AO)" },
+  { key: "DESIGN", label: "3D-Design / Druckdatei", years: 0, hint: "Modelle (STL, 3MF, STEP), Slicer-Projekte, G-Code - keine feste Frist" },
   { key: "SONSTIGES", label: "Sonstiges", years: 0, hint: "Keine feste Frist" },
 ];
 

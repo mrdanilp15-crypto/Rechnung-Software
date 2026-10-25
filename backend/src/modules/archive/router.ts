@@ -35,6 +35,7 @@ export const ARCHIVE_CATEGORIES = [
   "STEUER",
   "KORRESPONDENZ",
   "ANGEBOT",
+  "DESIGN",
   "SONSTIGES",
 ] as const;
 

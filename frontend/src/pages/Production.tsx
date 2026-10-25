@@ -5,6 +5,7 @@ import { Icon } from "../components/Icon";
 import { InfoBox } from "../components/InfoBox";
 import { StatusChip } from "../components/StatusChip";
 import { useToast } from "../components/Toast";
+import { EtsyImport } from "../components/EtsyImport";
 
 type ProductionStatus = "CREATED" | "IN_PRODUCTION" | "READY_TO_SHIP" | "SHIPPED";
 interface Order {
@@ -39,6 +40,7 @@ export default function Production() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAllShipped, setShowAllShipped] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overColumn, setOverColumn] = useState<ProductionStatus | null>(null);
 
@@ -98,9 +100,12 @@ export default function Production() {
             <input type="checkbox" checked={showAllShipped} onChange={(e) => setShowAllShipped(e.target.checked)} />
             auch ältere versendete
           </label>
+          <button type="button" onClick={() => setShowImport((v) => !v)} className="px-4 py-2 rounded-lg text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">{showImport ? "Import schließen" : "Etsy-Import"}</button>
           <Link to="/order-confirmations/new" className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-lg text-sm font-medium">+ Neuer Auftrag</Link>
         </div>
       </div>
+
+      {showImport && <EtsyImport onImported={() => { setShowImport(false); load(); }} />}
 
       <InfoBox title="So funktioniert das Produktionsboard">
         <p>Jede <strong>Auftragsbestätigung</strong> erscheint hier automatisch als Karte (Belege → Neuer Beleg → Auftragsbestätigung, oder aus einem Angebot heraus). Ziehen Sie eine Karte in die nächste Spalte oder nutzen Sie die Pfeile <strong>← →</strong> - das geht auch am Handy.</p>

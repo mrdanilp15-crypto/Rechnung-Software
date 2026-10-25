@@ -169,6 +169,16 @@ In der Rechnungsdetailansicht:
   Karten per Ziehen oder mit den Pfeil-Knöpfen (auch am Handy) verschieben; eine Notiz pro Karte (z.B. Farbe, Sendungsnummer). Die Karte zeigt Positionen, Betrag,
   gewünschtes Lieferdatum (rot, wenn überschritten) und eine geschätzte Druckzeit (wenn der Positionstext dem Namen eines Produkts mit Druckzeit entspricht).
   Versendete Aufträge verschwinden nach 14 Tagen vom Board. Der Produktionsstatus ändert weder Beleg noch Materialbestand.
+- **Etsy-Import** (*Produktion → Etsy-Import*): Etsy-Bestellungen aus dem CSV-Export ("Bestellte Artikel" unter Shop-Manager → Einstellungen → Optionen → Daten herunterladen)
+  übernehmen. Erst Vorschau mit Auswahl, dann werden je Bestellung ein Kunde (falls neu) und ein **Auftrag als Entwurf** angelegt, der direkt im Produktionsboard erscheint.
+  Bereits importierte Bestellungen erkennt die Software an der Etsy-Bestellnummer. Rabatte/Gutscheine und Fremdwährungen werden nicht automatisch verrechnet (Hinweis in der
+  Vorschau). Es gibt keine Live-Verbindung zu Etsy; Etsy-Gebühren tragen Sie als Ausgabe ein.
+- **Lieferanten** (*Katalog → Lieferanten*): Händler mit Kontaktdaten, Ihrer Kundennummer dort und Summen (gesamt, dieses Jahr, zuletzt eingekauft). Ausgaben werden automatisch
+  zugeordnet, wenn der Händlername dem Lieferantennamen entspricht; bei Material wählen Sie den Lieferanten, Nachbestellungen werden dann auf ihn gebucht.
+- **Anlageverzeichnis** (*Finanzen → Anlagen*): Drucker, Werkzeug und andere größere Anschaffungen mit **GWG-Sofortabzug** (bis 800 € netto) oder **linearer Abschreibung (AfA)**
+  über die Nutzungsdauer (im Anschaffungsjahr zeitanteilig ab dem Kaufmonat). Eine bereits erfasste Ausgabe lässt sich verknüpfen - dann zählt die EÜR statt des vollen Betrags nur
+  die Abschreibung des Jahres (kein doppeltes Absetzen). Kleinunternehmer tragen den Bruttobetrag ein. Das Steuerberater-Paket enthält ein Anlagenverzeichnis (CSV).
+  Nutzungsdauer und GWG-Grenze bitte mit dem Steuerberater abstimmen (Hinweis: für 3D-Drucker ist die Einordnung nicht eindeutig).
 - **Darstellung** (*Einstellungen → Darstellung*, nur Admin): **Akzentfarbe** für Knöpfe, Menü, Links und Diagramme (acht Vorschläge oder eigene Farbe)
   und **Stil des dunklen Designs** (warm = braune Töne, kühl = Blau-Schwarz). Gilt für alle Benutzer und Geräte; die PDF-Belege haben ihre eigene
   Farbe unter "Logo & Stempel". Hell/Dunkel wechseln Sie unten im Menü (Mond/Sonne, je Gerät). Am Handy gibt es eine Leiste unten mit Start, Belege,
@@ -176,7 +186,7 @@ In der Rechnungsdetailansicht:
   Diagramm Umsatz/Ausgaben der letzten 12 Monate, die Rechnungen nach Status und die letzte Aktivität.
 - **Belegarchiv** (Menüpunkt *Belegarchiv*): Ablage für alle Unterlagen, die nicht in der Software entstehen - Eingangsrechnungen,
   Quittungen, Kontoauszüge, Verträge, Versicherungen, Bescheide, Schriftverkehr. Hochladen per Klick oder Drag & Drop (bis zu 20 Dateien
-  gleichzeitig; PDF, Fotos, Word/Excel/LibreOffice, CSV, Text, XML, ZIP; je Datei max. 25 MB). Je Dokument: Titel, Kategorie, Belegdatum,
+  gleichzeitig; PDF, Fotos, Word/Excel/LibreOffice, CSV, Text, XML, ZIP sowie 3D-Dateien wie STL, 3MF, STEP, OBJ und G-Code; je Datei max. 25 MB). Je Dokument: Titel, Kategorie, Belegdatum,
   Aussteller, Betrag, Tags, Notiz.
   - **Suche:** über Titel, Aussteller, Notizen, Tags, Dateiname **und den Text im PDF** (mehrere Suchwörter müssen alle vorkommen;
     Scans und Fotos ohne Textebene findet man über Titel/Tags/Notizen - dort bitte einen aussagekräftigen Titel vergeben).

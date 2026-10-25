@@ -5,6 +5,7 @@ import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { TaxPanel } from "../components/TaxPanel";
+import { AssetsPanel } from "../components/AssetsPanel";
 import { FinanceChart, FinanceLegend, type FinanceMonth } from "../components/FinanceChart";
 
 interface Expense {
@@ -15,6 +16,7 @@ interface Expense {
   amountCents: number;
   description?: string;
   receiptPath?: string;
+  inAssetRegister?: boolean;
 }
 
 interface EuerSummary {
@@ -42,7 +44,7 @@ const emptyExpense = { date: new Date().toISOString().slice(0, 10), vendor: "", 
 const RECEIPT_TYPES = ".pdf,.png,.jpg,.jpeg,.webp";
 
 export default function Finance() {
-  const [tab, setTab] = useState<"euer" | "expenses" | "bank" | "tax">("euer");
+  const [tab, setTab] = useState<"euer" | "expenses" | "assets" | "bank" | "tax">("euer");
   const [year, setYear] = useState(new Date().getFullYear());
   const [summary, setSummary] = useState<EuerSummary | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -50,6 +52,7 @@ export default function Finance() {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [form, setForm] = useState(emptyExpense);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [supplierNames, setSupplierNames] = useState<string[]>([]);
   const [bankMessage, setBankMessage] = useState<string | null>(null);
   const expenseSave = useSaveStatus();
 
@@ -68,6 +71,9 @@ export default function Finance() {
     loadExpenses();
   }, [year]);
   useEffect(loadTransactions, []);
+  useEffect(() => {
+    api.get("/suppliers").then((res) => setSupplierNames(res.data.map((s: { name: string }) => s.name))).catch(() => setSupplierNames([]));
+  }, []);
 
   async function handleAddExpense(e: FormEvent) {
     e.preventDefault();
@@ -112,16 +118,30 @@ export default function Finance() {
       <h1 className="text-2xl font-semibold mb-6">Finanzen</h1>
 
       <div className="flex gap-2 mb-6">
-        {(["euer", "expenses", "bank", "tax"] as const).map((tabKey) => (
+        {(["euer", "expenses", "assets", "bank", "tax"] as const).map((tabKey) => (
           <button
             key={tabKey}
             onClick={() => setTab(tabKey)}
             className={`px-4 py-2 rounded text-sm ${tab === tabKey ? "bg-brand text-white" : "bg-slate-200 dark:bg-slate-700"}`}
           >
-            {tabKey === "euer" ? "EÜR-Übersicht" : tabKey === "expenses" ? "Ausgaben" : tabKey === "bank" ? "Bankabgleich" : "Steuerberater"}
+            {tabKey === "euer" ? "EÜR-Übersicht" : tabKey === "expenses" ? "Ausgaben" : tabKey === "assets" ? "Anlagen" : tabKey === "bank" ? "Bankabgleich" : "Steuerberater"}
           </button>
         ))}
       </div>
+
+      {tab === "assets" && (
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <label className="text-sm">Jahr:</label>
+            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+              {[year - 2, year - 1, year, year + 1].map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+          <AssetsPanel year={year} onChanged={() => { loadSummary(); loadExpenses(); }} />
+        </div>
+      )}
 
       {tab === "tax" && (
         <div>
@@ -213,7 +233,8 @@ export default function Finance() {
               </div>
               <div>
                 <label className="block text-sm mb-1">Händler/Lieferant</label>
-                <input required value={form.vendor} onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <datalist id="supplier-names">{supplierNames.map((n) => <option key={n} value={n} />)}</datalist>
+                <input required list="supplier-names" value={form.vendor} onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               </div>
               <div>
                 <label className="block text-sm mb-1">Kategorie</label>
@@ -259,7 +280,7 @@ export default function Finance() {
                   {/* Desktop */}
                   <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "100px 1fr 130px 110px auto" }}>
                     <span>{new Date(exp.date).toLocaleDateString("de-DE")}</span>
-                    <span className="font-medium truncate">{exp.vendor}</span>
+                    <span className="font-medium truncate">{exp.vendor}{exp.inAssetRegister && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-normal" title="Zählt in der EÜR als Abschreibung (Anlageverzeichnis)">Anlage</span>}</span>
                     <span className="text-slate-500 truncate">{exp.category}</span>
                     <span className="text-right">{formatEuro(exp.amountCents)}</span>
                     <span className="justify-self-end">{deleteBtn}</span>

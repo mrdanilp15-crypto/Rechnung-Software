@@ -127,6 +127,8 @@ model Company {
   numberSequences     NumberSequence[]
   printers            Printer[]
   archiveDocuments    ArchiveDocument[]
+  assets              Asset[]
+  suppliers           Supplier[]
   auditLogs           AuditLog[]
   dunnings            Dunning[]
   recurringInvoices   RecurringInvoice[]
@@ -313,6 +315,9 @@ model Material {
   // Cent-Betrag würde hier sichtbar falsch runden.
   costPerUnitCents Float    @default(0)
   isArchived       Boolean  @default(false)
+  // Bevorzugter Lieferant (wird bei Nachbestellungen als Händler der Ausgabe verwendet)
+  supplier         Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  supplierId       String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -673,6 +678,8 @@ model Expense {
   companyId     String
   date          DateTime @default(now())
   vendor        String // Händler/Lieferant
+  supplier      Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  supplierId    String?
   category      String   @default("Sonstiges") // z.B. "Material", "Software", "Fahrtkosten"
   amountCents   Int // Bruttobetrag der Ausgabe
   vatRateBps    Int      @default(1900)
@@ -789,4 +796,55 @@ model ArchiveDocument {
 
   @@index([companyId, documentDate])
   @@index([companyId, sha256])
+}
+
+// ---------- Anlageverzeichnis (Abschreibung/AfA) ----------
+// Anlagegüter wie Drucker oder Werkzeug. Bei der EÜR zählt statt der vollen Anschaffung die jährliche Abschreibung (AfA) bzw.
+// bei GWG der Sofortabzug. Ist expenseId gesetzt, wird die verknüpfte Ausgabe in der EÜR nicht zusätzlich gezählt.
+// Anschaffungskosten: bei Kleinunternehmern brutto, sonst netto.
+
+model Asset {
+  id               String   @id @default(uuid())
+  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId        String
+  name             String
+  purchaseDate     DateTime
+  costCents        Int
+  method           String   @default("LINEAR") // GWG | LINEAR
+  usefulLifeYears  Int?
+  expenseId        String?  @unique
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([companyId, purchaseDate])
+}
+
+// ---------- Lieferanten ----------
+// Händler und Hersteller, bei denen eingekauft wird (Filament, Ersatzteile, Verpackung ...). Ausgaben und Materialien können
+// einem Lieferanten zugeordnet werden - daraus entsteht die Übersicht "Wie viel habe ich wo ausgegeben".
+
+model Supplier {
+  id             String   @id @default(uuid())
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId      String
+  name           String
+  contactName    String?
+  email          String?
+  phone          String?
+  website        String?
+  street         String?
+  postalCode     String?
+  city           String?
+  country        String?
+  customerNumber String? // Ihre Kundennummer bei diesem Lieferanten
+  notes          String?
+  isArchived     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  expenses       Expense[]
+  materials      Material[]
+
+  @@index([companyId])
 }

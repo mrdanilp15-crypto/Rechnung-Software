@@ -26,6 +26,7 @@ const materialSchema = z.object({
   // Direkte Korrektur des Preises/Einheit (z.B. Tippfehler beheben) - ebenfalls ohne
   // automatische Ausgabe, im Unterschied zu initialCostCents/POST /:id/restock.
   costPerUnitCents: z.number().min(0).optional(),
+  supplierId: z.string().nullish(),
 });
 
 // Nur beim Anlegen: Gesamtpreis für den angegebenen Anfangsbestand - daraus wird der
@@ -35,8 +36,17 @@ const createSchema = materialSchema.extend({
   initialCostCents: z.number().int().min(0).optional(),
 });
 
+async function supplierOf(companyId: string, supplierId: string | null | undefined) {
+  if (!supplierId) return null;
+  const s = await prisma.supplier.findFirst({ where: { id: supplierId, companyId }, select: { id: true, name: true } });
+  if (!s) throw new HttpError(400, "Lieferant nicht gefunden");
+  return s;
+}
+
 materialsRouter.post("/", async (req, res) => {
   const { initialCostCents, ...body } = createSchema.parse(req.body);
+  const supplier = await supplierOf(req.auth!.companyId, body.supplierId);
+  body.supplierId = supplier?.id ?? null;
   const hasInitialPurchase = !!initialCostCents && (body.stockQuantity ?? 0) > 0;
   const costPerUnitCents = hasInitialPurchase ? initialCostCents! / body.stockQuantity! : body.costPerUnitCents;
 
@@ -48,7 +58,8 @@ materialsRouter.post("/", async (req, res) => {
       await tx.expense.create({
         data: {
           companyId: req.auth!.companyId,
-          vendor: created.name,
+          vendor: supplier?.name ?? created.name,
+          supplierId: supplier?.id ?? null,
           category: "Material",
           amountCents: initialCostCents!,
           description: `Anfangsbestand: ${body.stockQuantity} ${created.unit} ${created.name}`,
@@ -66,6 +77,7 @@ materialsRouter.patch("/:id", async (req, res) => {
   const body = materialSchema.partial().parse(req.body);
   const existing = await prisma.material.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!existing) throw new HttpError(404, "Material nicht gefunden");
+  if (body.supplierId !== undefined) body.supplierId = (await supplierOf(req.auth!.companyId, body.supplierId))?.id ?? null;
   const updated = await prisma.material.update({ where: { id: existing.id }, data: body });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "material.update", entityType: "Material", entityId: existing.id, metadata: body });
   res.json(updated);
@@ -103,7 +115,8 @@ materialsRouter.post("/:id/restock", async (req, res) => {
     prisma.expense.create({
       data: {
         companyId: req.auth!.companyId,
-        vendor: body.vendor || material.name,
+        vendor: body.vendor || (material.supplierId ? (await prisma.supplier.findUnique({ where: { id: material.supplierId }, select: { name: true } }))?.name : undefined) || material.name,
+        supplierId: material.supplierId,
         category: "Material",
         amountCents: body.totalCostCents,
         description: `Nachbestellung: ${body.quantity} ${material.unit} ${material.name}`,

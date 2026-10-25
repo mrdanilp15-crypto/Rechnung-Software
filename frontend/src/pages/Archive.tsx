@@ -40,7 +40,7 @@ const inputClass = "w-full px-3 py-2 rounded border border-slate-300 dark:border
 const money = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
 const today = () => new Date().toISOString().slice(0, 10);
 const canPreview = (d: ArchiveDoc) => d.mimeType === "application/pdf" || d.mimeType.startsWith("image/");
-const iconFor = (mime: string) => (mime === "application/pdf" ? "📄" : mime.startsWith("image/") ? "🖼️" : mime.includes("sheet") || mime.includes("excel") || mime === "text/csv" ? "📊" : "📎");
+const iconFor = (mime: string) => (mime === "application/pdf" ? "📄" : mime.startsWith("image/") ? "🖼️" : mime.startsWith("model/") || mime.includes("gcode") || mime.includes("3dmanufacturing") ? "🧊" : mime.includes("sheet") || mime.includes("excel") || mime === "text/csv" ? "📊" : "📎");
 
 /** Hebt die Suchwörter in einem Textausschnitt hervor. */
 function Highlight({ text, query }: { text: string; query: string }): ReactNode {
@@ -352,7 +352,7 @@ export default function Archive() {
           >
             <p className="font-medium">Dateien hierher ziehen oder klicken zum Auswählen</p>
             <p className="text-xs text-slate-500 mt-1">
-              Bis zu 20 Dateien gleichzeitig, je maximal {facets?.maxUploadMb ?? 25} MB. Erlaubt: PDF, Fotos (JPG, PNG, WebP, GIF), Word/Excel/LibreOffice, CSV, Text, XML, ZIP.
+              Bis zu 20 Dateien gleichzeitig, je maximal {facets?.maxUploadMb ?? 25} MB. Erlaubt: PDF, Fotos (JPG, PNG, WebP, GIF), Word/Excel/LibreOffice, CSV, Text, XML, ZIP sowie 3D-Dateien (STL, 3MF, STEP, OBJ, G-Code).
             </p>
             <input ref={fileInput} type="file" multiple hidden accept={facets?.allowedExtensions.join(",")} onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
           </div>

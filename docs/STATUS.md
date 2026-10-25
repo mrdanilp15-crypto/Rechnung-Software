@@ -125,6 +125,10 @@ implementiert.
 | Anzahlungs- und Schlussrechnung (XRechnung: Typ 326 + BT-113) | ✅ mit KoSIT geprüft |
 | Wiederkehrende Rechnungen (erzeugen nur Entwürfe) | ✅ |
 | Produktionsboard (Erstellt, In Produktion, Versandbereit, Versendet) aus Auftragsbestätigungen | ✅ |
+| Etsy-Import per CSV (Aufträge als Entwurf, Vorschau, Duplikaterkennung) | ✅ Keine Live-Anbindung; Spalten tolerant erkannt, mit echtem Etsy-Export bitte einmal prüfen |
+| Lieferanten (Ausgaben/Material zuordnen, Summen) | ✅ |
+| Anlageverzeichnis mit GWG und linearer AfA, in EÜR und Steuerberater-Paket | 🟡 ohne Abgang/Verkauf, ohne Sammelposten, Restwert 0 |
+| 3D-Dateien (STL, 3MF, STEP, OBJ, G-Code) im Belegarchiv | ✅ |
 | Plattenkalkulation: Stück pro Platte, Veredelungsposten, Materialpreis überschreiben | ✅ |
 | Finanzdiagramm: Einnahmen, Ausgaben, Gewinn pro Monat | ✅ |
 | Oberfläche: wählbare Akzentfarbe, warmes/kühles dunkles Design, Menü-Symbole, Handy-Leiste unten, Dashboard mit Kennzahlen/Diagrammen, einheitliche Status-Chips | ✅ |
