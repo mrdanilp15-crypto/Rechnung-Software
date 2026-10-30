@@ -31,7 +31,12 @@ async function adjustMaterialStock(
     }
   }
 
+  // Materialien, deren Verbrauch aus dem AMS gemessen wird (Fach-Zuordnung am Drucker), werden nicht zusätzlich über die
+  // Rezepte der Rechnungen abgebucht - sonst würde derselbe Verbrauch doppelt gezählt.
+  const measured = new Set((await tx.amsSlotMapping.findMany({ where: { materialId: { in: [...deltaByMaterial.keys()] } }, select: { materialId: true } })).map((m) => m.materialId));
+
   for (const [materialId, delta] of deltaByMaterial) {
+    if (measured.has(materialId)) continue;
     await tx.material.update({ where: { id: materialId }, data: { stockQuantity: { increment: delta } } });
   }
 }

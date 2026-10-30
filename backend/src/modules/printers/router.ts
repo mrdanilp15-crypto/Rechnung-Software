@@ -220,6 +220,47 @@ printersRouter.get("/:id/stream", async (req, res) => {
   res.on("close", close); // Verbindung vom Betrachter beendet (req "close" kommt bei GET schon nach dem Empfang der Anfrage)
 });
 
+// ---------- AMS-Fächer einem Material zuordnen (automatische Abbuchung) ----------
+printersRouter.get("/:id/ams-slots", async (req, res) => {
+  const p = await prisma.printer.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
+  if (!p) throw new HttpError(404, "Drucker nicht gefunden");
+  const rows = await prisma.amsSlotMapping.findMany({ where: { printerId: p.id }, include: { material: { select: { id: true, name: true, unit: true, stockQuantity: true } } }, orderBy: { slot: "asc" } });
+  res.json(rows.map((r) => ({ slot: r.slot, materialId: r.materialId, material: r.material, spoolGrams: r.spoolGrams, lastRemain: r.lastRemain })));
+});
+
+const slotSchema = z.object({ materialId: z.string().min(1), spoolGrams: z.number().int().min(50).max(10000).default(1000) });
+printersRouter.put("/:id/ams-slots/:slot", async (req, res) => {
+  if (req.auth!.role !== "ADMIN") throw new HttpError(403, "Die Zuordnung darf nur ein Administrator ändern.");
+  const slot = Number(req.params.slot);
+  if (!Number.isInteger(slot) || slot < 0 || slot > 15) throw new HttpError(400, "Ungültiges AMS-Fach");
+  const body = slotSchema.parse(req.body);
+  const p = await prisma.printer.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
+  if (!p) throw new HttpError(404, "Drucker nicht gefunden");
+  const material = await prisma.material.findFirst({ where: { id: body.materialId, companyId: req.auth!.companyId, isArchived: false } });
+  if (!material) throw new HttpError(400, "Material nicht gefunden");
+  if (!["g", "gramm", "kg"].includes(material.unit.trim().toLowerCase())) throw new HttpError(400, "Das Material muss in g oder kg geführt werden, damit der Verbrauch abgebucht werden kann.");
+  // Ausgangswert = aktueller Füllstand der Spule: Alles, was vor der Zuordnung verbraucht wurde, wird nicht nachträglich gebucht
+  const tray = bambuMonitor.getStatus(p.id).ams.units.flatMap((u) => u.trays).find((t) => t.amsSlot === slot);
+  const baseline = tray && tray.rfid && tray.remainPercent !== null ? { lastRemain: Math.round(tray.remainPercent), lastTag: tray.tag } : { lastRemain: null, lastTag: null };
+  await prisma.amsSlotMapping.upsert({
+    where: { printerId_slot: { printerId: p.id, slot } },
+    create: { companyId: req.auth!.companyId, printerId: p.id, slot, materialId: material.id, spoolGrams: body.spoolGrams, ...baseline },
+    update: { materialId: material.id, spoolGrams: body.spoolGrams, ...baseline },
+  });
+  bambuMonitor.refreshAmsMappings(p.id);
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "printer.ams.map", entityType: "Printer", entityId: p.id, metadata: { slot, materialId: material.id } });
+  res.json({ ok: true });
+});
+
+printersRouter.delete("/:id/ams-slots/:slot", async (req, res) => {
+  if (req.auth!.role !== "ADMIN") throw new HttpError(403, "Die Zuordnung darf nur ein Administrator ändern.");
+  const p = await prisma.printer.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
+  if (!p) throw new HttpError(404, "Drucker nicht gefunden");
+  await prisma.amsSlotMapping.deleteMany({ where: { printerId: p.id, slot: Number(req.params.slot) } });
+  bambuMonitor.refreshAmsMappings(p.id);
+  res.status(204).send();
+});
+
 printersRouter.get("/:id/jobs", async (req, res) => {
   const p = await prisma.printer.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!p) throw new HttpError(404, "Drucker nicht gefunden");

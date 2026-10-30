@@ -322,6 +322,7 @@ model Material {
   updatedAt        DateTime @updatedAt
 
   products         ProductMaterial[]
+  amsSlots         AmsSlotMapping[]
 
   @@index([companyId])
 }
@@ -351,6 +352,7 @@ model Printer {
 
   products           Product[]
   jobs               PrinterJob[]
+  amsSlots           AmsSlotMapping[]
 
   @@index([companyId])
 }
@@ -873,7 +875,32 @@ model PrinterJob {
   endedAt   DateTime?
   result    String? // FINISHED | FAILED | CANCELLED | UNKNOWN
   minutes   Int? // Dauer inklusive Pausen
+  // Aus dem AMS gemessener Materialverbrauch dieses Drucks: [{ materialId, name, grams }]
+  materialUsage Json?
 
   @@index([printerId, startedAt])
+  @@index([companyId])
+}
+
+// ---------- Automatische Materialabbuchung aus dem AMS ----------
+// Ordnet einem AMS-Fach eines Druckers ein Material zu. Der Drucker meldet bei Bambu-Spulen mit Chip den Füllstand in Prozent;
+// sinkt er, wird die Differenz (mal Spulengewicht) vom Materialbestand abgezogen. lastRemain/lastTag sind der zuletzt verbuchte
+// Stand - so wird nichts doppelt gebucht, und ein Spulenwechsel (andere Chip-Kennung) setzt nur den Ausgangswert neu.
+model AmsSlotMapping {
+  id         String   @id @default(uuid())
+  companyId  String
+  printer    Printer  @relation(fields: [printerId], references: [id], onDelete: Cascade)
+  printerId  String
+  slot       Int // AMS-Einheit * 4 + Fach (0-15)
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  materialId String
+  spoolGrams Int      @default(1000) // Füllgewicht einer vollen Spule
+  lastRemain Int?
+  lastTag    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([printerId, slot])
+  @@index([materialId])
   @@index([companyId])
 }

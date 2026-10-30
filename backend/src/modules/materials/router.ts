@@ -13,8 +13,10 @@ materialsRouter.get("/", async (req, res) => {
   const materials = await prisma.material.findMany({
     where: { companyId: req.auth!.companyId, isArchived: false },
     orderBy: { name: "asc" },
+    include: { amsSlots: { select: { slot: true, printer: { select: { name: true } } } } },
   });
-  res.json(materials);
+  // amsMeasured: Verbrauch wird aus dem AMS gemessen (Fach-Zuordnung am Drucker) und nicht über Rechnungs-Rezepte abgebucht
+  res.json(materials.map(({ amsSlots, ...m }) => ({ ...m, amsMeasured: amsSlots.length > 0, amsSources: amsSlots.map((s) => `${s.printer.name} · AMS ${Math.floor(s.slot / 4) + 1} Fach ${(s.slot % 4) + 1}`) })));
 });
 
 const materialSchema = z.object({

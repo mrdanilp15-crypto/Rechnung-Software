@@ -3,6 +3,7 @@ import { decryptField } from "../../../utils/crypto";
 import { logger } from "../../../utils/logger";
 import { BambuMonitorCore, testBambuConnection as testCore, type ConnectionTestResult, type JobStore } from "./monitorCore";
 import type { PrinterLiveStatus } from "./status";
+import { amsBooking } from "./amsBooking";
 
 /**
  * Anbindung des Monitor-Kerns an Datenbank und Einstellungen: lädt die Drucker mit aktiver Live-Verbindung, entschlüsselt die
@@ -19,7 +20,11 @@ const prismaJobStore: JobStore = {
   },
 };
 
-const core = new BambuMonitorCore({ store: prismaJobStore, log: logger });
+const core = new BambuMonitorCore({
+  store: prismaJobStore,
+  log: logger,
+  onReport: (target, status, jobId) => amsBooking.onStatus(target.printerId, status, jobId),
+});
 
 type PrinterRow = { id: string; companyId: string; host: string | null; serial: string | null; accessCodeEncrypted: string | null };
 
@@ -47,6 +52,8 @@ export const bambuMonitor = {
     if (p && !p.isArchived && p.liveEnabled && p.connectionType === "BAMBU_LAN") startFromRow(p);
   },
   getStatus: (printerId: string): PrinterLiveStatus => core.getStatus(printerId),
+  /** Nach Änderung der Fach-Zuordnungen (AMS -> Material) */
+  refreshAmsMappings: (printerId: string) => amsBooking.invalidate(printerId),
   stopAll: () => core.stopAll(),
 };
 

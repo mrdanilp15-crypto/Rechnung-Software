@@ -1,5 +1,5 @@
 import mqtt, { MqttClient } from "mqtt";
-import { JobTracker, isActiveState, mergePrintReport, normalizeStatus, offlineStatus, toGcodeState, type JobEvent, type JobResult, type PrinterLiveStatus, type RawPrint } from "./status";
+import { JobTracker, isActiveState, type GcodeState, mergePrintReport, normalizeStatus, offlineStatus, toGcodeState, type JobEvent, type JobResult, type PrinterLiveStatus, type RawPrint } from "./status";
 
 /**
  * Dauerhafte, nur lesende Verbindung zu Bambu-Lab-Druckern im LAN-Modus (MQTT über TLS, Port 8883, Benutzer "bblp", Passwort =
@@ -39,6 +39,12 @@ export interface MonitorDeps {
   log: { info: (obj: object, msg: string) => void; warn: (obj: object, msg: string) => void };
   /** Adresse des MQTT-Servers; im Test z.B. ein lokaler Broker ohne TLS */
   brokerUrl?: (host: string) => string;
+  /** Nach jedem verarbeiteten Bericht (z.B. für die Materialabbuchung aus dem AMS); jobId = gerade offener Auftrag */
+  onReport?: (target: MonitorTarget, status: PrinterLiveStatus, jobId: string | null) => Promise<void>;
+  /** Wenn ein Druckauftrag endet (z.B. für Benachrichtigungen) */
+  onJobEnd?: (target: MonitorTarget, info: { jobId: string | null; name: string | null; result: JobResult; minutes: number; status: PrinterLiveStatus }) => Promise<void>;
+  /** Wenn der Drucker einen Fehler meldet (neuer Fehlercode während eines Drucks) */
+  onPrinterError?: (target: MonitorTarget, info: { code: number; name: string | null; status: PrinterLiveStatus }) => Promise<void>;
 }
 
 interface Connection {
@@ -52,6 +58,7 @@ interface Connection {
   jobId: string | null;
   jobStartedAt: Date | null;
   reconciled: boolean;
+  reportedError: number | null;
   queue: Promise<void>;
   pushTimer: NodeJS.Timeout | null;
 }
@@ -108,7 +115,7 @@ export class BambuMonitorCore {
     const client = mqtt.connect(this.url(target.host), connectOptions(target.accessCode));
     const conn: Connection = {
       target, client, raw: {}, connection: "connecting", message: null, lastSeen: null,
-      tracker: new JobTracker(), jobId: null, jobStartedAt: null, reconciled: false, queue: Promise.resolve(), pushTimer: null,
+      tracker: new JobTracker(), jobId: null, jobStartedAt: null, reconciled: false, reportedError: null, queue: Promise.resolve(), pushTimer: null,
     };
     this.connections.set(target.printerId, conn);
 
@@ -171,12 +178,39 @@ export class BambuMonitorCore {
           conn.jobId = open.id;
           conn.jobStartedAt = open.startedAt;
           conn.tracker.prime(state);
+          await this.book(conn);
+          await this.checkError(conn, state, name);
           return;
         }
         await this.closeJob(open.id, open.startedAt, "UNKNOWN");
       }
     }
+    // Erst den Verbrauch dem noch laufenden Auftrag zuschreiben, dann erst Start/Ende des Auftrags verarbeiten
+    await this.book(conn);
     for (const event of conn.tracker.update(state, name)) await this.handleJobEvent(conn, event);
+    await this.checkError(conn, state, name);
+  }
+
+  /** Haken für die Materialabbuchung; Fehler darin dürfen die Überwachung nie stören. */
+  private async book(conn: Connection) {
+    if (!this.deps.onReport) return;
+    try {
+      await this.deps.onReport(conn.target, normalizeStatus(conn.raw, { connection: conn.connection, message: conn.message, lastSeen: conn.lastSeen }), conn.jobId);
+    } catch (err) {
+      this.deps.log.warn({ err: (err as Error).message }, "Materialabbuchung aus dem AMS fehlgeschlagen");
+    }
+  }
+
+  /** Fehlercode während eines Drucks: einmal melden (erneut erst, wenn der Code weg war oder wechselt). */
+  private async checkError(conn: Connection, state: GcodeState, name: string | null) {
+    const status = normalizeStatus(conn.raw, { connection: conn.connection, message: conn.message, lastSeen: conn.lastSeen });
+    const code = isActiveState(state) ? status.errorCode : null;
+    try {
+      if (code !== null && code !== conn.reportedError) await this.deps.onPrinterError?.(conn.target, { code, name, status });
+    } catch (err) {
+      this.deps.log.warn({ err: (err as Error).message }, "Fehlermeldung des Druckers konnte nicht verarbeitet werden");
+    }
+    conn.reportedError = code;
   }
 
   private async closeJob(jobId: string, startedAt: Date, result: JobResult) {
@@ -194,6 +228,14 @@ export class BambuMonitorCore {
       conn.jobId = null;
       conn.jobStartedAt = null;
       await this.closeJob(jobId, jobStartedAt, event.result);
+      const status = normalizeStatus(conn.raw, { connection: conn.connection, message: conn.message, lastSeen: conn.lastSeen });
+      const minutes = Math.max(0, Math.round((Date.now() - jobStartedAt.getTime()) / 60000));
+      const name = String(conn.raw.subtask_name || conn.raw.gcode_file || "").trim() || null;
+      try {
+        await this.deps.onJobEnd?.(conn.target, { jobId, name, result: event.result, minutes, status });
+      } catch (err) {
+        this.deps.log.warn({ err: (err as Error).message }, "Benachrichtigung zum Druckende fehlgeschlagen");
+      }
     }
   }
 

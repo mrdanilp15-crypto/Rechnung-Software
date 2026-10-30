@@ -282,3 +282,51 @@ describe("Kamerabild", () => {
     srv.close();
   });
 });
+
+describe("Bambu-Monitor: Haken für Abbuchung und Benachrichtigung", () => {
+  const makeHooked = (store: JobStore, hooks: Partial<ConstructorParameters<typeof BambuMonitorCore>[0]>) => {
+    const core = new BambuMonitorCore({ store, log: { info: () => {}, warn: () => {} }, brokerUrl: url(), ...hooks });
+    cores.push(core);
+    return core;
+  };
+
+  it("meldet jeden Bericht mit dem laufenden Auftrag und das Druckende mit Ergebnis", async () => {
+    currentState = "RUNNING";
+    currentName = "Hook-Teil";
+    const { store } = memoryStore();
+    const reports: { state: string; jobId: string | null; tag: string | null }[] = [];
+    const ends: { result: string; name: string | null; jobId: string | null }[] = [];
+    const core = makeHooked(store, {
+      onReport: async (_t, status, jobId) => { reports.push({ state: status.state, jobId, tag: status.ams.units[0]?.trays[0]?.tag ?? null }); },
+      onJobEnd: async (_t, info) => { ends.push({ result: info.result, name: info.name, jobId: info.jobId }); },
+    });
+    core.startTarget(target());
+    await waitFor(() => core.getStatus("p1").connection === "online");
+    await core.idle("p1");
+    expect(reports.at(-1)).toMatchObject({ state: "RUNNING", tag: "ABCDEF0123456789" });
+    // Beim allerersten Bericht startet der Auftrag erst danach; ab dem nächsten Bericht wird der Verbrauch ihm zugeschrieben
+    push(JSON.stringify({ print: { mc_percent: 20 } }));
+    await waitFor(() => reports.length >= 2);
+    expect(reports.at(-1)!.jobId).toBeTruthy();
+    push(JSON.stringify({ print: { gcode_state: "FINISH" } }));
+    await waitFor(() => ends.length === 1);
+    expect(ends[0]).toMatchObject({ result: "FINISHED", name: "Hook-Teil" });
+    expect(ends[0].jobId).toBeTruthy();
+  });
+
+  it("meldet einen Druckerfehler genau einmal", async () => {
+    currentState = "RUNNING";
+    const { store } = memoryStore();
+    const errors: number[] = [];
+    const core = makeHooked(store, { onPrinterError: async (_t, info) => { errors.push(info.code); } });
+    core.startTarget(target());
+    await waitFor(() => core.getStatus("p1").connection === "online");
+    push(JSON.stringify({ print: { print_error: 83935249, gcode_state: "PAUSE" } }));
+    await waitFor(() => errors.length === 1);
+    push(JSON.stringify({ print: { mc_percent: 30 } }));
+    push(JSON.stringify({ print: { mc_percent: 31 } }));
+    await core.idle("p1");
+    await new Promise((r) => setTimeout(r, 150));
+    expect(errors).toEqual([83935249]);
+  });
+});

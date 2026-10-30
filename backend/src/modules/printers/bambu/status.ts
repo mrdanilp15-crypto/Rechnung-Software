@@ -17,6 +17,8 @@ export interface Tray {
   color: string | null; // #rrggbb
   remainPercent: number | null;
   rfid: boolean; // Bambu-Spule mit Chip (Füllstand verlässlich)
+  tag: string | null; // Chip-Kennung der Spule (ändert sich beim Spulenwechsel)
+  amsSlot: number | null; // AMS-Einheit * 4 + Fach; null bei der externen Spule
   active: boolean;
 }
 export interface AmsUnit {
@@ -90,7 +92,7 @@ function trayColor(raw: unknown): string | null {
   return /^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(s) ? `#${s.slice(0, 6).toLowerCase()}` : null;
 }
 
-function parseTray(raw: RawPrint, slot: number, active: boolean): Tray {
+function parseTray(raw: RawPrint, slot: number, active: boolean, amsSlot: number | null = null): Tray {
   const type = String(raw.tray_type ?? "").trim() || null;
   const remain = num(raw.remain);
   const tag = String(raw.tag_uid ?? "");
@@ -101,6 +103,8 @@ function parseTray(raw: RawPrint, slot: number, active: boolean): Tray {
     color: type ? trayColor(raw.tray_color) : null,
     remainPercent: remain !== null && remain >= 0 && remain <= 100 ? remain : null,
     rfid: tag.length > 0 && !/^0+$/.test(tag),
+    tag: tag.length > 0 && !/^0+$/.test(tag) ? tag : null,
+    amsSlot,
     active,
   };
 }
@@ -114,7 +118,7 @@ function parseAms(print: RawPrint): PrinterLiveStatus["ams"] {
     const trays: Tray[] = [];
     for (const t of Array.isArray(unit?.tray) ? unit.tray : []) {
       const slot = num(t?.id) ?? trays.length;
-      trays.push(parseTray(t ?? {}, slot, trayNow === String(id * 4 + slot)));
+      trays.push(parseTray(t ?? {}, slot, trayNow === String(id * 4 + slot), id * 4 + slot));
     }
     units.push({ id, humidityLevel: num(unit?.humidity), trays });
   }
