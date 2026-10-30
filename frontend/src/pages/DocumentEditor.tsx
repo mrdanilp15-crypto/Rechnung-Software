@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { LineItem, PricedItemsEditor, TotalsSummary, createEmptyLineItem, withClientKeys } from "../components/PricedItemsEditor";
 import { DocumentTexts } from "../components/DocumentTexts";
+import { PdfCanvasViewer, useNeedsCanvasPdf } from "../components/PdfCanvasViewer";
 import { CustomerPicker, PickerCustomer } from "../components/CustomerPicker";
 
 export type DocKind = "invoice" | "quote" | "confirmation" | "deliveryNote";
@@ -54,7 +55,7 @@ const CONFIG: Record<DocKind, KindConfig> = {
     datesHint: "Leer = heute bzw. 30 Tage Gültigkeit.",
     textKeys: ["quoteIntroText", "quoteClosingText"],
     finalizeLabel: "Fertigstellen",
-    finalizeConfirm: "Angebot fertigstellen? Es wird danach als versendet geführt und das PDF trägt kein Entwurfs-Wasserzeichen mehr.",
+    finalizeConfirm: "Angebot fertigstellen?\n\nDas PDF trägt danach kein Entwurfs-Wasserzeichen mehr. Fertigstellen verschickt NOCH NICHTS - im nächsten Schritt können Sie das Angebot direkt per E-Mail an den Kunden senden (oder später in der Belegliste über \"Senden\").",
     notesLabel: "Anmerkung auf dem Angebot (optional)",
   },
   confirmation: {
@@ -69,7 +70,7 @@ const CONFIG: Record<DocKind, KindConfig> = {
     ],
     textKeys: ["orderConfirmationIntroText", "orderConfirmationClosingText"],
     finalizeLabel: "Fertigstellen",
-    finalizeConfirm: "Auftragsbestätigung fertigstellen? Das PDF trägt danach kein Entwurfs-Wasserzeichen mehr.",
+    finalizeConfirm: "Auftragsbestätigung fertigstellen?\n\nDas PDF trägt danach kein Entwurfs-Wasserzeichen mehr. Fertigstellen verschickt NOCH NICHTS - im nächsten Schritt können Sie sie direkt per E-Mail senden.",
     notesLabel: "Anmerkung auf der Auftragsbestätigung (optional)",
   },
   deliveryNote: {
@@ -81,7 +82,7 @@ const CONFIG: Record<DocKind, KindConfig> = {
     dates: [{ field: "deliveryDate", label: "Lieferdatum" }],
     textKeys: ["deliveryNoteIntroText", "deliveryNoteClosingText"],
     finalizeLabel: "Fertigstellen",
-    finalizeConfirm: "Lieferschein fertigstellen? Das PDF trägt danach kein Entwurfs-Wasserzeichen mehr.",
+    finalizeConfirm: "Lieferschein fertigstellen?\n\nDas PDF trägt danach kein Entwurfs-Wasserzeichen mehr. Fertigstellen verschickt NOCH NICHTS - im nächsten Schritt können Sie ihn direkt per E-Mail senden.",
     notesLabel: "Anmerkung auf dem Lieferschein (optional)",
   },
 };
@@ -139,6 +140,7 @@ export default function DocumentEditor({ kind }: { kind: DocKind }) {
   const [savedKey, setSavedKey] = useState("");
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const canvasPdf = useNeedsCanvasPdf();
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState(false);
   const [showPreviewMobile, setShowPreviewMobile] = useState(false);
@@ -370,10 +372,10 @@ Abbrechen = weiter bearbeiten`)) navigate("/documents");
         navigate(`/invoices/${id}`);
       } else if (kind === "quote") {
         await api.patch(`${cfg.base}/${id}/status`, { status: "SENT" });
-        navigate("/documents");
+        navigate("/documents", { state: { sendEmail: { kind: "QUOTE", id } } });
       } else {
         await api.post(`${cfg.base}/${id}/finalize`);
-        navigate("/documents");
+        navigate("/documents", { state: { sendEmail: { kind: kind === "confirmation" ? "ORDER_CONFIRMATION" : "DELIVERY_NOTE", id } } });
       }
     } catch (err: any) {
       setError(err.response?.data?.error || "Fertigstellen fehlgeschlagen.");
@@ -403,7 +405,12 @@ Abbrechen = weiter bearbeiten`)) navigate("/documents");
   const preview = (
     <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-900 overflow-hidden relative">
       {previewUrl ? (
-        <iframe title="Vorschau" src={`${previewUrl}#toolbar=0&navpanes=0&view=FitH`} className="w-full block bg-white" style={{ height: "min(80vh, 900px)" }} />
+        canvasPdf ? (
+          // Handy/Tablet: Browser zeigen PDFs im Rahmen nicht an - die Seiten werden deshalb selbst gezeichnet
+          <PdfCanvasViewer url={previewUrl} className="p-2 pt-9" />
+        ) : (
+          <iframe title="Vorschau" src={`${previewUrl}#toolbar=0&navpanes=0&view=FitH`} className="w-full block bg-white" style={{ height: "min(80vh, 900px)" }} />
+        )
       ) : (
         <div className="flex items-center justify-center text-sm text-slate-500" style={{ height: 320 }}>Vorschau wird erstellt ...</div>
       )}

@@ -1,9 +1,11 @@
 import { Router } from "express";
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../db/prisma";
 import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
+import { sendDocumentEmail, sendDocumentEmailSchema } from "../email/documentMail";
 import { nextDocumentNumber } from "../shared/numbering";
 import { calculateDocumentTotals, vatBreakdownFromLineItems } from "../tax/calculator";
 import { renderDocumentPdf } from "../pdf/documentTemplate";
@@ -227,15 +229,8 @@ quotesRouter.post("/:id/convert-to-invoice", async (req, res) => {
   res.status(201).json(invoice);
 });
 
-quotesRouter.get("/:id/pdf", async (req, res) => {
-  const quote = await prisma.quote.findFirst({
-    where: { id: req.params.id, companyId: req.auth!.companyId },
-    include: { items: true, customer: true, company: true },
-  });
-  if (!quote) throw new HttpError(404, "Angebot nicht gefunden");
-  const locale = (req.query.lang as "de" | "en") || (quote.company.defaultLocale as "de" | "en") || "de";
-
-  const pdfBuffer = await renderDocumentPdf({
+async function renderQuotePdf(quote: Prisma.QuoteGetPayload<{ include: { items: true; customer: true; company: true } }>, locale: "de" | "en", layout?: unknown): Promise<Buffer> {
+  return await renderDocumentPdf({
     docTypeLabel: { de: "Angebot", en: "Quote" },
     numberLabel: { de: "Angebotsnr.", en: "Quote no." },
     documentNumber: quote.quoteNumber,
@@ -251,13 +246,24 @@ quotesRouter.get("/:id/pdf", async (req, res) => {
     totalCents: quote.totalCents,
     isSmallBusiness: quote.company.isSmallBusiness,
     notes: quote.notes,
-    layout: resolvePdfLayout(quote.company.pdfLayout, req.query.layout),
+    layout: resolvePdfLayout(quote.company.pdfLayout, layout),
     isDraft: quote.status === "DRAFT",
     introText: quote.introText,
     closingText: quote.closingText,
     showPrices: true,
     showSepaQr: false,
   });
+}
+
+quotesRouter.get("/:id/pdf", async (req, res) => {
+  const quote = await prisma.quote.findFirst({
+    where: { id: req.params.id, companyId: req.auth!.companyId },
+    include: { items: true, customer: true, company: true },
+  });
+  if (!quote) throw new HttpError(404, "Angebot nicht gefunden");
+  const locale = (req.query.lang as "de" | "en") || (quote.company.defaultLocale as "de" | "en") || "de";
+
+  const pdfBuffer = await renderQuotePdf(quote, locale, req.query.layout);
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `inline; filename="${quote.quoteNumber}.pdf"`);
@@ -364,4 +370,32 @@ quotesRouter.post("/:id/down-payment", async (req, res) => {
   const invoice = await createDownPaymentInvoice(prisma, { company, customer: quote.customer, sourceItems: quote.items, percent: body.percent, netAmountCents: body.netAmountCents, sourceLabel: `Angebot ${quote.quoteNumber}`, sourceQuoteId: quote.id });
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "quote.down_payment", entityType: "Quote", entityId: quote.id, metadata: { invoiceId: invoice.id } });
   res.status(201).json(invoice);
+});
+
+// Beleg per E-Mail verschicken (PDF im Anhang). Ein Entwurf wird dabei fertiggestellt - aber erst, wenn die E-Mail tatsächlich
+// übergeben wurde. "Fertigstellen" allein verschickt nichts.
+quotesRouter.post("/:id/send-email", async (req, res) => {
+  const body = sendDocumentEmailSchema.parse(req.body);
+  const quote = await prisma.quote.findFirst({
+    where: { id: req.params.id, companyId: req.auth!.companyId },
+    include: { items: true, customer: true, company: true },
+  });
+  if (!quote) throw new HttpError(404, "Angebot nicht gefunden");
+  if (quote.items.length === 0) throw new HttpError(400, "Bitte mindestens eine Position eintragen.");
+  const locale = (quote.company.defaultLocale as "de" | "en") || "de";
+  const wasDraft = quote.status === "DRAFT";
+  const pdf = await renderQuotePdf(wasDraft ? { ...quote, status: "SENT" } : quote, locale);
+  const to = await sendDocumentEmail({
+    company: quote.company,
+    customer: quote.customer,
+    body,
+    locale,
+    sentence: { de: "das Angebot", en: "the quote" },
+    subject: { de: "Angebot", en: "Quote" },
+    number: quote.quoteNumber,
+    pdf,
+  });
+  const updated = await prisma.quote.update({ where: { id: quote.id }, data: { emailSentAt: new Date(), emailStatus: "SENT", lastEmailError: null, ...(wasDraft ? { status: "SENT" } : {}) } });
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "quote.send_email", entityType: "Quote", entityId: quote.id, metadata: { to } });
+  res.json({ ...updated, sentTo: to });
 });

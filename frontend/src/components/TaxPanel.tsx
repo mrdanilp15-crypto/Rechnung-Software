@@ -72,28 +72,28 @@ export function TaxPanel({ year }: { year: number }) {
           <p className="text-sm text-slate-500">Keine Umsätze oder Ausgaben in diesem Zeitraum.</p>
         ) : (
           <div className="text-sm">
-            <div className="grid grid-cols-[1fr_70px_110px_110px] gap-2 text-xs text-slate-500 border-b border-slate-100 dark:border-slate-700 pb-1">
+            <div className="grid grid-cols-[minmax(0,1fr)_44px_78px_78px] sm:grid-cols-[1fr_70px_110px_110px] gap-2 text-xs text-slate-500 border-b border-slate-100 dark:border-slate-700 pb-1">
               <span>Position</span>
               <span>Kennzahl</span>
               <span className="text-right">Netto</span>
               <span className="text-right">Umsatzsteuer</span>
             </div>
             {summary.rows.map((r) => (
-              <div key={r.key} className="grid grid-cols-[1fr_70px_110px_110px] gap-2 py-1.5 border-b border-slate-50 dark:border-slate-700/50">
+              <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_44px_78px_78px] sm:grid-cols-[1fr_70px_110px_110px] gap-2 py-1.5 border-b border-slate-50 dark:border-slate-700/50">
                 <span>{r.label}</span>
                 <span className="text-slate-500">{r.kz ?? ""}</span>
                 <span className="text-right">{eur(r.netCents)}</span>
                 <span className="text-right">{eur(r.vatCents)}</span>
               </div>
             ))}
-            <div className="grid grid-cols-[1fr_70px_110px_110px] gap-2 py-1.5 border-b border-slate-50 dark:border-slate-700/50">
+            <div className="grid grid-cols-[minmax(0,1fr)_44px_78px_78px] sm:grid-cols-[1fr_70px_110px_110px] gap-2 py-1.5 border-b border-slate-50 dark:border-slate-700/50">
               <span>Abziehbare Vorsteuer aus Ausgaben</span>
               <span className="text-slate-500">66</span>
               <span className="text-right">{eur(summary.expenseNetCents)}</span>
               <span className="text-right">{eur(summary.inputVatCents)}</span>
             </div>
             {!isSmallBusiness && (
-              <div className={`grid grid-cols-[1fr_70px_110px_110px] gap-2 py-2 font-medium ${summary.payableCents > 0 ? "" : "text-green-600"}`}>
+              <div className={`grid grid-cols-[minmax(0,1fr)_44px_78px_78px] sm:grid-cols-[1fr_70px_110px_110px] gap-2 py-2 font-medium ${summary.payableCents > 0 ? "" : "text-green-600"}`}>
                 <span>{summary.payableCents >= 0 ? "Vorläufige Zahllast" : "Vorläufige Erstattung"}</span>
                 <span></span>
                 <span></span>

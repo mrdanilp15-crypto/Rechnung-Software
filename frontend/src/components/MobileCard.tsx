@@ -3,7 +3,7 @@ import { ReactNode } from "react";
 /**
  * Gestapelte Karten-Darstellung einer Listenzeile für schmale Bildschirme - Alternative
  * zur festbreiten CSS-Grid-Tabellenzeile (die auf dem Handy nur horizontal scrollbar
- * wäre). Wird zusammen mit "hidden md:grid" (Desktop-Zeile) / "md:hidden" (diese Karte)
+ * wäre). Wird zusammen mit "hidden xl:grid" (Desktop-Zeile) / "xl:hidden" (diese Karte)
  * verwendet, siehe Listen-Seiten (Products, Customers, Invoices, ...).
  */
 export function MobileCard({
@@ -20,7 +20,7 @@ export function MobileCard({
   onClick?: () => void;
 }) {
   return (
-    <div className={`md:hidden p-4 ${onClick ? "cursor-pointer active:bg-slate-50 dark:active:bg-slate-700/50" : ""}`} onClick={onClick}>
+    <div className={`xl:hidden p-4 ${onClick ? "cursor-pointer active:bg-slate-50 dark:active:bg-slate-700/50" : ""}`} onClick={onClick}>
       <div className="flex justify-between items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="font-medium truncate">{title}</div>
@@ -32,7 +32,7 @@ export function MobileCard({
           </div>
         )}
       </div>
-      {children && <dl className="text-sm space-y-1 mt-2">{children}</dl>}
+      {children && <dl className="text-sm space-y-1 mt-2 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-x-8 md:gap-y-1 md:[&>.pt-2]:col-span-full">{children}</dl>}
     </div>
   );
 }

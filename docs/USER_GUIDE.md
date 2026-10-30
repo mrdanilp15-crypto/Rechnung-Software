@@ -165,6 +165,17 @@ In der Rechnungsdetailansicht:
   Umsatzsteuer-Voranmeldung, es wird nach vereinbarten Entgelten gerechnet) und ein ZIP mit allen Rechnungs-PDFs, Belegliste und
   Ausgaben. Es ist **kein DATEV-Format**. Grenzüberschreitende Fälle (innergemeinschaftliche Lieferung, Reverse-Charge) lassen Sie
   bitte von Ihrem Steuerberater bestätigen.
+- **Belege per E-Mail senden** (Belegliste → "✉ Senden", für Angebote, Aufträge, Lieferscheine und Rechnungen): Empfänger, Betreff und Text prüfen oder ändern, das PDF hängt automatisch an.
+  Wichtig: **"Fertigstellen" verschickt nichts** - es macht den Entwurf nur zum fertigen Beleg (ohne Wasserzeichen). Nach dem Fertigstellen öffnet sich deshalb gleich das Sende-Fenster.
+  Gesendet wird über Ihr Postfach (Einstellungen → E-Mail-Versand, muss eingerichtet sein). Die Statusanzeige unterscheidet **"Fertig"** (noch nicht per E-Mail verschickt) und **"Versendet"**.
+  - **Nochmal senden:** Über "✉ Erneut senden" lässt sich ein Beleg beliebig oft verschicken (z.B. wenn die erste E-Mail nicht angekommen ist), auch an eine andere Adresse. Bei Rechnungen geht das auch für
+    bereits bezahlte oder überfällige.
+  - **Kopie an mich:** Haken im Sende-Fenster schickt eine verdeckte Kopie an Ihre Absenderadresse.
+  - **Aussehen:** Alle E-Mails der Software (Belege, Mahnungen, Passwort-Link) sind als HTML-Nachricht gestaltet: Ihr **Firmenlogo im Kopf** (aus Einstellungen → Logo & Stempel, eingebettet - kein Anhang), Ihre
+    Firmenfarbe als Linie, der Text, ein Hinweis auf den Anhang und die Firmendaten im Fuß. Mailprogramme ohne HTML bekommen automatisch die Textfassung.
+  - Die Software kann nur bestätigen, dass die E-Mail an Ihren Mailserver übergeben wurde - nicht, dass sie gelesen wurde oder im Spam gelandet ist.
+- **Tablet und Handy:** Hochkant (bis 1023 px) gibt es eine Leiste oben und unten mit den wichtigsten Bereichen und "Mehr"; quer (1024-1279 px) eine schmale Symbolleiste links; ab 1280 px die volle Seitenleiste.
+  Listen werden bis 1279 px als Karten gezeigt, darüber als Tabelle. **PDFs** (Vorschau im Editor, PDF-Knöpfe) werden auf Touch-Geräten in der App selbst angezeigt (mit Herunterladen und Teilen) - man muss sie nicht mehr erst herunterladen.
 - **Drucker-Live-Anbindung (Bambu Lab, nur lesend)** (*Katalog → Drucker → Bearbeiten → Live-Anbindung*, nur Administratoren): Zeigt im LAN-Modus direkt vom Drucker Zustand,
   Fortschritt mit Restzeit, Schicht, Temperaturen (Düse, Bett, Gehäuse), die **AMS-Spulen** (Material, Farbe, Füllstand, aktive Spule, Feuchte-Stufe), Fehlercodes und bei
   **P1P, P1S, A1 und A1 mini ein Kamerabild** (Einzelbild per Knopfdruck). Auf der Startseite zeigt eine Karte "Drucker live" alle verbundenen Drucker.

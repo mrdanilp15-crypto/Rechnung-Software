@@ -1,9 +1,11 @@
 import { Router } from "express";
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../db/prisma";
 import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
+import { sendDocumentEmail, sendDocumentEmailSchema } from "../email/documentMail";
 import { nextDocumentNumber } from "../shared/numbering";
 import { calculateDocumentTotals, vatBreakdownFromLineItems } from "../tax/calculator";
 import { renderDocumentPdf } from "../pdf/documentTemplate";
@@ -107,15 +109,8 @@ orderConfirmationsRouter.get("/:id", async (req, res) => {
   res.json(confirmation);
 });
 
-orderConfirmationsRouter.get("/:id/pdf", async (req, res) => {
-  const confirmation = await prisma.orderConfirmation.findFirst({
-    where: { id: req.params.id, companyId: req.auth!.companyId },
-    include: { items: true, customer: true, company: true },
-  });
-  if (!confirmation) throw new HttpError(404, "Auftragsbestätigung nicht gefunden");
-  const locale = (req.query.lang as "de" | "en") || (confirmation.company.defaultLocale as "de" | "en") || "de";
-
-  const pdfBuffer = await renderDocumentPdf({
+async function renderConfirmationPdf(confirmation: Prisma.OrderConfirmationGetPayload<{ include: { items: true; customer: true; company: true } }>, locale: "de" | "en", layout?: unknown): Promise<Buffer> {
+  return await renderDocumentPdf({
     docTypeLabel: { de: "Auftragsbestätigung", en: "Order Confirmation" },
     numberLabel: { de: "Auftragsnr.", en: "Order no." },
     documentNumber: confirmation.confirmationNumber,
@@ -132,13 +127,24 @@ orderConfirmationsRouter.get("/:id/pdf", async (req, res) => {
     totalCents: confirmation.totalCents,
     isSmallBusiness: confirmation.company.isSmallBusiness,
     notes: confirmation.notes,
-    layout: resolvePdfLayout(confirmation.company.pdfLayout, req.query.layout),
+    layout: resolvePdfLayout(confirmation.company.pdfLayout, layout),
     isDraft: confirmation.status === "DRAFT",
     introText: confirmation.introText,
     closingText: confirmation.closingText,
     showPrices: true,
     showSepaQr: false,
   });
+}
+
+orderConfirmationsRouter.get("/:id/pdf", async (req, res) => {
+  const confirmation = await prisma.orderConfirmation.findFirst({
+    where: { id: req.params.id, companyId: req.auth!.companyId },
+    include: { items: true, customer: true, company: true },
+  });
+  if (!confirmation) throw new HttpError(404, "Auftragsbestätigung nicht gefunden");
+  const locale = (req.query.lang as "de" | "en") || (confirmation.company.defaultLocale as "de" | "en") || "de";
+
+  const pdfBuffer = await renderConfirmationPdf(confirmation, locale, req.query.layout);
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `inline; filename="${confirmation.confirmationNumber}.pdf"`);
@@ -322,4 +328,32 @@ orderConfirmationsRouter.post("/:id/down-payment", async (req, res) => {
   const invoice = await createDownPaymentInvoice(prisma, { company, customer: source.customer, sourceItems: source.items, percent: body.percent, netAmountCents: body.netAmountCents, sourceLabel: `Auftragsbestätigung ${source.confirmationNumber}`, sourceQuoteId: source.sourceQuoteId, sourceOrderConfirmationId: source.id });
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "order_confirmation.down_payment", entityType: "OrderConfirmation", entityId: source.id, metadata: { invoiceId: invoice.id } });
   res.status(201).json(invoice);
+});
+
+// Beleg per E-Mail verschicken (PDF im Anhang). Ein Entwurf wird dabei fertiggestellt - aber erst, wenn die E-Mail tatsächlich
+// übergeben wurde. "Fertigstellen" allein verschickt nichts.
+orderConfirmationsRouter.post("/:id/send-email", async (req, res) => {
+  const body = sendDocumentEmailSchema.parse(req.body);
+  const confirmation = await prisma.orderConfirmation.findFirst({
+    where: { id: req.params.id, companyId: req.auth!.companyId, voidedAt: null },
+    include: { items: true, customer: true, company: true },
+  });
+  if (!confirmation) throw new HttpError(404, "Auftragsbestätigung nicht gefunden");
+  if (confirmation.items.length === 0) throw new HttpError(400, "Bitte mindestens eine Position eintragen.");
+  const locale = (confirmation.company.defaultLocale as "de" | "en") || "de";
+  const wasDraft = confirmation.status === "DRAFT";
+  const pdf = await renderConfirmationPdf(wasDraft ? { ...confirmation, status: "SENT" } : confirmation, locale);
+  const to = await sendDocumentEmail({
+    company: confirmation.company,
+    customer: confirmation.customer,
+    body,
+    locale,
+    sentence: { de: "die Auftragsbestätigung", en: "the order confirmation" },
+    subject: { de: "Auftragsbestätigung", en: "Order confirmation" },
+    number: confirmation.confirmationNumber,
+    pdf,
+  });
+  const updated = await prisma.orderConfirmation.update({ where: { id: confirmation.id }, data: { emailSentAt: new Date(), ...(wasDraft ? { status: "SENT" } : {}) } });
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "confirmation.send_email", entityType: "Confirmation", entityId: confirmation.id, metadata: { to } });
+  res.json({ ...updated, sentTo: to });
 });

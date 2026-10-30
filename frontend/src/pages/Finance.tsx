@@ -117,7 +117,7 @@ export default function Finance() {
     <div>
       <h1 className="text-2xl font-semibold mb-6">Finanzen</h1>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
         {(["euer", "expenses", "assets", "bank", "tax"] as const).map((tabKey) => (
           <button
             key={tabKey}
@@ -278,7 +278,7 @@ export default function Finance() {
               return (
                 <div key={exp.id}>
                   {/* Desktop */}
-                  <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "100px 1fr 130px 110px auto" }}>
+                  <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "100px 1fr 130px 110px auto" }}>
                     <span>{new Date(exp.date).toLocaleDateString("de-DE")}</span>
                     <span className="font-medium truncate">{exp.vendor}{exp.inAssetRegister && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-normal" title="Zählt in der EÜR als Abschreibung (Anlageverzeichnis)">Anlage</span>}</span>
                     <span className="text-slate-500 truncate">{exp.category}</span>
@@ -324,7 +324,7 @@ export default function Finance() {
               return (
                 <div key={tx.id}>
                   {/* Desktop */}
-                  <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "100px 160px 1fr 110px 100px" }}>
+                  <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "100px 160px 1fr 110px 100px" }}>
                     <span>{new Date(tx.bookingDate).toLocaleDateString("de-DE")}</span>
                     <span className="truncate">{tx.counterparty}</span>
                     <span className="text-slate-500 truncate">{tx.purpose}</span>

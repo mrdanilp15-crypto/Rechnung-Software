@@ -138,7 +138,7 @@ export default function CustomerDetail() {
         {customer.history.invoices.map((inv) => (
           <div key={inv.id}>
             {/* Desktop */}
-            <Link to={`/invoices/${inv.id}`} className="hidden md:grid items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700" style={{ gridTemplateColumns: "140px 1fr 100px 100px" }}>
+            <Link to={`/invoices/${inv.id}`} className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700" style={{ gridTemplateColumns: "140px 1fr 100px 100px" }}>
               <span className="font-medium">{inv.invoiceNumber ?? "Entwurf"}</span>
               <span className="text-slate-500">{formatDate(inv.issueDate)}</span>
               <span className="text-right">{formatEuro(inv.totalCents)}</span>
@@ -159,7 +159,7 @@ export default function CustomerDetail() {
         {customer.history.quotes.map((q) => (
           <div key={q.id}>
             {/* Desktop */}
-            <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "140px 1fr 100px 100px" }}>
+            <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "140px 1fr 100px 100px" }}>
               <span className="font-medium">{q.quoteNumber}</span>
               <span className="text-slate-500">{formatDate(q.issueDate)}</span>
               <span className="text-right">{formatEuro(q.totalCents)}</span>

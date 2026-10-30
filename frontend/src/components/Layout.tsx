@@ -29,7 +29,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   // Sidebar ist auf dem Handy standardmäßig eingeklappt (Overlay statt fest verankert),
-  // auf Desktop-Breiten (md+) immer sichtbar - siehe md:translate-x-0 unten.
+  // ab 1024 px (Tablet quer, Laptop) immer sichtbar - siehe lg:translate-x-0 unten; zwischen 1024 und 1279 px als schmale Symbolleiste.
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -60,11 +60,14 @@ export default function Layout() {
 
   const sidebarContent = (
     <>
-      <div className="flex items-center justify-between mb-6 md:block">
-        <h1 className="text-lg font-semibold text-brand tracking-tight">{t("app.title")}</h1>
+      <div className="flex items-center justify-between mb-6 lg:block">
+        <h1 className="text-lg font-semibold text-brand tracking-tight lg:max-xl:text-center">
+          <span className="lg:max-xl:hidden">{t("app.title")}</span>
+          <span className="hidden lg:max-xl:inline" title={t("app.title")}>R</span>
+        </h1>
         <button
           onClick={() => setMobileNavOpen(false)}
-          className="md:hidden w-8 h-8 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+          className="lg:hidden w-8 h-8 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
           aria-label="Menü schließen"
         >
           ✕
@@ -73,20 +76,22 @@ export default function Layout() {
       <button
         type="button"
         onClick={() => setSearchOpen(true)}
-        className="mb-3 w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
+        title="Suchen (Strg K)"
+        className="mb-3 w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 lg:max-xl:justify-center lg:max-xl:px-0"
       >
-        <span className="flex items-center gap-2"><Icon name="search" className="w-4 h-4" />Suchen ...</span>
-        <span className="text-xs hidden md:inline">Strg K</span>
+        <span className="flex items-center gap-2"><Icon name="search" className="w-4 h-4" /><span className="lg:max-xl:hidden">Suchen ...</span></span>
+        <span className="text-xs hidden xl:inline">Strg K</span>
       </button>
       <nav className="flex flex-col gap-1 flex-1">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
+            title={t(`nav.${item.key}`)}
             end={item.to === "/"}
             className={({ isActive }) => {
               const active = isActive || item.match.some((m) => location.pathname === m || location.pathname.startsWith(`${m}/`));
-              return `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              return `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors lg:max-xl:justify-center lg:max-xl:px-0 ${
                 active
                   ? "bg-brand text-white shadow-sm"
                   : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
@@ -94,19 +99,19 @@ export default function Layout() {
             }}
           >
             <Icon name={item.icon} className="w-5 h-5 shrink-0" />
-            {t(`nav.${item.key}`)}
+            <span className="lg:max-xl:hidden">{t(`nav.${item.key}`)}</span>
           </NavLink>
         ))}
       </nav>
       <div className="flex flex-col gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
-        <div className="flex items-center justify-between text-sm">
-          <span>{t("settings.darkMode")}</span>
-          <button onClick={toggle} className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700" aria-label={t("settings.darkMode")}>
+        <div className="flex items-center justify-between text-sm lg:max-xl:justify-center">
+          <span className="lg:max-xl:hidden">{t("settings.darkMode")}</span>
+          <button onClick={toggle} className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700" aria-label={t("settings.darkMode")} title={t("settings.darkMode")}>
             <Icon name={isDark ? "moon" : "sun"} className="w-4 h-4" />
           </button>
         </div>
-        <div className="flex items-center justify-between text-sm">
-          <span>{t("settings.language")}</span>
+        <div className="flex items-center justify-between text-sm lg:max-xl:justify-center">
+          <span className="lg:max-xl:hidden">{t("settings.language")}</span>
           <select
             value={i18n.language}
             onChange={(e) => setLocale(e.target.value as "de" | "en")}
@@ -116,7 +121,7 @@ export default function Layout() {
             <option value="en">EN</option>
           </select>
         </div>
-        <div className="text-xs text-slate-500 truncate" title={user?.email}>
+        <div className="text-xs text-slate-500 truncate lg:max-xl:hidden" title={user?.email}>
           {user?.name} ({user?.role})
         </div>
         <button
@@ -128,9 +133,12 @@ export default function Layout() {
               navigate("/login");
             }
           }}
-          className="text-sm text-left text-red-600 hover:underline"
+          className="text-sm text-left text-red-600 hover:underline lg:max-xl:flex lg:max-xl:justify-center"
+          title={t("nav.logout")}
+          aria-label={t("nav.logout")}
         >
-          {t("nav.logout")}
+          <Icon name="logout" className="w-5 h-5 hidden lg:max-xl:block" />
+          <span className="lg:max-xl:hidden">{t("nav.logout")}</span>
         </button>
       </div>
     </>
@@ -140,7 +148,7 @@ export default function Layout() {
     <div className="flex min-h-screen">
       {/* Mobile Kopfleiste mit Hamburger-Button - ab md verborgen, da dort die Sidebar
           dauerhaft sichtbar ist. */}
-      <div className="md:hidden fixed top-0 inset-x-0 z-30 h-14 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+      <div className="lg:hidden fixed top-0 inset-x-0 z-30 h-14 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
         <button
           onClick={() => setMobileNavOpen(true)}
           className="w-9 h-9 -ml-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-xl"
@@ -153,27 +161,27 @@ export default function Layout() {
       </div>
 
       {mobileNavOpen && (
-        <div className="md:hidden fixed inset-0 bg-black/40 z-30" onClick={() => setMobileNavOpen(false)} />
+        <div className="lg:hidden fixed inset-0 bg-black/40 z-30" onClick={() => setMobileNavOpen(false)} />
       )}
 
       <aside
-        className={`w-64 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 flex flex-col
+        className={`w-64 lg:w-[72px] xl:w-64 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 lg:p-3 xl:p-4 flex flex-col
           fixed inset-y-0 left-0 z-40 transform transition-transform duration-200
           ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"}
-          md:relative md:translate-x-0 md:z-auto`}
+          lg:relative lg:translate-x-0 lg:z-auto`}
       >
         {sidebarContent}
       </aside>
 
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-      <main className={`flex-1 p-4 pt-20 md:p-8 md:pt-8 overflow-auto min-w-0 ${inEditor ? "" : "pb-24 md:pb-8"}`}>
+      <main className={`flex-1 p-4 pt-20 sm:p-6 sm:pt-20 lg:p-8 lg:pt-8 overflow-auto min-w-0 ${inEditor ? "" : "pb-24 lg:pb-8"}`}>
         <Outlet />
       </main>
 
       {/* Mobil: feste Leiste unten mit den wichtigsten Bereichen (große Tippflächen), "Mehr" öffnet das ganze Menü */}
       {!inEditor && (
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 h-16 grid grid-cols-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pb-[env(safe-area-inset-bottom)]" aria-label="Hauptmenü">
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 h-16 grid grid-cols-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pb-[env(safe-area-inset-bottom)]" aria-label="Hauptmenü">
           {["start", "documents", "production", "customers"].map((k) => navItems.find((n) => n.key === k)!).map((item) => {
             const active = item.to === "/" ? location.pathname === "/" : [item.to, ...item.match].some((m) => location.pathname === m || location.pathname.startsWith(`${m}/`));
             return (
@@ -192,7 +200,7 @@ export default function Layout() {
 
       {/* Mobil: "+"-Knopf für die häufigsten Aktionen */}
       {!inEditor && (
-        <div className="md:hidden fixed bottom-20 right-4 z-20">
+        <div className="lg:hidden fixed bottom-20 right-4 z-20">
           {quickOpen && (
             <div className="absolute bottom-14 right-0 w-52 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 text-sm">
               <button onClick={() => navigate("/invoices/new")} className="block w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700">Neue Rechnung</button>

@@ -418,6 +418,7 @@ const sendEmailSchema = z.object({
   to: z.string().email().optional(),
   subject: z.string().optional(),
   message: z.string().optional(),
+  copyToSelf: z.boolean().optional(),
 });
 
 invoicesRouter.post("/:id/send-email", async (req, res) => {
@@ -426,8 +427,8 @@ invoicesRouter.post("/:id/send-email", async (req, res) => {
     include: { items: true, customer: true, company: true, correctsInvoice: true },
   });
   if (!invoice) throw new HttpError(404, "Rechnung nicht gefunden");
-  if (invoice.status !== "DRAFT" && invoice.status !== "SENT") {
-    throw new HttpError(409, "Nur Entwürfe oder bereits versendete Rechnungen können per E-Mail verschickt werden.");
+  if (invoice.status === "CANCELLED") {
+    throw new HttpError(409, "Stornierte Rechnungen können nicht per E-Mail verschickt werden (den Korrekturbeleg schicken Sie stattdessen).");
   }
   const body = sendEmailSchema.parse(req.body);
   const to = body.to || invoice.customer.email;
@@ -455,6 +456,7 @@ invoicesRouter.post("/:id/send-email", async (req, res) => {
   try {
     await sendMailForCompany(invoice.company, {
       to,
+      bcc: body.copyToSelf ? invoice.company.smtpFromEmail || invoice.company.smtpUser || undefined : undefined,
       subject: body.subject || `${locale === "en" ? "Invoice" : "Rechnung"} ${invoiceNumber}`,
       text,
       attachments: [{ filename: `${invoiceNumber}.pdf`, content: pdfBuffer, contentType: "application/pdf" }],
@@ -478,7 +480,7 @@ invoicesRouter.post("/:id/send-email", async (req, res) => {
   });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "invoice.send_email", entityType: "Invoice", entityId: invoice.id, metadata: { to } });
   if (invoice.status === "DRAFT") await emitEvent("invoice.sent", { companyId: req.auth!.companyId, invoice: updated });
-  res.json(updated);
+  res.json({ ...updated, sentTo: to });
 });
 
 invoicesRouter.post("/:id/remind", async (req, res) => {

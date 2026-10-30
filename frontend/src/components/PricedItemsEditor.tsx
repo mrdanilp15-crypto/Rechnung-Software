@@ -181,7 +181,7 @@ export function PricedItemsEditor({
                 </select>
                 <button type="button" onClick={() => onChange(items.filter((it) => it._key !== item._key))} className="text-red-500 px-1 pt-1" aria-label="Position entfernen">✕</button>
               </div>
-              <div className={`grid ${showPrices ? "grid-cols-[1fr_0.8fr_1.2fr_0.9fr_1.1fr]" : "grid-cols-[1fr_1fr]"} gap-2 items-end pl-6`}>
+              <div className={`grid ${showPrices ? "grid-cols-2 sm:grid-cols-[1fr_0.8fr_1.2fr_0.9fr_1.1fr]" : "grid-cols-[1fr_1fr]"} gap-2 items-end pl-6`}>
                 <div>
                   <label className="block text-[11px] text-slate-500 mb-0.5">Menge</label>
                   <input type="number" min={0} step="any" value={item.quantity} onFocus={(e) => e.target.select()} onChange={(e) => setQuantity(item, parseFloat(e.target.value) || 0)} className={inputClass} />
@@ -202,7 +202,7 @@ export function PricedItemsEditor({
                     <option value={0}>0%</option>
                   </select>
                 </div>
-                <div className={`text-right text-sm font-medium pb-1 ${showPrices ? "" : "hidden"}`}>{formatEuro(item.quantity * item.unitPriceCents)}</div>
+                <div className={`text-right text-sm font-medium pb-1 col-span-2 sm:col-span-1 ${showPrices ? "" : "hidden"}`}>{formatEuro(item.quantity * item.unitPriceCents)}</div>
               </div>
             </div>
           ))}
@@ -210,7 +210,7 @@ export function PricedItemsEditor({
       ) : (
         <>
       {/* Desktop */}
-      <table className="hidden md:table w-full text-sm">
+      <table className="hidden xl:table w-full text-sm">
         <thead>
           <tr className="text-left text-slate-500">
             <th className="pb-2">Produkt</th>
@@ -260,7 +260,7 @@ export function PricedItemsEditor({
       </table>
 
       {/* Mobile */}
-      <div className="md:hidden space-y-4">
+      <div className="xl:hidden space-y-4">
         {items.map((item, idx) => (
           <div key={item._key} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
             <div className="flex justify-between items-center">

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
 import { RowActionsMenu, RowAction } from "../components/RowActionsMenu";
@@ -7,6 +7,7 @@ import { MobileCard, MobileField } from "../components/MobileCard";
 import { useToast } from "../components/Toast";
 import { RecurringDialog } from "../components/RecurringDialog";
 import { StatusChip } from "../components/StatusChip";
+import { SendDocumentDialog } from "../components/SendDocumentDialog";
 
 type Kind = "INVOICE" | "QUOTE" | "ORDER_CONFIRMATION" | "DELIVERY_NOTE";
 
@@ -22,6 +23,7 @@ interface DocRow {
   isCancellationDocument: boolean;
   hasNext: boolean;
   invoiceKind?: string;
+  emailSentAt: string | null;
 }
 
 const KIND_INFO: Record<Kind, { label: string; plural: string; base: string; newPath: string }> = {
@@ -53,6 +55,10 @@ export default function Documents() {
   const [q, setQ] = useState("");
   const [newOpen, setNewOpen] = useState(false);
   const [dpRow, setDpRow] = useState<DocRow | null>(null);
+  const [sendRow, setSendRow] = useState<DocRow | null>(null);
+  const location = useLocation();
+  // Nach "Fertigstellen" im Editor: Versand-Dialog gleich öffnen
+  const pendingSend = (location.state as { sendEmail?: { kind: Kind; id: string } } | null)?.sendEmail;
   const [recurringRow, setRecurringRow] = useState<DocRow | null>(null);
   const [dpPercent, setDpPercent] = useState("30");
   const newRef = useRef<HTMLDivElement>(null);
@@ -64,6 +70,13 @@ export default function Documents() {
     });
   }
   useEffect(load, []);
+  useEffect(() => {
+    if (!pendingSend || !loaded) return;
+    const row = rows.find((r) => r.kind === pendingSend.kind && r.id === pendingSend.id);
+    if (row) setSendRow(row);
+    navigate(location.pathname + location.search, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
 
   useEffect(() => {
     if (!newOpen) return;
@@ -157,6 +170,7 @@ export default function Documents() {
   function actionsFor(row: DocRow): RowAction[] {
     const list: RowAction[] = [];
     if (row.status === "DRAFT") list.push({ label: "Bearbeiten", onClick: () => navigate(openPath(row)!) });
+    if (row.status !== "CANCELLED" && !row.isCancellationDocument) list.push({ label: row.emailSentAt ? "Erneut per E-Mail senden" : "Per E-Mail senden", onClick: () => setSendRow(row) });
     if (row.kind === "QUOTE" && row.status === "SENT") {
       list.push({ label: "Als angenommen markieren", onClick: () => setQuoteStatus(row, "ACCEPTED", "angenommen") });
       list.push({ label: "Als abgelehnt markieren", onClick: () => setQuoteStatus(row, "DECLINED", "abgelehnt") });
@@ -228,7 +242,7 @@ export default function Documents() {
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
-        <div className="hidden md:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+        <div className="hidden xl:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
           <span>Art</span>
           <span>Nummer</span>
           <span>Kunde</span>
@@ -238,11 +252,16 @@ export default function Documents() {
           <span></span>
         </div>
         {visible.map((row) => {
-          const badge = <StatusChip status={row.status} kind={row.kind} isCancellationDocument={row.isCancellationDocument} />;
+          const badge = <StatusChip status={row.status} kind={row.kind} isCancellationDocument={row.isCancellationDocument} emailed={!!row.emailSentAt} />;
           const actions = (
             <div className="flex gap-2 justify-end items-center flex-wrap">
               {row.hasNext && <span className="text-xs text-green-600" title="Daraus wurde bereits ein Folgebeleg erstellt">✓ weitergeführt</span>}
               {primary(row)}
+              {row.status !== "CANCELLED" && !row.isCancellationDocument && (
+                <button type="button" onClick={() => setSendRow(row)} className="text-brand hover:underline" title={row.emailSentAt ? `Zuletzt per E-Mail gesendet am ${formatDate(row.emailSentAt)}` : "Per E-Mail an den Kunden senden (PDF im Anhang)"}>
+                  {row.emailSentAt ? "✉ Erneut senden" : "✉ Senden"}
+                </button>
+              )}
               {row.status !== "DRAFT" && (
                 <PdfLink url={`${KIND_INFO[row.kind].base}/${row.id}/pdf`} filename={`${row.number ?? "beleg"}.pdf`} className="text-brand hover:underline">PDF</PdfLink>
               )}
@@ -251,7 +270,7 @@ export default function Documents() {
           );
           return (
             <div key={`${row.kind}-${row.id}`}>
-              <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+              <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
                 <span className="text-slate-500">{kindLabel(row)}</span>
                 <span className={`font-medium truncate ${row.number ? "" : "italic text-slate-500"}`}>{row.number ?? "Entwurf"}</span>
                 <span className="truncate">{row.customerName}</span>
@@ -276,6 +295,22 @@ export default function Documents() {
           </div>
         )}
       </div>
+
+      {sendRow && (
+        <SendDocumentDialog
+          base={KIND_INFO[sendRow.kind].base}
+          id={sendRow.id}
+          label={KIND_INFO[sendRow.kind].label}
+          number={sendRow.number}
+          isDraft={sendRow.status === "DRAFT"}
+          onClose={() => setSendRow(null)}
+          onSent={(to) => {
+            setSendRow(null);
+            showToast(`${KIND_INFO[sendRow.kind].label} wurde an ${to} gesendet`, "success");
+            load();
+          }}
+        />
+      )}
 
       {recurringRow && (
         <RecurringDialog

@@ -14,6 +14,7 @@ interface DocRow {
   totalCents: number | null;
   status: string;
   isCancellationDocument: boolean;
+  emailSentAt: string | null;
 }
 
 interface RevenueStatus {
@@ -287,7 +288,7 @@ export default function Dashboard() {
                       <span className="block truncate text-xs text-slate-500">{r.customerName}</span>
                     </span>
                     <span className="shrink-0 flex items-center gap-3">
-                      <StatusChip status={r.status} kind={r.kind} isCancellationDocument={r.isCancellationDocument} />
+                      <StatusChip status={r.status} kind={r.kind} isCancellationDocument={r.isCancellationDocument} emailed={!!r.emailSentAt} />
                       <span className="w-24 text-right font-medium">{r.totalCents === null ? "" : format(r.totalCents)}</span>
                     </span>
                   </Link>

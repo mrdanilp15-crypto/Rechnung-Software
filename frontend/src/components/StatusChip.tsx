@@ -12,12 +12,14 @@ const TONES: Record<Tone, string> = {
   red: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
 };
 
-export function statusInfo(status: string, opts: { kind?: string; isCancellationDocument?: boolean } = {}): { label: string; tone: Tone; strike?: boolean } {
+export function statusInfo(status: string, opts: { kind?: string; isCancellationDocument?: boolean; emailed?: boolean } = {}): { label: string; tone: Tone; strike?: boolean } {
   if (opts.isCancellationDocument) return { label: "Korrekturbeleg", tone: "amber" };
   switch (status) {
     case "DRAFT": return { label: "Entwurf", tone: "amber" };
     case "SENT":
-      return !opts.kind || opts.kind === "INVOICE" || opts.kind === "QUOTE" ? { label: "Versendet", tone: "blue" } : { label: "Fertig", tone: "green" };
+      if (!opts.kind || opts.kind === "INVOICE") return { label: "Versendet", tone: "blue" };
+      // Angebot/Auftrag/Lieferschein: "Fertig" heißt nur fertiggestellt - "Versendet" erst, wenn tatsächlich eine E-Mail verschickt wurde
+      return opts.emailed ? { label: "Versendet", tone: "blue" } : { label: "Fertig", tone: "green" };
     case "PAID": return { label: "Bezahlt", tone: "green" };
     case "OVERDUE": return { label: "Überfällig", tone: "red" };
     case "CANCELLED": return { label: "Storniert", tone: "gray", strike: true };
@@ -28,7 +30,7 @@ export function statusInfo(status: string, opts: { kind?: string; isCancellation
   }
 }
 
-export function StatusChip({ status, kind, isCancellationDocument, className = "" }: { status: string; kind?: string; isCancellationDocument?: boolean; className?: string }) {
-  const info = statusInfo(status, { kind, isCancellationDocument });
+export function StatusChip({ status, kind, isCancellationDocument, emailed, className = "" }: { status: string; kind?: string; isCancellationDocument?: boolean; emailed?: boolean; className?: string }) {
+  const info = statusInfo(status, { kind, isCancellationDocument, emailed });
   return <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${TONES[info.tone]} ${info.strike ? "line-through" : ""} ${className}`}>{info.label}</span>;
 }

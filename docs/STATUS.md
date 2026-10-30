@@ -124,6 +124,8 @@ implementiert.
 | Mahnwesen mit drei Stufen, Verzugszinsen, Pauschale, Mahn-PDF | ✅ Basiszinssatz muss vom Nutzer gepflegt werden |
 | Anzahlungs- und Schlussrechnung (XRechnung: Typ 326 + BT-113) | ✅ mit KoSIT geprüft |
 | Wiederkehrende Rechnungen (erzeugen nur Entwürfe) | ✅ |
+| E-Mail-Versand für Angebote, Aufträge, Lieferscheine; HTML-Mails mit Logo, "Erneut senden", Kopie an mich | ✅ getestet mit lokalem Testserver (nicht mit echtem Postfach) |
+| Tablet/Handy: Leiste oben/unten, Symbolleiste quer, Kartenlisten, PDF-Ansicht in der App | ✅ alle Seiten und Reiter auf Überlauf geprüft (390/844/768/820/1024/1180 px) |
 | Bambu-Lab-Live-Anbindung (LAN, nur lesend): Status, Fortschritt, Temperaturen, AMS, Kamerabild (P1/A1), Druckverlauf, Betriebsstunden | 🟡 getestet mit simuliertem Drucker (MQTT/TLS, Kamera), nicht mit echtem Gerät - bitte beim ersten Einrichten prüfen |
 | Produktionsboard (Erstellt, In Produktion, Versandbereit, Versendet) aus Auftragsbestätigungen | ✅ |
 | Etsy-Import per CSV (Aufträge als Entwurf, Vorschau, Duplikaterkennung) | ✅ Keine Live-Anbindung; Spalten tolerant erkannt, mit echtem Etsy-Export bitte einmal prüfen |

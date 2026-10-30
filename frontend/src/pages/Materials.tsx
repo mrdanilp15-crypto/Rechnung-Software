@@ -184,7 +184,7 @@ export default function Materials() {
       )}
 
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
-        <div className="hidden md:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
+        <div className="hidden xl:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
           <span>Name</span>
           <span className="text-right">Bestand</span>
           <span className="text-right">Preis/Einheit</span>
@@ -210,7 +210,7 @@ export default function Materials() {
           return (
           <div key={m.id}>
             {/* Desktop */}
-            <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
+            <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
               <span className="min-w-0"><span className="block font-medium truncate">{m.name}</span>{m.supplierId && <span className="block text-xs text-slate-500 truncate">{suppliers.find((s) => s.id === m.supplierId)?.name}</span>}</span>
               <span className="text-right">{stockValue}</span>
               <span className="text-right text-slate-500">{formatUnitPrice(m.costPerUnitCents)}/{m.unit}</span>

@@ -174,22 +174,22 @@ export function AssetsPanel({ year, onChanged }: { year: number; onChanged?: () 
       )}
 
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
-        <div className="hidden md:grid gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: "minmax(0,1fr) 95px 110px 110px 120px 170px" }}>
+        <div className="hidden xl:grid gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: "minmax(0,1fr) 95px 110px 110px 120px 170px" }}>
           <span>Anlage</span><span>Gekauft</span><span className="text-right">Anschaffung</span><span className="text-right">AfA {year}</span><span className="text-right">Restwert 31.12.</span><span />
         </div>
         {items.map((a) => (
-          <div key={a.id} className="px-4 py-3 text-sm md:grid md:items-start md:gap-3" style={{ gridTemplateColumns: "minmax(0,1fr) 95px 110px 110px 120px 170px" }}>
+          <div key={a.id} className="px-4 py-3 text-sm xl:grid xl:items-start xl:gap-3" style={{ gridTemplateColumns: "minmax(0,1fr) 95px 110px 110px 120px 170px" }}>
             <div className="min-w-0">
               <div className="font-medium truncate">{a.name}</div>
               <div className="text-xs text-slate-500">{a.method === "GWG" ? "GWG - Sofortabzug" : `linear über ${a.usefulLifeYears} Jahre`}{a.expenseId ? " · mit Ausgabe verknüpft" : ""}</div>
               {a.schedule.length > 1 && <div className="text-xs text-slate-400 mt-0.5">Plan: {a.schedule.map((s) => `${s.year}: ${money(s.amountCents)}`).join(" · ")}</div>}
               {a.notes && <div className="text-xs text-slate-500">{a.notes}</div>}
             </div>
-            <span className="md:block text-slate-600 dark:text-slate-300">{dateDe(a.purchaseDate)}</span>
-            <span className="md:text-right">{money(a.costCents)}</span>
-            <span className="md:text-right font-medium">{money(a.afaThisYear)}</span>
-            <span className="md:text-right">{money(a.bookValueEndOfYear)}</span>
-            <span className="flex gap-3 md:justify-end md:pl-4 mt-1 md:mt-0">
+            <span className="xl:block text-slate-600 dark:text-slate-300">{dateDe(a.purchaseDate)}</span>
+            <span className="xl:text-right">{money(a.costCents)}</span>
+            <span className="xl:text-right font-medium">{money(a.afaThisYear)}</span>
+            <span className="xl:text-right">{money(a.bookValueEndOfYear)}</span>
+            <span className="flex gap-3 xl:justify-end xl:pl-4 mt-1 xl:mt-0">
               <button onClick={() => startEdit(a)} className="text-brand hover:underline">Bearbeiten</button>
               <button onClick={() => remove(a)} className="text-red-600 hover:underline">Entfernen</button>
             </span>

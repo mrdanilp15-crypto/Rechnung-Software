@@ -472,7 +472,7 @@ export default function Archive() {
 
       {/* Liste */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
-        <div className="hidden md:grid gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: "minmax(0,1fr) 190px 95px 100px 190px" }}>
+        <div className="hidden xl:grid gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: "minmax(0,1fr) 190px 95px 100px 190px" }}>
           <button type="button" onClick={() => toggleSort("title")} className="text-left hover:text-slate-800 dark:hover:text-slate-200">Dokument{sortMark("title")}</button>
           <button type="button" onClick={() => toggleSort("vendor")} className="text-left hover:text-slate-800 dark:hover:text-slate-200">Kategorie / Aussteller{sortMark("vendor")}</button>
           <button type="button" onClick={() => toggleSort("date")} className="text-left hover:text-slate-800 dark:hover:text-slate-200">Datum{sortMark("date")}</button>
@@ -483,7 +483,7 @@ export default function Archive() {
           const until = retainUntil(d.category, d.documentDate);
           return (
             <div key={d.id}>
-              <div className="hidden md:grid items-start gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "minmax(0,1fr) 190px 95px 100px 190px" }}>
+              <div className="hidden xl:grid items-start gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "minmax(0,1fr) 190px 95px 100px 190px" }}>
                 <div className="min-w-0">
                   <div className="font-medium truncate"><span className="mr-1.5">{iconFor(d.mimeType)}</span><Highlight text={d.title} query={q} /></div>
                   <div className="text-xs text-slate-500 truncate">{d.fileName} · {formatBytes(d.sizeBytes)}{d.expenseId ? " · aus Ausgabe" : ""}</div>

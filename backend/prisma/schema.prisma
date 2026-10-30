@@ -561,6 +561,8 @@ model DeliveryNote {
   // relevante Geschäftsunterlagen (GoBD) - "Löschen" markiert sie deshalb nur als
   // ungültig, statt den Datensatz zu entfernen (siehe modules/deliveryNotes/router.ts).
   voidedAt                  DateTime?
+  // Wann der Beleg per E-Mail verschickt wurde (null = nicht per E-Mail versendet; "Fertigstellen" allein verschickt nichts)
+  emailSentAt   DateTime?
   createdAt                 DateTime            @default(now())
   updatedAt                 DateTime            @updatedAt
 
@@ -611,6 +613,8 @@ model OrderConfirmation {
   productionNote      String?
   productionUpdatedAt DateTime?
   shippedAt           DateTime?
+  // Wann der Beleg per E-Mail verschickt wurde (null = nicht per E-Mail versendet; "Fertigstellen" allein verschickt nichts)
+  emailSentAt   DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

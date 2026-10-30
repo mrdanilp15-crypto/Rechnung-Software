@@ -219,7 +219,7 @@ export default function Customers() {
         <p>{t("common.loading")}</p>
       ) : (
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
-          <div className="hidden md:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+          <div className="hidden xl:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
             <span>Name</span>
             <span>Nummer</span>
             <span>E-Mail</span>
@@ -247,7 +247,7 @@ export default function Customers() {
             return (
               <div key={c.id}>
                 {/* Desktop */}
-                <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+                <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
                   <div className="min-w-0">
                     <Link to={`/customers/${c.id}`} className="font-medium truncate text-brand hover:underline block">
                       {c.name}

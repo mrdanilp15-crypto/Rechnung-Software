@@ -536,7 +536,7 @@ export default function Products() {
           return (
             <div key={p.id}>
               {/* Desktop */}
-              <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 140px 90px auto" }}>
+              <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 140px 90px auto" }}>
                 <div className="min-w-0">
                   <div className="font-medium truncate">{p.name}</div>
                   {(p.sku || p.description) && (

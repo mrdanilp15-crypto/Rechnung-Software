@@ -104,7 +104,7 @@ export default function Invoices() {
         <p>{t("common.loading")}</p>
       ) : (
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
-          <div className="hidden md:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+          <div className="hidden xl:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
             <input
               type="checkbox"
               checked={allSelected}
@@ -141,7 +141,7 @@ export default function Invoices() {
                 {/* Desktop */}
                 <div
                   onClick={() => navigate(`/invoices/${inv.id}`)}
-                  className="hidden md:grid items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
+                  className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
                   style={{ gridTemplateColumns: ROW_COLUMNS }}
                 >
                   {checkbox}

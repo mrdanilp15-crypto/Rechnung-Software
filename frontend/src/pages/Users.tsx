@@ -180,7 +180,7 @@ export default function Users() {
       )}
 
       <div className="border-t border-slate-100 dark:border-slate-700">
-        <div className="hidden md:grid items-center gap-3 py-2 text-xs font-medium text-slate-500 border-b border-slate-100 dark:border-slate-700" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+        <div className="hidden xl:grid items-center gap-3 py-2 text-xs font-medium text-slate-500 border-b border-slate-100 dark:border-slate-700" style={{ gridTemplateColumns: ROW_COLUMNS }}>
           <span>Name / E-Mail</span>
           <span>Rolle</span>
           <span>Status</span>
@@ -218,7 +218,7 @@ export default function Users() {
             return (
               <div key={u.id}>
                 {/* Desktop */}
-                <div className="hidden md:grid items-center gap-3 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+                <div className="hidden xl:grid items-center gap-3 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
                   <div className="min-w-0">
                     <div className="font-medium truncate">{u.name}</div>
                     <div className="text-xs text-slate-500 truncate">{u.email}</div>

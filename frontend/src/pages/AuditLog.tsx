@@ -86,7 +86,7 @@ export default function AuditLog() {
         <p>Lädt...</p>
       ) : (
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
-          <div className="hidden md:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+          <div className="hidden xl:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
             <span>Zeitpunkt</span>
             <span>Aktion / Details</span>
             <span>Entität</span>
@@ -96,7 +96,7 @@ export default function AuditLog() {
           {entries.map((e) => (
             <div key={e.id}>
               {/* Desktop */}
-              <div className="hidden md:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+              <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
                 <span className="text-slate-500 text-xs">{formatDateTime(e.createdAt)}</span>
                 <div className="min-w-0">
                   <div className="font-medium truncate">{e.action}</div>

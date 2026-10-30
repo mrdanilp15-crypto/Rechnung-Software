@@ -3,6 +3,9 @@ import type { Company } from "@prisma/client";
 import { decryptField } from "../../utils/crypto";
 import { HttpError } from "../../middleware/errorHandler";
 import { logger } from "../../utils/logger";
+import fs from "fs";
+import path from "path";
+import { LOGO_CID, buildMailHtml } from "./mailHtml";
 
 /**
  * E-Mail-Versand mit den SMTP-Zugangsdaten der jeweiligen Firma (kein zentraler,
@@ -17,9 +20,26 @@ import { logger } from "../../utils/logger";
 
 export interface SendMailParams {
   to: string;
+  /** Kopie an diese Adresse (z.B. an den Absender selbst) */
+  bcc?: string;
   subject: string;
   text: string;
   attachments?: { filename: string; content: Buffer; contentType?: string }[];
+}
+
+const LOGO_TYPES: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp" };
+
+/** Firmenlogo für die E-Mail (nur gängige Bildformate bis 2 MB; sonst wird der Firmenname als Kopfzeile verwendet). */
+function readLogo(logoPath: string | null | undefined): { filename: string; content: Buffer; contentType: string } | null {
+  try {
+    if (!logoPath || !fs.existsSync(logoPath)) return null;
+    const ext = path.extname(logoPath).toLowerCase();
+    const contentType = LOGO_TYPES[ext];
+    if (!contentType || fs.statSync(logoPath).size > 2 * 1024 * 1024) return null;
+    return { filename: `logo${ext}`, content: fs.readFileSync(logoPath), contentType };
+  } catch {
+    return null;
+  }
 }
 
 export function isSmtpConfigured(company: Pick<Company, "smtpHost" | "smtpUser" | "smtpPasswordEncrypted">): boolean {
@@ -45,13 +65,19 @@ export async function sendMailForCompany(company: Company, params: SendMailParam
   const fromAddress = company.smtpFromEmail || company.smtpUser!;
   const fromName = company.smtpFromName || company.name;
 
+  // HTML-Fassung mit Firmenlogo (als eingebettetes Bild, nicht als Anhang) - die Textfassung bleibt als Alternative erhalten
+  const logo = readLogo(company.logoPath);
+  const html = buildMailHtml(company, params.text, { hasLogo: !!logo, attachmentNames: params.attachments?.map((a) => a.filename) });
+
   try {
     await transporter.sendMail({
       from: `"${fromName.replace(/"/g, "")}" <${fromAddress}>`,
       to: params.to,
+      bcc: params.bcc,
       subject: params.subject,
       text: params.text,
-      attachments: params.attachments,
+      html,
+      attachments: [...(params.attachments ?? []), ...(logo ? [{ filename: logo.filename, content: logo.content, contentType: logo.contentType, cid: LOGO_CID, contentDisposition: "inline" as const }] : [])],
     });
   } catch (err: any) {
     logger.warn({ err: err.message, companyId: company.id }, "E-Mail-Versand fehlgeschlagen");

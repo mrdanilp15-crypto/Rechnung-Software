@@ -1,9 +1,11 @@
 import { Router } from "express";
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../db/prisma";
 import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
+import { sendDocumentEmail, sendDocumentEmailSchema } from "../email/documentMail";
 import { nextDocumentNumber } from "../shared/numbering";
 import { renderDocumentPdf } from "../pdf/documentTemplate";
 import { resolvePdfLayout } from "../pdf/layout";
@@ -78,15 +80,8 @@ deliveryNotesRouter.post("/", async (req, res) => {
   res.status(201).json(note);
 });
 
-deliveryNotesRouter.get("/:id/pdf", async (req, res) => {
-  const note = await prisma.deliveryNote.findFirst({
-    where: { id: req.params.id, companyId: req.auth!.companyId },
-    include: { items: true, customer: true, company: true },
-  });
-  if (!note) throw new HttpError(404, "Lieferschein nicht gefunden");
-  const locale = (req.query.lang as "de" | "en") || (note.company.defaultLocale as "de" | "en") || "de";
-
-  const pdfBuffer = await renderDocumentPdf({
+async function renderNotePdf(note: Prisma.DeliveryNoteGetPayload<{ include: { items: true; customer: true; company: true } }>, locale: "de" | "en", layout?: unknown): Promise<Buffer> {
+  return await renderDocumentPdf({
     docTypeLabel: { de: "Lieferschein", en: "Delivery Note" },
     numberLabel: { de: "Lieferscheinnr.", en: "Delivery note no." },
     documentNumber: note.noteNumber,
@@ -96,12 +91,23 @@ deliveryNotesRouter.get("/:id/pdf", async (req, res) => {
     recipient: note.customer,
     items: note.items,
     notes: note.notes,
-    layout: resolvePdfLayout(note.company.pdfLayout, req.query.layout),
+    layout: resolvePdfLayout(note.company.pdfLayout, layout),
     isDraft: note.status === "DRAFT",
     introText: note.introText,
     closingText: note.closingText,
     showPrices: false,
   });
+}
+
+deliveryNotesRouter.get("/:id/pdf", async (req, res) => {
+  const note = await prisma.deliveryNote.findFirst({
+    where: { id: req.params.id, companyId: req.auth!.companyId },
+    include: { items: true, customer: true, company: true },
+  });
+  if (!note) throw new HttpError(404, "Lieferschein nicht gefunden");
+  const locale = (req.query.lang as "de" | "en") || (note.company.defaultLocale as "de" | "en") || "de";
+
+  const pdfBuffer = await renderNotePdf(note, locale, req.query.layout);
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `inline; filename="${note.noteNumber}.pdf"`);
@@ -172,4 +178,32 @@ deliveryNotesRouter.post("/:id/duplicate", async (req, res) => {
   });
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "delivery_note.duplicate", entityType: "DeliveryNote", entityId: source.id, metadata: { newId: copy.id } });
   res.status(201).json(copy);
+});
+
+// Beleg per E-Mail verschicken (PDF im Anhang). Ein Entwurf wird dabei fertiggestellt - aber erst, wenn die E-Mail tatsächlich
+// übergeben wurde. "Fertigstellen" allein verschickt nichts.
+deliveryNotesRouter.post("/:id/send-email", async (req, res) => {
+  const body = sendDocumentEmailSchema.parse(req.body);
+  const note = await prisma.deliveryNote.findFirst({
+    where: { id: req.params.id, companyId: req.auth!.companyId, voidedAt: null },
+    include: { items: true, customer: true, company: true },
+  });
+  if (!note) throw new HttpError(404, "Lieferschein nicht gefunden");
+  if (note.items.length === 0) throw new HttpError(400, "Bitte mindestens eine Position eintragen.");
+  const locale = (note.company.defaultLocale as "de" | "en") || "de";
+  const wasDraft = note.status === "DRAFT";
+  const pdf = await renderNotePdf(wasDraft ? { ...note, status: "SENT" } : note, locale);
+  const to = await sendDocumentEmail({
+    company: note.company,
+    customer: note.customer,
+    body,
+    locale,
+    sentence: { de: "den Lieferschein", en: "the delivery note" },
+    subject: { de: "Lieferschein", en: "Delivery note" },
+    number: note.noteNumber,
+    pdf,
+  });
+  const updated = await prisma.deliveryNote.update({ where: { id: note.id }, data: { emailSentAt: new Date(), ...(wasDraft ? { status: "SENT" } : {}) } });
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "note.send_email", entityType: "Note", entityId: note.id, metadata: { to } });
+  res.json({ ...updated, sentTo: to });
 });

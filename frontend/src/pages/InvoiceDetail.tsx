@@ -52,6 +52,7 @@ export default function InvoiceDetail() {
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [emailForm, setEmailForm] = useState({ to: "", subject: "", message: "" });
   const [emailSending, setEmailSending] = useState(false);
+  const [emailCopy, setEmailCopy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [reminderText, setReminderText] = useState<string | null>(null);
   const location = useLocation();
@@ -105,6 +106,7 @@ export default function InvoiceDetail() {
         to: emailForm.to || undefined,
         subject: emailForm.subject || undefined,
         message: emailForm.message || undefined,
+        copyToSelf: emailCopy || undefined,
       });
       setShowEmailForm(false);
       load();
@@ -236,6 +238,7 @@ export default function InvoiceDetail() {
           <input placeholder="Empfänger-E-Mail" value={emailForm.to} onChange={(e) => setEmailForm((f) => ({ ...f, to: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
           <input placeholder="Betreff (optional)" value={emailForm.subject} onChange={(e) => setEmailForm((f) => ({ ...f, subject: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
           <textarea placeholder="Nachricht (optional, sonst Standardtext)" value={emailForm.message} onChange={(e) => setEmailForm((f) => ({ ...f, message: e.target.value }))} rows={4} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={emailCopy} onChange={(e) => setEmailCopy(e.target.checked)} />Kopie an mich senden (verdeckt, an Ihre Absenderadresse)</label>
           <div className="flex gap-2">
             <button disabled={emailSending} onClick={handleSendEmail} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm disabled:opacity-50">
               {emailSending ? "Wird gesendet..." : "Senden"}
@@ -274,7 +277,7 @@ export default function InvoiceDetail() {
 
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow">
         {/* Desktop */}
-        <table className="hidden md:table w-full text-sm">
+        <table className="hidden xl:table w-full text-sm">
           <thead className="bg-slate-50 dark:bg-slate-700">
             <tr>
               <th className="text-left p-3">Beschreibung</th>
@@ -295,7 +298,7 @@ export default function InvoiceDetail() {
           </tbody>
         </table>
         {/* Mobile */}
-        <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="xl:hidden divide-y divide-slate-100 dark:divide-slate-700">
           {invoice.items.map((item) => (
             <MobileCard key={item.id} title={item.description}>
               <MobileField label="Menge" value={`${item.quantity} ${item.unit}`} />

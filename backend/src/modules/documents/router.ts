@@ -19,6 +19,7 @@ export interface DocumentRow {
   isCancellationDocument: boolean;
   hasNext: boolean; // wurde daraus bereits ein Folgebeleg erstellt?
   invoiceKind?: string; // STANDARD | DOWN_PAYMENT | FINAL (nur Rechnungen)
+  emailSentAt: string | null; // wann per E-Mail verschickt (null = nicht per E-Mail versendet)
 }
 
 /**
@@ -49,19 +50,19 @@ documentsRouter.get("/", async (req, res) => {
   const rows: DocumentRow[] = [
     ...invoices.map((i): DocumentRow => ({
       kind: "INVOICE", id: i.id, number: i.invoiceNumber, customerName: i.customer.name, date: i.issueDate.toISOString(), dueDate: i.dueDate?.toISOString() ?? null,
-      totalCents: i.totalCents, status: i.status, isCancellationDocument: i.isCancellationDocument, hasNext: !!i.finalInvoiceId, invoiceKind: i.kind,
+      totalCents: i.totalCents, status: i.status, isCancellationDocument: i.isCancellationDocument, hasNext: !!i.finalInvoiceId, invoiceKind: i.kind, emailSentAt: i.emailSentAt?.toISOString() ?? null,
     })),
     ...quotes.map((q): DocumentRow => ({
       kind: "QUOTE", id: q.id, number: q.quoteNumber, customerName: q.customer.name, date: q.issueDate.toISOString(), dueDate: q.validUntil?.toISOString() ?? null,
-      totalCents: q.totalCents, status: q.status, isCancellationDocument: false, hasNext: quoteHasNext.has(q.id),
+      totalCents: q.totalCents, status: q.status, isCancellationDocument: false, hasNext: quoteHasNext.has(q.id), emailSentAt: q.emailSentAt?.toISOString() ?? null,
     })),
     ...confirmations.map((c): DocumentRow => ({
       kind: "ORDER_CONFIRMATION", id: c.id, number: c.confirmationNumber, customerName: c.customer.name, date: c.issueDate.toISOString(), dueDate: c.expectedDeliveryDate?.toISOString() ?? null,
-      totalCents: c.totalCents, status: c.status, isCancellationDocument: false, hasNext: confirmationHasNext.has(c.id),
+      totalCents: c.totalCents, status: c.status, isCancellationDocument: false, hasNext: confirmationHasNext.has(c.id), emailSentAt: c.emailSentAt?.toISOString() ?? null,
     })),
     ...notes.map((n): DocumentRow => ({
       kind: "DELIVERY_NOTE", id: n.id, number: n.noteNumber, customerName: n.customer.name, date: n.deliveryDate.toISOString(), dueDate: null,
-      totalCents: null, status: n.status, isCancellationDocument: false, hasNext: false,
+      totalCents: null, status: n.status, isCancellationDocument: false, hasNext: false, emailSentAt: n.emailSentAt?.toISOString() ?? null,
     })),
   ];
 
