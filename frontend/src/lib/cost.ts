@@ -16,9 +16,16 @@
  * Ist kein Drucker gewählt, gilt stattdessen der pauschale Maschinenstundensatz (Strom/Abschreibung/Verschleiß = 0).
  */
 
+/** Abschreibung je Druckstunde: Kaufpreis geteilt durch die Restlebensdauer (Lebensdauer minus bereits gelaufene Stunden beim Kauf). */
+export function depreciationPerHour(p: PrinterCosts): number {
+  const remaining = p.lifetimeHours - Math.max(0, p.usedHoursBefore ?? 0);
+  return remaining > 0 ? p.purchasePriceCents / remaining : 0;
+}
+
 export interface PrinterCosts {
   purchasePriceCents: number;
   lifetimeHours: number;
+  usedHoursBefore?: number; // beim Kauf schon gelaufene Stunden (Gebrauchtdrucker)
   powerWatts: number;
   wearCentsPerHour: number;
 }
@@ -90,7 +97,7 @@ export function calcCost(
   const quantity = Math.max(1, extras_.quantity ?? 1);
   const material = used.reduce((s, m) => s + m.quantityPerUnit * m.costPerUnitCents, 0) * (1 + (rates.materialWastePercent + (extras_.extraMaterialPercent ?? 0)) / 100);
   const electricity = printer ? printHours * (printer.powerWatts / 1000) * rates.electricityCentsPerKwh : 0;
-  const depreciation = printer && printer.lifetimeHours > 0 ? printHours * (printer.purchasePriceCents / printer.lifetimeHours) : 0;
+  const depreciation = printer ? printHours * depreciationPerHour(printer) : 0;
   const wear = printer ? printHours * printer.wearCentsPerHour : 0;
   const machineFlat = printer ? 0 : printHours * rates.machineRateCentsPerHour;
   const failures = (electricity + depreciation + wear + machineFlat) * (rates.failRatePercent / 100);
@@ -115,7 +122,7 @@ export function feesAt(priceCents: number, rates: CostRates): number {
 /** Kosten einer Druckstunde auf diesem Drucker (ohne Material/Arbeit) - zur Anzeige in der Druckerverwaltung. */
 export function printerHourlyCost(printer: PrinterCosts, electricityCentsPerKwh: number) {
   const electricity = (printer.powerWatts / 1000) * electricityCentsPerKwh;
-  const depreciation = printer.lifetimeHours > 0 ? printer.purchasePriceCents / printer.lifetimeHours : 0;
+  const depreciation = depreciationPerHour(printer);
   const wear = printer.wearCentsPerHour;
   return { electricity, depreciation, wear, total: electricity + depreciation + wear };
 }

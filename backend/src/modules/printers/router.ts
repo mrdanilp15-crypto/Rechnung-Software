@@ -70,6 +70,7 @@ const printerSchema = z.object({
   name: z.string().min(1).max(120),
   purchasePriceCents: z.number().int().min(0).max(100_000_000),
   lifetimeHours: z.number().positive().max(1_000_000),
+  usedHoursBefore: z.number().min(0).max(1_000_000).optional(),
   powerWatts: z.number().min(0).max(100_000),
   wearCentsPerHour: z.number().min(0).max(1_000_000),
   notes: z.string().max(1000).nullish(),

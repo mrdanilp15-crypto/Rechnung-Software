@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Printer" ADD COLUMN     "usedHoursBefore" DOUBLE PRECISION NOT NULL DEFAULT 0;

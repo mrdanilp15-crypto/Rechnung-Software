@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { useAuthStore } from "../store/authStore";
 
 export interface Tray {
   slot: number;
@@ -8,6 +9,8 @@ export interface Tray {
   color: string | null;
   remainPercent: number | null;
   rfid: boolean;
+  tag?: string | null;
+  amsSlot?: number | null;
   active: boolean;
 }
 export interface LiveStatus {
@@ -37,6 +40,19 @@ export interface PrinterJobRow {
   endedAt: string | null;
   result: string | null;
   minutes: number | null;
+  materialUsage?: { materialId: string; name: string; grams: number }[] | null;
+}
+
+interface SlotMapping {
+  slot: number;
+  materialId: string;
+  material: { id: string; name: string; unit: string };
+  spoolGrams: number;
+}
+interface MaterialOption {
+  id: string;
+  name: string;
+  unit: string;
 }
 
 export const CAMERA_MODELS = ["P1P", "P1S", "A1", "A1MINI", "X1C", "X1E", "P2S", "H2D", "H2S"];
@@ -75,11 +91,34 @@ function Spool({ tray, label }: { tray: Tray; label: string }) {
   );
 }
 
+/** Zuordnung eines AMS-Fachs zu einem Material: Daraus wird der Verbrauch automatisch vom Bestand abgebucht. */
+function SlotAssign({ tray, mapping, materials, canEdit, onChange }: { tray: Tray; mapping?: SlotMapping; materials: MaterialOption[]; canEdit: boolean; onChange: (slot: number, materialId: string | null) => void }) {
+  if (!tray.type || tray.amsSlot === null || tray.amsSlot === undefined) return null;
+  if (!tray.rfid) return <p className="text-[11px] text-slate-500 mt-0.5">Spule ohne Chip: Füllstand nicht messbar, keine automatische Abbuchung.</p>;
+  if (!canEdit) return mapping ? <p className="text-[11px] text-slate-500 mt-0.5">Bucht von: {mapping.material.name}</p> : null;
+  return (
+    <select
+      value={mapping?.materialId ?? ""}
+      onChange={(e) => onChange(tray.amsSlot as number, e.target.value || null)}
+      className="mt-0.5 w-full text-[11px] rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-1 py-0.5"
+      title="Material, von dessen Bestand der Verbrauch dieser Spule automatisch abgebucht wird"
+      aria-label="Material für automatische Abbuchung"
+    >
+      <option value="">Keine Abbuchung</option>
+      {materials.map((m) => <option key={m.id} value={m.id}>Bucht von: {m.name}</option>)}
+    </select>
+  );
+}
+
 /** Live-Anzeige eines Druckers: Zustand, Fortschritt, Temperaturen, AMS-Spulen, optional Kamerabild und Verlauf. */
-export function PrinterLiveCard({ printerId, status, model, trackedMinutes, lifetimeHours }: { printerId: string; status: LiveStatus; model?: string | null; trackedMinutes: number; lifetimeHours: number }) {
+export function PrinterLiveCard({ printerId, status, model, trackedMinutes, lifetimeHours, usedHoursBefore = 0 }: { printerId: string; status: LiveStatus; model?: string | null; trackedMinutes: number; lifetimeHours: number; usedHoursBefore?: number }) {
   const [photo, setPhoto] = useState<{ url: string | null; error: string | null; loading: boolean } | null>(null);
   const [jobs, setJobs] = useState<PrinterJobRow[] | null>(null);
   const [live, setLive] = useState<{ key: number; error: string | null } | null>(null);
+  const isAdmin = useAuthStore((s) => s.user?.role) === "ADMIN";
+  const [mappings, setMappings] = useState<SlotMapping[]>([]);
+  const [materials, setMaterials] = useState<MaterialOption[]>([]);
+  const [slotError, setSlotError] = useState<string | null>(null);
   const canCamera = !!model && CAMERA_MODELS.includes(model);
   const online = status.connection === "online";
   const active = status.state === "RUNNING" || status.state === "PREPARE" || status.state === "PAUSE";
@@ -114,6 +153,22 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
       }
     }
     setLive((l) => (l ? { ...l, error: message } : l));
+  }
+  const hasAmsNow = status.ams.units.length > 0;
+  useEffect(() => {
+    if (!hasAmsNow) return;
+    api.get(`/printers/${printerId}/ams-slots`).then((r) => setMappings(r.data)).catch(() => {});
+    if (isAdmin) api.get("/materials").then((r) => setMaterials(r.data.filter((m: MaterialOption) => ["g", "gramm", "kg"].includes(m.unit.trim().toLowerCase())))).catch(() => {});
+  }, [printerId, hasAmsNow, isAdmin]);
+  async function assignSlot(slot: number, materialId: string | null) {
+    setSlotError(null);
+    try {
+      if (materialId) await api.put(`/printers/${printerId}/ams-slots/${slot}`, { materialId });
+      else await api.delete(`/printers/${printerId}/ams-slots/${slot}`);
+      setMappings((await api.get(`/printers/${printerId}/ams-slots`)).data);
+    } catch (err: any) {
+      setSlotError(err?.response?.data?.error ?? "Zuordnung nicht gespeichert.");
+    }
   }
   async function toggleJobs() {
     if (jobs) return setJobs(null);
@@ -167,10 +222,17 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
             <div key={u.id}>
               <div className="text-xs text-slate-500 mb-1">AMS {u.id + 1}{u.humidityLevel !== null ? ` · Feuchte-Stufe ${u.humidityLevel} von 5 (5 = trocken)` : ""}</div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {u.trays.map((t) => <Spool key={t.slot} tray={t} label={`Fach ${t.slot + 1}`} />)}
+                {u.trays.map((t) => (
+                  <div key={t.slot}>
+                    <Spool tray={t} label={`Fach ${t.slot + 1}`} />
+                    <SlotAssign tray={t} mapping={mappings.find((m) => m.slot === t.amsSlot)} materials={materials} canEdit={isAdmin} onChange={assignSlot} />
+                  </div>
+                ))}
               </div>
             </div>
           ))}
+          {slotError && <p className="text-xs text-red-600">{slotError}</p>}
+          {mappings.length > 0 && <p className="text-xs text-slate-500">Der Verbrauch zugeordneter Spulen wird automatisch vom Materialbestand abgebucht (nach Füllstand der Spule).</p>}
           {status.ams.external && <div className="max-w-[12rem]"><Spool tray={status.ams.external} label="Externe Spule" /></div>}
           {status.ams.activeLabel && active && <div className="text-xs text-slate-500">Aktuell in Benutzung: {status.ams.activeLabel}</div>}
         </div>
@@ -183,7 +245,7 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
         {live && <button type="button" onClick={() => setLive(null)} className="text-slate-500 hover:underline">Live-Ansicht beenden</button>}
         {live && <button type="button" onClick={() => setLive({ key: Date.now(), error: null })} className="text-brand hover:underline">Neu starten</button>}
         <button type="button" onClick={toggleJobs} className="text-brand hover:underline">{jobs ? "Verlauf ausblenden" : "Druckverlauf"}</button>
-        {trackedMinutes > 0 && <span className="text-slate-500 ml-auto" title="Aus den erkannten Druckaufträgen (inkl. Pausen). Zählt ab Einrichtung der Live-Verbindung.">Erfasst: {(trackedMinutes / 60).toFixed(1).replace(".", ",")} h von {lifetimeHours} h Lebensdauer ({Math.min(100, (trackedMinutes / 60 / lifetimeHours) * 100).toFixed(1).replace(".", ",")} %)</span>}
+        {(trackedMinutes > 0 || usedHoursBefore > 0) && <span className="text-slate-500 ml-auto" title="Beim Kauf gelaufene Stunden plus die aus den erkannten Druckaufträgen erfassten (inkl. Pausen, ab Einrichtung der Live-Verbindung).">Gesamt: {(usedHoursBefore + trackedMinutes / 60).toFixed(1).replace(".", ",")} h von {lifetimeHours} h Lebensdauer ({Math.min(100, ((usedHoursBefore + trackedMinutes / 60) / lifetimeHours) * 100).toFixed(1).replace(".", ",")} %){usedHoursBefore > 0 ? ` · ${usedHoursBefore} h vom Vorbesitzer` : ""}</span>}
       </div>
       {photo?.error && <p className="text-xs text-amber-600">{photo.error}</p>}
       {live && !live.error && (
@@ -199,7 +261,7 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
         <ul className="text-xs divide-y divide-slate-200 dark:divide-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg">
           {jobs.map((j) => (
             <li key={j.id} className="px-2 py-1.5 flex flex-wrap justify-between gap-2">
-              <span className="truncate">{j.name ?? "Druckauftrag"}</span>
+              <span className="truncate">{j.name ?? "Druckauftrag"}{j.materialUsage && j.materialUsage.length > 0 ? <span className="text-slate-500"> · {j.materialUsage.map((u) => `${u.name} ${Math.round(u.grams)} g`).join(", ")}</span> : null}</span>
               <span className="text-slate-500">{new Date(j.startedAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · {j.endedAt ? `${formatMinutes(j.minutes ?? 0)} · ${resultLabel[j.result ?? "UNKNOWN"] ?? j.result}` : "läuft"}</span>
             </li>
           ))}

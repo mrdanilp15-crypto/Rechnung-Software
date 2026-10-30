@@ -125,3 +125,14 @@ describe("Materialpreis beim Nachbestellen", () => {
     expect(weightedAverageCost(-200, 2, 1000, 3000)).toBeCloseTo(3);
   });
 });
+
+describe("Gebrauchtdrucker: bereits gelaufene Stunden", () => {
+  const used: PrinterCosts = { purchasePriceCents: 30000, lifetimeHours: 5000, usedHoursBefore: 1000, powerWatts: 100, wearCentsPerHour: 5 };
+  it("Abschreibung = Preis / Restlebensdauer", () => {
+    expect(printerHourlyCost(used, 30).depreciation).toBeCloseTo(30000 / 4000);
+    expect(printerHourlyCost({ ...used, usedHoursBefore: 0 }, 30).depreciation).toBeCloseTo(30000 / 5000);
+  });
+  it("ohne Restlebensdauer keine Abschreibung statt Division durch 0", () => {
+    expect(printerHourlyCost({ ...used, usedHoursBefore: 5000 }, 30).depreciation).toBe(0);
+  });
+});

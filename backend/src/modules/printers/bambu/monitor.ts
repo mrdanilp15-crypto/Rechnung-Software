@@ -4,6 +4,7 @@ import { logger } from "../../../utils/logger";
 import { BambuMonitorCore, testBambuConnection as testCore, type ConnectionTestResult, type JobStore } from "./monitorCore";
 import type { PrinterLiveStatus } from "./status";
 import { amsBooking } from "./amsBooking";
+import { notifyPrinterEvent } from "../../notifications/service";
 
 /**
  * Anbindung des Monitor-Kerns an Datenbank und Einstellungen: lädt die Drucker mit aktiver Live-Verbindung, entschlüsselt die
@@ -24,6 +25,23 @@ const core = new BambuMonitorCore({
   store: prismaJobStore,
   log: logger,
   onReport: (target, status, jobId) => amsBooking.onStatus(target.printerId, status, jobId),
+  onJobEnd: async (target, info) => {
+    if (info.result !== "FINISHED" && info.result !== "FAILED") return; // abgebrochen oder unbekannt: keine Meldung
+    const printer = await prisma.printer.findUnique({ where: { id: target.printerId }, select: { name: true } });
+    const job = info.jobId ? await prisma.printerJob.findUnique({ where: { id: info.jobId }, select: { materialUsage: true } }) : null;
+    await notifyPrinterEvent(target.companyId, {
+      type: info.result === "FINISHED" ? "PRINT_FINISHED" : "PRINT_FAILED",
+      printerId: target.printerId,
+      printerName: printer?.name ?? "Drucker",
+      jobName: info.name,
+      minutes: info.minutes,
+      materialUsage: Array.isArray(job?.materialUsage) ? (job!.materialUsage as { name: string; grams: number }[]) : undefined,
+    });
+  },
+  onPrinterError: async (target, info) => {
+    const printer = await prisma.printer.findUnique({ where: { id: target.printerId }, select: { name: true } });
+    await notifyPrinterEvent(target.companyId, { type: "PRINTER_ERROR", printerId: target.printerId, printerName: printer?.name ?? "Drucker", jobName: info.name, errorCode: info.code });
+  },
 });
 
 type PrinterRow = { id: string; companyId: string; host: string | null; serial: string | null; accessCodeEncrypted: string | null };

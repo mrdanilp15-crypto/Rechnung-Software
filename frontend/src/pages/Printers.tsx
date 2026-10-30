@@ -11,6 +11,7 @@ interface Printer {
   name: string;
   purchasePriceCents: number;
   lifetimeHours: number;
+  usedHoursBefore?: number;
   powerWatts: number;
   wearCentsPerHour: number;
   notes?: string | null;
@@ -29,7 +30,7 @@ const MODELS: [string, string][] = [["X1C", "X1 Carbon"], ["X1E", "X1E"], ["P1P"
 const inputClass = "mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800";
 const money = (cents: number, digits = 2) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(cents / 100);
 
-const emptyForm = { name: "", price: "500", lifetime: "5000", watts: "120", wear: "0.10", notes: "", connectionType: "NONE" as "NONE" | "BAMBU_LAN", model: "P1S", host: "", serial: "", accessCode: "", liveEnabled: true };
+const emptyForm = { name: "", price: "500", lifetime: "5000", usedBefore: "0", watts: "120", wear: "0.10", notes: "", connectionType: "NONE" as "NONE" | "BAMBU_LAN", model: "P1S", host: "", serial: "", accessCode: "", liveEnabled: true };
 
 /** Drucker/Maschinen mit eigenen Kostenwerten - jeder Drucker lässt sich einzeln anpassen. */
 export default function Printers() {
@@ -74,7 +75,7 @@ export default function Printers() {
   }
   function startEdit(p: Printer) {
     setEditingId(p.id);
-    setForm({ name: p.name, price: String(p.purchasePriceCents / 100), lifetime: String(p.lifetimeHours), watts: String(p.powerWatts), wear: String(p.wearCentsPerHour / 100), notes: p.notes ?? "", connectionType: p.connectionType, model: p.model ?? "P1S", host: p.host ?? "", serial: p.serial ?? "", accessCode: "", liveEnabled: p.connectionType === "NONE" ? true : p.liveEnabled });
+    setForm({ name: p.name, price: String(p.purchasePriceCents / 100), lifetime: String(p.lifetimeHours), usedBefore: String(p.usedHoursBefore ?? 0), watts: String(p.powerWatts), wear: String(p.wearCentsPerHour / 100), notes: p.notes ?? "", connectionType: p.connectionType, model: p.model ?? "P1S", host: p.host ?? "", serial: p.serial ?? "", accessCode: "", liveEnabled: p.connectionType === "NONE" ? true : p.liveEnabled });
     setTestResult(null);
     setClearCode(false);
     setError(null);
@@ -84,6 +85,7 @@ export default function Printers() {
   const draft = {
     purchasePriceCents: Math.round((parseFloat(form.price) || 0) * 100),
     lifetimeHours: parseFloat(form.lifetime) || 0,
+    usedHoursBefore: Math.max(0, parseFloat(form.usedBefore) || 0),
     powerWatts: parseFloat(form.watts) || 0,
     wearCentsPerHour: (parseFloat(form.wear) || 0) * 100,
   };
@@ -94,6 +96,7 @@ export default function Printers() {
     setError(null);
     if (!form.name.trim()) return setError("Bitte einen Namen eingeben.");
     if (draft.lifetimeHours <= 0) return setError("Die Lebensdauer muss größer als 0 Stunden sein.");
+    if (draft.usedHoursBefore >= draft.lifetimeHours) return setError("Die bereits gelaufenen Stunden müssen kleiner als die Lebensdauer sein.");
     setBusy(true);
     try {
       const payload: Record<string, unknown> = { name: form.name.trim(), ...draft, notes: form.notes.trim() || null };
@@ -185,6 +188,11 @@ export default function Printers() {
               <span className="block text-xs text-slate-500 mt-0.5">Wie viele Stunden der Drucker voraussichtlich läuft, bis er ersetzt wird. Preis ÷ Stunden = Abschreibung pro Stunde.</span>
             </label>
             <label className="block text-sm">
+              Schon gelaufene Stunden beim Kauf
+              <input type="number" min="0" step="any" value={form.usedBefore} onChange={(e) => setForm({ ...form, usedBefore: e.target.value })} className={inputClass} />
+              <span className="block text-xs text-slate-500 mt-0.5">Bei einem Gebrauchtdrucker: Betriebsstunden, die er beim Kauf schon hatte (steht am Drucker unter Einstellungen/Geräteinfo oder beim Verkäufer). Die Abschreibung rechnet dann Preis ÷ (Lebensdauer minus diese Stunden). Bei neu: 0.</span>
+            </label>
+            <label className="block text-sm">
               Leistung (Watt)
               <input type="number" min="0" step="any" value={form.watts} onChange={(e) => setForm({ ...form, watts: e.target.value })} className={inputClass} />
               <span className="block text-xs text-slate-500 mt-0.5">Durchschnittliche Leistungsaufnahme beim Drucken (Datenblatt oder Strommessgerät). Typisch 100-200 W.</span>
@@ -272,7 +280,7 @@ export default function Printers() {
               <div className="min-w-0 flex-1 basis-80">
                 <div className="font-medium">{p.name}</div>
                 <div className="text-xs text-slate-500">
-                  {money(p.purchasePriceCents, 0)} · {p.lifetimeHours} h Lebensdauer · {p.powerWatts} W · Verschleiß {money(p.wearCentsPerHour, 3)}/h
+                  {money(p.purchasePriceCents, 0)} · {p.lifetimeHours} h Lebensdauer{p.usedHoursBefore ? ` (davon ${p.usedHoursBefore} h schon beim Kauf gelaufen)` : ""} · {p.powerWatts} W · Verschleiß {money(p.wearCentsPerHour, 3)}/h
                 </div>
                 <div className="text-xs text-slate-500">
                   = <strong>{money(h.total, 3)} pro Druckstunde</strong> (Strom {money(h.electricity, 3)}, Abschreibung {money(h.depreciation, 3)}, Verschleiß {money(h.wear, 3)})
@@ -280,7 +288,7 @@ export default function Printers() {
                 </div>
                 {p.notes && <div className="text-xs text-amber-600 dark:text-amber-400">{p.notes}</div>}
                 {p.connectionType === "BAMBU_LAN" && p.liveEnabled && liveMap[p.id] && (
-                  <PrinterLiveCard printerId={p.id} status={liveMap[p.id]} model={p.model} trackedMinutes={p.trackedMinutes} lifetimeHours={p.lifetimeHours} />
+                  <PrinterLiveCard printerId={p.id} status={liveMap[p.id]} model={p.model} trackedMinutes={p.trackedMinutes} lifetimeHours={p.lifetimeHours} usedHoursBefore={p.usedHoursBefore ?? 0} />
                 )}
               </div>
               <div className="flex gap-3">

@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import { Icon, type IconName } from "../components/Icon";
 import { StatusChip } from "../components/StatusChip";
 import { formatMinutes, type LiveStatus } from "../components/PrinterLive";
+import { NotificationsCard } from "../components/NotificationsCard";
 
 interface DocRow {
   kind: "INVOICE" | "QUOTE" | "ORDER_CONFIRMATION" | "DELIVERY_NOTE";
@@ -212,6 +213,8 @@ export default function Dashboard() {
           <Link to="/customers" className="px-4 py-2 rounded-lg text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">Kunden</Link>
         </div>
       </div>
+
+      <NotificationsCard />
 
       {revenue?.isSmallBusiness && (revenue.isApproaching || revenue.currentYearExceeded || revenue.priorYearExceeded) && (
         <div className={`rounded-lg p-4 mb-6 text-sm ${revenue.currentYearExceeded || revenue.priorYearExceeded ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"}`}>

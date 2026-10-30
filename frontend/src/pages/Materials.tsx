@@ -8,6 +8,8 @@ import { MobileCard, MobileField } from "../components/MobileCard";
 import { RowActionsMenu } from "../components/RowActionsMenu";
 
 interface Material {
+  amsMeasured?: boolean;
+  amsSources?: string[];
   id: string;
   name: string;
   unit: string;
@@ -211,7 +213,7 @@ export default function Materials() {
           <div key={m.id}>
             {/* Desktop */}
             <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
-              <span className="min-w-0"><span className="block font-medium truncate">{m.name}</span>{m.supplierId && <span className="block text-xs text-slate-500 truncate">{suppliers.find((s) => s.id === m.supplierId)?.name}</span>}</span>
+              <span className="min-w-0"><span className="block font-medium truncate">{m.name}{m.amsMeasured && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-normal" title={(m.amsSources ?? []).join(", ") + " - der Verbrauch wird aus dem AMS gemessen und automatisch abgebucht, nicht über Rechnungs-Rezepte"}>AMS-gemessen</span>}</span>{m.supplierId && <span className="block text-xs text-slate-500 truncate">{suppliers.find((s) => s.id === m.supplierId)?.name}</span>}</span>
               <span className="text-right">{stockValue}</span>
               <span className="text-right text-slate-500">{formatUnitPrice(m.costPerUnitCents)}/{m.unit}</span>
               {actions}
