@@ -20,7 +20,7 @@ export const useNeedsCanvasPdf = () => {
 };
 
 let pdfjsPromise: Promise<typeof import("pdfjs-dist")> | null = null;
-function loadPdfjs() {
+export function loadPdfjs() {
   if (!pdfjsPromise) {
     pdfjsPromise = Promise.all([import("pdfjs-dist"), import("pdfjs-dist/build/pdf.worker.min.js?url")]).then(([lib, worker]) => {
       lib.GlobalWorkerOptions.workerSrc = worker.default;

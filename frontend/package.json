@@ -10,6 +10,7 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
+    "@tesseract.js-data/deu": "^1.0.0",
     "axios": "^1.7.7",
     "fuse.js": "^7.0.0",
     "i18next": "^23.15.1",
@@ -18,6 +19,7 @@
     "react-dom": "^18.3.1",
     "react-i18next": "^15.0.2",
     "react-router-dom": "^6.26.2",
+    "tesseract.js": "^5.1.1",
     "zustand": "^4.5.5"
   },
   "devDependencies": {

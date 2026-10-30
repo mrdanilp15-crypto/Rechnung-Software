@@ -12,6 +12,7 @@ import { env } from "../../config/env";
 import { importExpenseReceipt } from "../archive/service";
 import { depreciationForYear } from "../assets/depreciation";
 import { logger } from "../../utils/logger";
+import { parseReceiptText } from "./receiptParser";
 
 export const expensesRouter = Router();
 expensesRouter.use(requireAuth);
@@ -59,6 +60,42 @@ async function resolveSupplierId(companyId: string, vendor: string | undefined, 
   const byName = await prisma.supplier.findFirst({ where: { companyId, isArchived: false, name: { equals: vendor.trim(), mode: "insensitive" } }, select: { id: true } });
   return byName?.id;
 }
+
+// Belegerkennung: Der Browser liest den Text aus Foto/PDF (läuft komplett lokal, nichts geht an Dritte) und schickt nur den Text hierher.
+// Hier wird er ausgewertet und mit bisherigen Ausgaben abgeglichen (bekannter Händler -> bisherige Kategorie/Steuersatz, mögliche Doppelerfassung).
+expensesRouter.post("/parse-receipt", async (req, res) => {
+  const { text } = z.object({ text: z.string().max(100_000) }).parse(req.body);
+  const companyId = req.auth!.companyId;
+  const [suppliers, history] = await Promise.all([
+    prisma.supplier.findMany({ where: { companyId, isArchived: false }, select: { name: true } }),
+    prisma.expense.findMany({ where: { companyId }, orderBy: { date: "desc" }, take: 500, select: { vendor: true, category: true, vatRateBps: true, amountCents: true, date: true } }),
+  ]);
+  const knownVendors = [...new Set([...suppliers.map((s) => s.name), ...history.map((h) => h.vendor)])];
+  const suggestion = parseReceiptText(text, { knownVendors });
+
+  // Gelernt aus früheren Ausgaben desselben Händlers: häufigste Kategorie und Steuersatz
+  const vendorKey = suggestion.vendor?.toLowerCase();
+  const sameVendor = vendorKey ? history.filter((h) => h.vendor.toLowerCase() === vendorKey) : [];
+  const mostUsed = <T extends string | number>(values: T[]): T | null => {
+    const counts = new Map<T, number>();
+    for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  };
+  const learnedCategory = mostUsed(sameVendor.map((h) => h.category));
+  const learnedVat = mostUsed(sameVendor.map((h) => h.vatRateBps));
+  const category = learnedCategory ?? suggestion.category;
+  const categorySource = learnedCategory ? "history" : suggestion.categorySource;
+  const vatRateBps = suggestion.vatConfidence !== "high" && learnedVat !== null ? learnedVat : suggestion.vatRateBps;
+
+  // Möglicher Doppelbeleg: gleicher Betrag und Datum +/- 1 Tag
+  let duplicate: { vendor: string; date: string; amountCents: number } | null = null;
+  if (suggestion.amountCents !== null && suggestion.date) {
+    const day = new Date(`${suggestion.date}T12:00:00Z`).getTime();
+    const hit = history.find((h) => h.amountCents === suggestion.amountCents && Math.abs(h.date.getTime() - day) <= 36 * 3600 * 1000);
+    if (hit) duplicate = { vendor: hit.vendor, date: hit.date.toISOString().slice(0, 10), amountCents: hit.amountCents };
+  }
+  res.json({ ...suggestion, category, categorySource, vatRateBps, duplicate });
+});
 
 expensesRouter.post("/", upload.single("receipt"), async (req, res) => {
   const body = expenseSchema.parse({

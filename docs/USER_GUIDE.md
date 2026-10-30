@@ -217,6 +217,14 @@ In der Rechnungsdetailansicht:
     (auch per Klick auf die Spaltenüberschriften).
   - **Aufbewahrung:** Zu jeder Kategorie wird das Ende der gesetzlichen Frist angezeigt (Buchungsbelege 8 Jahre, Geschäftsbriefe 6 Jahre,
     ab Ende des Belegjahres); vor dem Löschen erscheint eine Warnung. Doppelte Dateien werden erkannt und nicht erneut abgelegt.
+  - **Beleg scannen (lokale Texterkennung):** *Finanzen → Ausgaben → Beleg scannen*. Foto aufnehmen oder Foto/PDF wählen; die App liest den Text **direkt im Browser**
+    (Tesseract, deutsches Sprachpaket liegt in der App) - es geht nichts an einen Cloud-Dienst. PDFs mit Textebene werden direkt gelesen, gescannte PDFs und Fotos per
+    Erkennung. Vorgeschlagen werden Datum, Händler, Bruttobetrag, MwSt-Satz (mit Gegenprobe Netto + Steuer = Brutto), Belegnummer und Kategorie; Händler, die schon
+    vorkommen, bringen ihre bisherige Kategorie und ihren Steuersatz mit, mögliche Doppelerfassungen werden gemeldet. Jedes Feld zeigt "sicher", "bitte prüfen" oder "nicht
+    erkannt". **Nachbessern:** Felder ändern, Alternativen (andere Beträge/Daten/Händler) antippen, im Aufklappbereich "Erkannten Text prüfen" einzelne Zeilen als Betrag/Datum/Händler
+    übernehmen oder den Text korrigieren und neu auswerten, das Foto drehen oder mit mehr Kontrast neu lesen. Gebucht wird nie automatisch - erst "Ausgabe speichern". Das Foto
+    wird als Beleg an der Ausgabe und im Belegarchiv abgelegt. Beim ersten Mal lädt die Erkennung einmalig ca. 5 MB nach und läuft danach auch ohne Netz.
+    Grenzen: Sehr unscharfe, schräge oder handschriftliche Belege liest sie schlecht - dann gerade und hell fotografieren oder von Hand nachbessern.
   - **Belege von Ausgaben:** Bei *Finanzen → Ausgaben → Neue Ausgabe* können Sie den Beleg (PDF oder Foto, bis 25 MB) gleich mit hochladen. Er hängt
     an der Ausgabe ("Beleg"-Link in der Liste) und wird **automatisch zusätzlich im Belegarchiv abgelegt** (Kennzeichnung "aus Ausgabe", Kategorie
     Eingangsrechnung, Tags "ausgabe" und die Ausgabenkategorie). Löschen Sie später die Ausgabe, bleibt die Archiv-Kopie bestehen. Belege, die schon

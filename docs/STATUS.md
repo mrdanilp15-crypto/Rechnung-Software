@@ -136,6 +136,7 @@ implementiert.
 | Finanzdiagramm: Einnahmen, Ausgaben, Gewinn pro Monat | ✅ |
 | Oberfläche: wählbare Akzentfarbe, warmes/kühles dunkles Design, Menü-Symbole, Handy-Leiste unten, Dashboard mit Kennzahlen/Diagrammen, einheitliche Status-Chips | ✅ |
 | Belege an Ausgaben (Upload im Ausgabenformular) landen automatisch im Belegarchiv; bisherige per Knopfdruck übernehmbar | ✅ |
+| Beleg scannen: lokale Texterkennung (Tesseract im Browser, keine Cloud), Vorschläge für Datum/Händler/Betrag/MwSt/Kategorie, Nachbessern, Lernen aus früheren Ausgaben, Doppelt-Warnung | ✅ Parser mit Tests, Foto- und PDF-Pfad im Browser geprüft (Test-Belege); Treffsicherheit bei echten Handyfotos hängt von der Aufnahme ab |
 | Belegarchiv: Dokumente ablegen, Volltextsuche (inkl. PDF-Text), Filter, Sortierung, ZIP-Export, Aufbewahrungsfristen | ✅ Ablage, kein revisionssicheres GoBD-Archiv (Dokumente änderbar/löschbar) |
 | Steuerberater-Paket, USt-Übersicht | 🟡 Orientierungshilfe, kein DATEV-Format, keine Voranmeldung |
 | Passwort vergessen per E-Mail | ✅ benötigt eingerichtetes SMTP |

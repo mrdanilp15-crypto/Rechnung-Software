@@ -6,6 +6,7 @@ import { useSaveStatus } from "../hooks/useSaveStatus";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { TaxPanel } from "../components/TaxPanel";
 import { AssetsPanel } from "../components/AssetsPanel";
+import { ReceiptScanDialog } from "../components/ReceiptScanDialog";
 import { FinanceChart, FinanceLegend, type FinanceMonth } from "../components/FinanceChart";
 
 interface Expense {
@@ -40,7 +41,7 @@ interface BankTransaction {
 }
 
 const formatEuro = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
-const emptyExpense = { date: new Date().toISOString().slice(0, 10), vendor: "", category: "Material", amountEur: "0.00", description: "" };
+const emptyExpense = { date: new Date().toISOString().slice(0, 10), vendor: "", category: "Material", amountEur: "0.00", vatRateBps: "1900", description: "" };
 const RECEIPT_TYPES = ".pdf,.png,.jpg,.jpeg,.webp";
 
 export default function Finance() {
@@ -50,6 +51,7 @@ export default function Finance() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [showScan, setShowScan] = useState(false);
   const [form, setForm] = useState(emptyExpense);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [supplierNames, setSupplierNames] = useState<string[]>([]);
@@ -83,6 +85,7 @@ export default function Finance() {
     body.append("vendor", form.vendor);
     body.append("category", form.category);
     body.append("amountCents", String(Math.round(parseFloat(form.amountEur) * 100)));
+    body.append("vatRateBps", form.vatRateBps);
     if (form.description) body.append("description", form.description);
     if (receiptFile) body.append("receipt", receiptFile);
     await expenseSave.run(() => api.post("/expenses", body, { headers: { "Content-Type": "multipart/form-data" } }));
@@ -221,9 +224,14 @@ export default function Finance() {
         <div>
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-medium">Ausgaben {year}</h2>
-            <button onClick={() => setShowExpenseForm((v) => !v)} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
-              Neue Ausgabe
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => setShowScan(true)} className="bg-slate-200 dark:bg-slate-700 px-4 py-2 rounded text-sm" title="Foto oder PDF vom Beleg lesen - Datum, Händler, Betrag werden vorgeschlagen (Erkennung läuft lokal)">
+                Beleg scannen
+              </button>
+              <button onClick={() => setShowExpenseForm((v) => !v)} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
+                Neue Ausgabe
+              </button>
+            </div>
           </div>
           {showExpenseForm && (
             <form onSubmit={handleAddExpense} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -247,6 +255,14 @@ export default function Finance() {
               <div>
                 <label className="block text-sm mb-1">Betrag (€, brutto)</label>
                 <input type="number" step="0.01" required value={form.amountEur} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, amountEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">MwSt-Satz</label>
+                <select value={form.vatRateBps} onChange={(e) => setForm((f) => ({ ...f, vatRateBps: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                  <option value="1900">19 %</option>
+                  <option value="700">7 %</option>
+                  <option value="0">0 % (steuerfrei)</option>
+                </select>
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-sm mb-1">Beschreibung (optional)</label>
@@ -295,6 +311,7 @@ export default function Finance() {
             })}
             {expenses.length === 0 && <p className="px-4 py-6 text-center text-slate-500">Keine Ausgaben für {year} erfasst.</p>}
           </div>
+          {showScan && <ReceiptScanDialog onClose={() => setShowScan(false)} onSaved={() => { loadExpenses(); loadSummary(); }} />}
         </div>
       )}
 
