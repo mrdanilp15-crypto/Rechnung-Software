@@ -23,7 +23,8 @@ ENV NODE_ENV=production
 # Benutzer "node" in den eigentlichen Server wechseln (siehe docker-entrypoint.sh).
 # font-liberation: Schriftdateien, die in die Rechnungs-PDFs eingebettet werden (Voraussetzung
 # für PDF/A-3b und korrekte Darstellung von Sonderzeichen in Kundennamen).
-RUN apk add --no-cache openssl postgresql-client unzip dumb-init su-exec font-liberation
+# ffmpeg: wandelt den Videostrom der Bambu-Kamera (X1C, X1E, P2S, H2) in Einzelbilder für die Live-Ansicht um.
+RUN apk add --no-cache openssl postgresql-client unzip dumb-init su-exec font-liberation ffmpeg
 COPY package*.json ./
 RUN npm install --omit=dev
 COPY --from=build /app/dist ./dist

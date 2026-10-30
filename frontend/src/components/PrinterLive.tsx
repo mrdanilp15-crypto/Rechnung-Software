@@ -39,7 +39,7 @@ export interface PrinterJobRow {
   minutes: number | null;
 }
 
-export const CAMERA_MODELS = ["P1P", "P1S", "A1", "A1MINI"];
+export const CAMERA_MODELS = ["P1P", "P1S", "A1", "A1MINI", "X1C", "X1E", "P2S", "H2D", "H2S"];
 
 export const formatMinutes = (min: number) => {
   const m = Math.max(0, Math.round(min));
@@ -79,6 +79,7 @@ function Spool({ tray, label }: { tray: Tray; label: string }) {
 export function PrinterLiveCard({ printerId, status, model, trackedMinutes, lifetimeHours }: { printerId: string; status: LiveStatus; model?: string | null; trackedMinutes: number; lifetimeHours: number }) {
   const [photo, setPhoto] = useState<{ url: string | null; error: string | null; loading: boolean } | null>(null);
   const [jobs, setJobs] = useState<PrinterJobRow[] | null>(null);
+  const [live, setLive] = useState<{ key: number; error: string | null } | null>(null);
   const canCamera = !!model && CAMERA_MODELS.includes(model);
   const online = status.connection === "online";
   const active = status.state === "RUNNING" || status.state === "PREPARE" || status.state === "PAUSE";
@@ -99,6 +100,20 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
       }
       setPhoto({ url: null, error: message, loading: false });
     }
+  }
+  // Live-Ansicht: Bildfolge vom Server (ca. 2 Bilder pro Sekunde). Bei einem Fehler zeigt eine Einzelbild-Abfrage die genaue Ursache.
+  async function liveFailed() {
+    let message = "Die Live-Ansicht konnte nicht gestartet werden.";
+    try {
+      await api.get(`/printers/${printerId}/snapshot`, { responseType: "blob" });
+    } catch (err: any) {
+      try {
+        message = JSON.parse(await err.response.data.text()).error ?? message;
+      } catch {
+        // keine lesbare Fehlermeldung
+      }
+    }
+    setLive((l) => (l ? { ...l, error: message } : l));
   }
   async function toggleJobs() {
     if (jobs) return setJobs(null);
@@ -164,10 +179,20 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
         {canCamera && online && <button type="button" onClick={loadPhoto} disabled={photo?.loading} className="text-brand hover:underline disabled:opacity-60">{photo?.loading ? "Lädt ..." : photo?.url ? "Bild aktualisieren" : "Kamerabild anzeigen"}</button>}
         {photo?.url && <button type="button" onClick={() => setPhoto(null)} className="text-slate-500 hover:underline">Bild ausblenden</button>}
+        {canCamera && online && !live && <button type="button" onClick={() => { setPhoto(null); setLive({ key: Date.now(), error: null }); }} className="text-brand hover:underline">Live-Ansicht</button>}
+        {live && <button type="button" onClick={() => setLive(null)} className="text-slate-500 hover:underline">Live-Ansicht beenden</button>}
+        {live && <button type="button" onClick={() => setLive({ key: Date.now(), error: null })} className="text-brand hover:underline">Neu starten</button>}
         <button type="button" onClick={toggleJobs} className="text-brand hover:underline">{jobs ? "Verlauf ausblenden" : "Druckverlauf"}</button>
         {trackedMinutes > 0 && <span className="text-slate-500 ml-auto" title="Aus den erkannten Druckaufträgen (inkl. Pausen). Zählt ab Einrichtung der Live-Verbindung.">Erfasst: {(trackedMinutes / 60).toFixed(1).replace(".", ",")} h von {lifetimeHours} h Lebensdauer ({Math.min(100, (trackedMinutes / 60 / lifetimeHours) * 100).toFixed(1).replace(".", ",")} %)</span>}
       </div>
       {photo?.error && <p className="text-xs text-amber-600">{photo.error}</p>}
+      {live && !live.error && (
+        <div>
+          <img src={`/api/printers/${printerId}/stream?k=${live.key}`} onError={liveFailed} alt="Live-Ansicht des Druckers" className="rounded-lg w-full max-w-2xl border border-slate-200 dark:border-slate-700 bg-black/80 min-h-[8rem]" />
+          <p className="text-xs text-slate-500 mt-1">Läuft bis zu 15 Minuten, 1-2 Bilder pro Sekunde. Bleibt das Bild stehen, "Neu starten" drücken.</p>
+        </div>
+      )}
+      {live?.error && <p className="text-xs text-amber-600">{live.error}</p>}
       {photo?.url && <img src={photo.url} alt="Kamerabild des Druckers" className="rounded-lg w-full max-w-md border border-slate-200 dark:border-slate-700" />}
 
       {jobs && (

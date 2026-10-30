@@ -158,7 +158,7 @@ export default function Printers() {
       </InfoBox>
 
       <InfoBox title="Live-Anbindung für Bambu Lab (Fortschritt, Temperaturen, AMS, Kamera)">
-        <p>Bei Bambu-Lab-Druckern kann die Software im <strong>LAN-Modus</strong> den Zustand direkt vom Drucker lesen: Fortschritt und Restzeit, Temperaturen, die Spulen im AMS (Material, Farbe, Füllstand), bei P1P/P1S/A1/A1 mini ein Kamerabild. Aus den erkannten Drucken entstehen außerdem ein <strong>Druckverlauf und die tatsächlichen Betriebsstunden</strong> je Drucker.</p>
+        <p>Bei Bambu-Lab-Druckern kann die Software im <strong>LAN-Modus</strong> den Zustand direkt vom Drucker lesen: Fortschritt und Restzeit, Temperaturen, die Spulen im AMS (Material, Farbe, Füllstand), ein Kamerabild und eine Live-Ansicht (P1P, P1S, A1, A1 mini, X1C, X1E, P2S, H2). Aus den erkannten Drucken entstehen außerdem ein <strong>Druckverlauf und die tatsächlichen Betriebsstunden</strong> je Drucker.</p>
         <p><strong>Nur lesend:</strong> Die Software sendet nie Befehle (Pause, Stopp, Start) an den Drucker.</p>
         <p><strong>Einrichten (am Drucker):</strong> Einstellungen → WLAN/Netzwerk: <em>LAN-Modus</em> aktivieren; dort stehen die <strong>IP-Adresse</strong> und der <strong>Zugangscode</strong> (8 Zeichen). Die <strong>Seriennummer</strong> finden Sie unter Einstellungen → Gerät (oder auf dem Aufkleber). Tragen Sie die drei Werte im Formular unten ein und klicken Sie "Verbindung testen".</p>
         <p><strong>Voraussetzungen:</strong> Der Server, auf dem diese Software läuft, muss den Drucker im Netzwerk erreichen (typisch: gleiches Heimnetz). Läuft die Software in der Cloud oder bei einem Hoster, ist das nicht der Fall - dann ist ein VPN (z.B. Tailscale) nötig. Der Drucker sollte eine feste IP-Adresse haben (im Router reservieren). Je nach Modell und Firmware kann der LAN-Modus die Verbindung zur Bambu-Cloud (Handy-App von unterwegs) einschränken; Bambu ändert dieses Verhalten gelegentlich per Firmware. Bitte beim ersten Einrichten ausprobieren.</p>
@@ -217,7 +217,7 @@ export default function Printers() {
                       <select value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} className={inputClass}>
                         {MODELS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                       </select>
-                      <span className="block text-xs text-slate-500 mt-0.5">{CAMERA_MODELS.includes(form.model) ? "Für dieses Modell ist ein Kamerabild möglich." : "Kamerabild nur bei P1P, P1S, A1 und A1 mini (andere Modelle nutzen einen Videostrom)."}</span>
+                      <span className="block text-xs text-slate-500 mt-0.5">{["X1C", "X1E", "P2S", "H2D", "H2S"].includes(form.model) ? "Kamera/Live-Ansicht möglich - am Drucker unter Einstellungen → Netzwerk den \"LAN-Modus-Liveview\" einschalten." : CAMERA_MODELS.includes(form.model) ? "Für dieses Modell sind Kamerabild und Live-Ansicht möglich." : "Für dieses Modell gibt es keine Kamera-Anbindung."}</span>
                     </label>
                     <label className="block text-sm">
                       IP-Adresse des Druckers

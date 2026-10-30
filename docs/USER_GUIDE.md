@@ -178,7 +178,7 @@ In der Rechnungsdetailansicht:
   Listen werden bis 1279 px als Karten gezeigt, darüber als Tabelle. **PDFs** (Vorschau im Editor, PDF-Knöpfe) werden auf Touch-Geräten in der App selbst angezeigt (mit Herunterladen und Teilen) - man muss sie nicht mehr erst herunterladen.
 - **Drucker-Live-Anbindung (Bambu Lab, nur lesend)** (*Katalog → Drucker → Bearbeiten → Live-Anbindung*, nur Administratoren): Zeigt im LAN-Modus direkt vom Drucker Zustand,
   Fortschritt mit Restzeit, Schicht, Temperaturen (Düse, Bett, Gehäuse), die **AMS-Spulen** (Material, Farbe, Füllstand, aktive Spule, Feuchte-Stufe), Fehlercodes und bei
-  **P1P, P1S, A1 und A1 mini ein Kamerabild** (Einzelbild per Knopfdruck). Auf der Startseite zeigt eine Karte "Drucker live" alle verbundenen Drucker.
+  **ein Kamerabild und eine Live-Ansicht** (siehe unten). Auf der Startseite zeigt eine Karte "Drucker live" alle verbundenen Drucker.
   - **Einrichten:** Am Drucker unter Einstellungen → WLAN/Netzwerk den *LAN-Modus* aktivieren - dort stehen IP-Adresse und der 8-stellige *Zugangscode*; die Seriennummer steht unter
     Einstellungen → Gerät. Im Drucker-Formular Modell, IP-Adresse, Seriennummer und Zugangscode eintragen, "Verbindung testen", speichern.
   - **Nur lesend:** Die Software sendet nie Befehle (Pause/Stopp/Start) an den Drucker; der Zugangscode wird verschlüsselt gespeichert und nie angezeigt.
@@ -187,7 +187,8 @@ In der Rechnungsdetailansicht:
   - **Voraussetzungen:** Der Server muss den Drucker im Netzwerk erreichen (gleiches Heimnetz oder VPN, z.B. Tailscale); feste IP-Adresse im Router reservieren; es sind nur
     Adressen aus dem eigenen Netz erlaubt. Je nach Modell/Firmware schränkt der LAN-Modus die Bambu-Cloud (Handy-App von unterwegs) ein - Bambu ändert das gelegentlich.
     Pro Drucker besteht eine dauerhafte Verbindung; gleichzeitige Verbindungen anderer Programme (Home Assistant, Bambu Studio im LAN) können sich je nach Modell gegenseitig verdrängen.
-  - Kamerabild bei X1/P2S/H2 (Videostrom) wird nicht unterstützt. Andere Hersteller (Prusa, Creality ...) sind nicht angebunden.
+  - **Kamera / Live-Ansicht:** P1P, P1S, A1, A1 mini holen Einzelbilder direkt vom Drucker. **X1C, X1E, P2S, H2** haben einen Videostrom (RTSP): Dafür am Drucker unter *Einstellungen → Netzwerk* den **"LAN-Modus-Liveview"** einschalten; der Server wandelt den Strom mit ffmpeg (im Docker-Image enthalten) in Bilder um. Die Live-Ansicht zeigt 1-2 Bilder pro Sekunde, läuft bis zu 15 Minuten und teilt sich pro Drucker EINE Verbindung unter allen Betrachtern.
+  - Andere Hersteller (Prusa, Creality ...) sind nicht angebunden.
 - **Produktionsboard** (Menüpunkt *Produktion*): Jede Auftragsbestätigung erscheint als Karte in den Spalten **Erstellt → In Produktion → Versandbereit → Versendet**.
   Karten per Ziehen oder mit den Pfeil-Knöpfen (auch am Handy) verschieben; eine Notiz pro Karte (z.B. Farbe, Sendungsnummer). Die Karte zeigt Positionen, Betrag,
   gewünschtes Lieferdatum (rot, wenn überschritten) und eine geschätzte Druckzeit (wenn der Positionstext dem Namen eines Produkts mit Druckzeit entspricht).

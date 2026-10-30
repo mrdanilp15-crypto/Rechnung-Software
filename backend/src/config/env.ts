@@ -62,6 +62,9 @@ const envSchema = z.object({
   ARCHIVE_MAX_UPLOAD_MB: z.coerce.number().default(25),
   // Live-Anbindung der Bambu-Lab-Drucker (MQTT im LAN). Mit false wird keine Verbindung zu Druckern aufgebaut.
   PRINTER_MONITOR_ENABLED: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
+  // Kamera von X1C/X1E/P2S/H2: ffmpeg wandelt den Videostrom des Druckers in Einzelbilder um (im Docker-Image enthalten)
+  FFMPEG_PATH: z.string().default("ffmpeg"),
+  PRINTER_RTSP_SCHEME: z.enum(["rtsps", "rtsp"]).default("rtsps"),
 
   LOG_LEVEL: z.string().default("info"),
   // Optional: zusätzlich zu stdout auch in eine Datei in einem gemounteten Volume

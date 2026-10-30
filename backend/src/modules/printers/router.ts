@@ -5,7 +5,8 @@ import { requireAuth } from "../../middleware/auth";
 import { env } from "../../config/env";
 import { encryptField, decryptField } from "../../utils/crypto";
 import { bambuMonitor, testBambuConnection } from "./bambu/monitor";
-import { CAMERA_SNAPSHOT_MODELS, PRINTER_MODELS, fetchBambuSnapshot, isAllowedPrinterHost } from "./bambu/network";
+import { PRINTER_MODELS, fetchBambuSnapshot, isAllowedPrinterHost } from "./bambu/network";
+import { CAMERA_MODELS, RTSP_MODELS, buildRtspUrl, cameraHub, jpegPortSource, rtspSource, type SourceFactory } from "./bambu/camera";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 
@@ -154,19 +155,27 @@ printersRouter.post("/test-connection", async (req, res) => {
   res.json(await testBambuConnection({ host: body.host, serial: body.serial.toUpperCase(), accessCode: code }));
 });
 
-// Kamerabild (Einzelbild) für P1P/P1S/A1/A1 mini; kurz zwischengespeichert, damit mehrere Betrachter den Drucker nicht überlasten
-const snapshotCache = new Map<string, { at: number; image: Buffer }>();
-printersRouter.get("/:id/snapshot", async (req, res) => {
+// Kamera: P1P/P1S/A1/A1 mini holen einzelne JPEG-Bilder, X1C/X1E/P2S/H2 liefern einen Videostrom, den ffmpeg in Einzelbilder umwandelt.
+async function cameraPrinter(req: { params: Record<string, string>; auth?: { companyId: string } }) {
   const p = await prisma.printer.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId, isArchived: false } });
   if (!p || p.connectionType !== "BAMBU_LAN" || !p.host || !p.accessCodeEncrypted) throw new HttpError(404, "Für diesen Drucker ist keine Verbindung eingerichtet.");
-  if (!p.model || !(CAMERA_SNAPSHOT_MODELS as readonly string[]).includes(p.model)) {
-    throw new HttpError(422, "Das Kamerabild wird nur für P1P, P1S, A1 und A1 mini unterstützt (andere Modelle nutzen einen Videostrom, der hier nicht angezeigt werden kann). Bitte Modell prüfen.");
-  }
+  if (!p.model || !(CAMERA_MODELS as readonly string[]).includes(p.model)) throw new HttpError(422, "Für dieses Druckermodell ist keine Kamera hinterlegt. Bitte das Modell prüfen.");
+  const code = decryptField(p.accessCodeEncrypted);
+  const source: SourceFactory = (RTSP_MODELS as readonly string[]).includes(p.model)
+    ? rtspSource(buildRtspUrl(p.host, code, env.PRINTER_RTSP_SCHEME), { ffmpegPath: env.FFMPEG_PATH })
+    : jpegPortSource(p.host, code);
+  return { printer: p, source, isRtsp: (RTSP_MODELS as readonly string[]).includes(p.model) };
+}
+
+// Einzelbild; kurz zwischengespeichert, damit mehrere Betrachter den Drucker nicht überlasten
+const snapshotCache = new Map<string, { at: number; image: Buffer }>();
+printersRouter.get("/:id/snapshot", async (req, res) => {
+  const { printer: p, source, isRtsp } = await cameraPrinter(req);
   const cached = snapshotCache.get(p.id);
   let image = cached && Date.now() - cached.at < 2500 ? cached.image : null;
   if (!image) {
     try {
-      image = await fetchBambuSnapshot(p.host, decryptField(p.accessCodeEncrypted));
+      image = isRtsp ? await cameraHub.firstFrame(`cam:${p.id}`, source) : await fetchBambuSnapshot(p.host!, decryptField(p.accessCodeEncrypted!));
     } catch (err) {
       throw new HttpError(502, (err as Error).message);
     }
@@ -175,6 +184,40 @@ printersRouter.get("/:id/snapshot", async (req, res) => {
   res.setHeader("Content-Type", "image/jpeg");
   res.setHeader("Cache-Control", "no-store");
   res.send(image);
+});
+
+// Live-Ansicht als Bildfolge (multipart/x-mixed-replace, im <img> darstellbar). Ein Strom pro Drucker, geteilt unter allen Betrachtern;
+// nach 15 Minuten endet die Sitzung (vergessene Tabs sollen die Kamera nicht dauerhaft belegen) - "Weiter ansehen" startet neu.
+const STREAM_MAX_MS = 15 * 60 * 1000;
+printersRouter.get("/:id/stream", async (req, res) => {
+  const { printer: p, source } = await cameraPrinter(req);
+  res.writeHead(200, {
+    "Content-Type": "multipart/x-mixed-replace; boundary=frame",
+    "Cache-Control": "no-store, no-transform",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  let waiting = false;
+  let unsubscribe: () => void = () => {};
+  const close = () => {
+    clearTimeout(limit);
+    unsubscribe();
+    if (!res.writableEnded) res.end();
+  };
+  const limit = setTimeout(close, STREAM_MAX_MS);
+  unsubscribe = cameraHub.subscribe(`cam:${p.id}`, source, {
+    frame(jpeg) {
+      if (waiting || res.writableEnded) return; // Betrachter zu langsam: Bild überspringen statt zu stauen
+      res.write(`--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${jpeg.length}\r\n\r\n`);
+      res.write(jpeg);
+      if (!res.write("\r\n")) {
+        waiting = true;
+        res.once("drain", () => { waiting = false; });
+      }
+    },
+    end: () => close(),
+  });
+  res.on("close", close); // Verbindung vom Betrachter beendet (req "close" kommt bei GET schon nach dem Empfang der Anfrage)
 });
 
 printersRouter.get("/:id/jobs", async (req, res) => {
