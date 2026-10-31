@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
 import { RowActionsMenu, RowAction } from "../components/RowActionsMenu";
+import { LabelDialog } from "../components/LabelDialog";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { useToast } from "../components/Toast";
 import { RecurringDialog } from "../components/RecurringDialog";
@@ -56,6 +57,7 @@ export default function Documents() {
   const [newOpen, setNewOpen] = useState(false);
   const [dpRow, setDpRow] = useState<DocRow | null>(null);
   const [sendRow, setSendRow] = useState<DocRow | null>(null);
+  const [labelRow, setLabelRow] = useState<DocRow | null>(null);
   const location = useLocation();
   // Nach "Fertigstellen" im Editor: Versand-Dialog gleich öffnen
   const pendingSend = (location.state as { sendEmail?: { kind: Kind; id: string } } | null)?.sendEmail;
@@ -185,6 +187,7 @@ export default function Documents() {
     if (row.kind === "ORDER_CONFIRMATION" && row.status !== "DRAFT") {
       list.push({ label: "→ Lieferschein", onClick: () => convert(row, "convert-to-delivery-note", "/delivery-notes", "Lieferschein als Entwurf angelegt") });
     }
+    if (row.kind !== "QUOTE" && row.status !== "DRAFT") list.push({ label: "Versandetikett", onClick: () => setLabelRow(row) });
     if (row.kind === "INVOICE" && !row.isCancellationDocument && row.invoiceKind !== "DOWN_PAYMENT") list.push({ label: "Wiederkehrend einrichten", onClick: () => setRecurringRow(row) });
     if (!row.isCancellationDocument) list.push({ label: "Duplizieren", onClick: () => duplicate(row) });
     const deletable = row.kind === "INVOICE" ? row.status === "DRAFT" : row.kind === "QUOTE" ? row.status === "DRAFT" : true;
@@ -296,6 +299,13 @@ export default function Documents() {
         )}
       </div>
 
+      {labelRow && (
+        <LabelDialog
+          baseUrl={`/labels/document/${labelRow.kind === "INVOICE" ? "invoices" : labelRow.kind === "DELIVERY_NOTE" ? "delivery-notes" : "order-confirmations"}/${labelRow.id}`}
+          title={labelRow.number ?? ""}
+          onClose={() => setLabelRow(null)}
+        />
+      )}
       {sendRow && (
         <SendDocumentDialog
           base={KIND_INFO[sendRow.kind].base}

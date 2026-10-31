@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { PdfLink } from "../components/PdfLink";
+import { LabelDialog } from "../components/LabelDialog";
 import { useAuthStore } from "../store/authStore";
 import { useToast } from "../components/Toast";
 
@@ -50,6 +51,7 @@ export default function CustomerDetail() {
   const isAdmin = useAuthStore((s) => s.user?.role) === "ADMIN";
   const showToast = useToast();
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
+  const [showLabel, setShowLabel] = useState(false);
 
   function load() {
     api.get(`/customers/${id}`).then((res) => setCustomer(res.data));
@@ -81,6 +83,7 @@ export default function CustomerDetail() {
           <p className="text-sm text-slate-500">{customer.customerNumber} · {customer.type === "GEWERBLICH" ? t("customers.business") : t("customers.private")} · Kunde seit {formatDate(customer.createdAt)}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <button onClick={() => setShowLabel(true)} className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm">Versandetikett</button>
           <PdfLink url={`/customers/${id}/gdpr-export.pdf`} filename={`datenauskunft-${customer.customerNumber}.pdf`} download className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm" title="Lesbare Datenauskunft nach Art. 15 DSGVO als PDF - zum Weitergeben an den Kunden">
             Datenauskunft (PDF)
           </PdfLink>
@@ -174,6 +177,7 @@ export default function CustomerDetail() {
         ))}
         {customer.history.quotes.length === 0 && <p className="px-4 py-6 text-center text-slate-500">Keine Angebote.</p>}
       </div>
+      {showLabel && <LabelDialog baseUrl={`/labels/customer/${id}`} title={customer.name} onClose={() => setShowLabel(false)} />}
     </div>
   );
 }

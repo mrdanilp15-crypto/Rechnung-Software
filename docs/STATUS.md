@@ -139,6 +139,8 @@ implementiert.
 | AMS-Materialabbuchung (Fach-Zuordnung, laufende Abbuchung nach Füllstand, Verbrauch je Druckauftrag) | 🟡 Berechnung mit Tests und Zuordnung gegen echte Datenbank geprüft; nicht mit einem echten AMS |
 | Benachrichtigungen (Druck fertig/fehlgeschlagen/Druckerfehler: Meldungsliste + optional E-Mail) | 🟡 Texte, Hooks und Datenbank geprüft; E-Mail-Versand nicht neu getestet, echte Druckerfehlercodes nicht gesehen |
 | Bereits gelaufene Stunden vor der Erfassung (Abschreibung, Gesamtstunden) | ✅ |
+| Push-Nachrichten aufs Handy (Web Push, je Gerät anmeldbar) | 🟡 Schlüssel, Verschlüsselung und Zustell-Logik getestet; echte Zustellung an ein Gerät nicht gesehen (braucht HTTPS) |
+| Versandetikett (PDF 10x15/A6/62x100) aus Beleg und Kunde | ✅ PDF-Erzeugung getestet; kein direkter Versand an einen Etikettendrucker, kein DHL/DPD-Label |
 | Druck an den Drucker senden (3MF aus dem Archiv per FTPS, optional Start per MQTT) | 🟡 3MF-Auswertung, Upload (simulierter FTP-Server) und Befehl (simulierter Broker) getestet; nicht mit einem echten Drucker - Start bitte beim ersten Mal beaufsichtigen |
 | Beleg scannen: lokale Texterkennung (Tesseract im Browser, keine Cloud), Vorschläge für Datum/Händler/Betrag/MwSt/Kategorie, Nachbessern, Lernen aus früheren Ausgaben, Doppelt-Warnung | ✅ Parser mit Tests, Foto- und PDF-Pfad im Browser geprüft (Test-Belege); Treffsicherheit bei echten Handyfotos hängt von der Aufnahme ab |
 | Belegarchiv: Dokumente ablegen, Volltextsuche (inkl. PDF-Text), Filter, Sortierung, ZIP-Export, Aufbewahrungsfristen | ✅ Ablage, kein revisionssicheres GoBD-Archiv (Dokumente änderbar/löschbar) |

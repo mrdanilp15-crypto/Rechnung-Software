@@ -24,6 +24,81 @@ const TONE: Record<string, string> = {
   PRINTER_ERROR: "bg-amber-500",
 };
 
+function urlBase64ToUint8Array(base64: string): Uint8Array {
+  const pad = "=".repeat((4 - (base64.length % 4)) % 4);
+  const raw = atob((base64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+}
+
+/** Push auf diesem Gerät ein-/ausschalten (Web Push: nur über HTTPS; auf iPhone/iPad nur bei zum Home-Bildschirm hinzugefügter App). */
+function PushControl() {
+  const supported = typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  const [active, setActive] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!supported) return;
+    navigator.serviceWorker.ready.then((reg) => reg.pushManager.getSubscription()).then((sub) => setActive(!!sub)).catch(() => {});
+  }, [supported]);
+
+  if (!supported) return <p className="text-xs text-slate-500">Push-Nachrichten gehen auf diesem Gerät/Browser nicht. Am iPhone/iPad: Seite über "Teilen → Zum Home-Bildschirm" als App hinzufügen und von dort öffnen.</p>;
+
+  async function enable() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      if (!import.meta.env.PROD) throw new Error("Push geht nur in der installierten Version (HTTPS), nicht im Entwicklungsmodus.");
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") throw new Error("Die Erlaubnis für Benachrichtigungen wurde nicht erteilt. Im Browser/Gerät unter Einstellungen erlauben.");
+      const reg = await navigator.serviceWorker.ready;
+      const { data } = await api.get("/notifications/push/key");
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(data.publicKey) as unknown as BufferSource });
+      await api.post("/notifications/push/subscribe", sub.toJSON());
+      setActive(true);
+      setMsg("Push ist auf diesem Gerät eingeschaltet.");
+    } catch (err: any) {
+      setMsg(err?.response?.data?.error ?? err?.message ?? "Push konnte nicht eingeschaltet werden.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function disable() {
+    setBusy(true);
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await api.post("/notifications/push/unsubscribe", { endpoint: sub.endpoint });
+        await sub.unsubscribe();
+      }
+      setActive(false);
+      setMsg("Push ist auf diesem Gerät ausgeschaltet.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function test() {
+    const { data } = await api.post("/notifications/push/test");
+    setMsg(data.sent > 0 ? "Test-Nachricht gesendet." : "Kein Gerät angemeldet.");
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 text-sm">
+      <span className="text-slate-600 dark:text-slate-300">Push aufs Handy/Tablet:</span>
+      {active ? (
+        <>
+          <button disabled={busy} onClick={disable} className="px-3 py-1.5 rounded text-sm bg-slate-200 dark:bg-slate-700">Auf diesem Gerät ausschalten</button>
+          <button onClick={test} className="text-brand hover:underline text-sm">Test senden</button>
+        </>
+      ) : (
+        <button disabled={busy} onClick={enable} className="px-3 py-1.5 rounded text-sm bg-brand text-white">Auf diesem Gerät einschalten</button>
+      )}
+      {msg && <span className="text-xs text-slate-500 w-full">{msg}</span>}
+    </div>
+  );
+}
+
 /** Meldungen der Drucker (Druck fertig, fehlgeschlagen, Druckerfehler) mit den Einstellungen für E-Mail-Benachrichtigung. */
 export function NotificationsCard() {
   const isAdmin = useAuthStore((s) => s.user?.role) === "ADMIN";
@@ -61,7 +136,6 @@ export function NotificationsCard() {
   }
   const set = (patch: Partial<Settings>) => setSettings((s) => (s ? { ...s, ...patch } : s));
 
-  if (items.length === 0 && !isAdmin) return null;
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6">
       <div className="flex items-center gap-3 mb-2">
@@ -69,6 +143,8 @@ export function NotificationsCard() {
         {unread > 0 && <button onClick={markRead} className="text-xs text-brand hover:underline">Alle gelesen</button>}
         {isAdmin && <button onClick={() => setOpen((v) => !v)} className="text-xs text-slate-500 hover:underline ml-auto">{open ? "Einstellungen schließen" : "Einstellungen"}</button>}
       </div>
+
+      <div className="mb-3"><PushControl /></div>
 
       {open && settings && (
         <div className="rounded-lg bg-slate-50 dark:bg-slate-900/40 p-3 mb-3 text-sm space-y-2">

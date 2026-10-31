@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { logger } from "../../utils/logger";
 import { isSmtpConfigured, sendMailForCompany } from "../email/mailer";
+import { sendPushToCompany } from "./push";
 
 /**
  * Benachrichtigungen zu Druckern: Jede Meldung landet in der Meldungsliste der App (Startseite) und - wenn eingeschaltet -
@@ -75,6 +76,8 @@ export async function notifyPrinterEvent(companyId: string, event: PrinterEvent)
   if (!isEnabled(event.type, settings)) return;
   const { title, body } = buildMessage(event);
   await prisma.notification.create({ data: { companyId, type: event.type, title, body, printerId: event.printerId } });
+  // Push aufs Handy an alle angemeldeten Geräte (jedes Gerät hat sich selbst dafür angemeldet)
+  sendPushToCompany(companyId, { title, body, url: "/" }).catch((err) => logger.warn({ err: (err as Error).message }, "Push-Nachricht fehlgeschlagen"));
   if (!settings.byMail || !settings.email) return;
   try {
     const company = await prisma.company.findUnique({ where: { id: companyId } });

@@ -25,6 +25,7 @@ import { recurringRouter } from "./modules/recurring/router";
 import { resetRouter } from "./modules/reset/router";
 import { printersRouter } from "./modules/printers/router";
 import { notificationsRouter } from "./modules/notifications/router";
+import { labelsRouter } from "./modules/labels/router";
 import { archiveRouter } from "./modules/archive/router";
 import { productionRouter } from "./modules/production/router";
 import { assetsRouter } from "./modules/assets/router";
@@ -120,6 +121,7 @@ export function createApp() {
   app.use("/api/reset", resetRouter);
   app.use("/api/printers", printersRouter);
   app.use("/api/notifications", notificationsRouter);
+  app.use("/api/labels", labelsRouter);
   app.use("/api/archive", archiveRouter);
   app.use("/api/production", productionRouter);
   app.use("/api/assets", assetsRouter);
