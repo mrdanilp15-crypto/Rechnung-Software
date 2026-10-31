@@ -148,6 +148,7 @@ export function PrintSendDialog({ printerId, printerName, status, onClose }: { p
                         </div>
                       ))}
                       {plate.filaments.length === 0 && <p className="text-xs text-slate-500">In der Datei stehen keine Filamentangaben; der Drucker nimmt das eingestellte Filament.</p>}
+                      {plate.filaments.some((f) => f.usedGrams) && <p className="text-xs text-slate-500">Der Verbrauch laut Slicer wird nach dem Druck vom Material abgebucht, das dem gewählten Fach zugeordnet ist (Spulen ohne Chip). Bei Abbruch anteilig nach Fortschritt.</p>}
                     </div>
                   )}
 

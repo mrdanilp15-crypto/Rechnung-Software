@@ -4,6 +4,7 @@ import { logger } from "../../../utils/logger";
 import { BambuMonitorCore, testBambuConnection as testCore, type ConnectionTestResult, type JobStore } from "./monitorCore";
 import type { PrinterLiveStatus } from "./status";
 import { amsBooking } from "./amsBooking";
+import { attachPlanToJob, bookPlanAtEnd } from "./slicedBooking";
 import { notifyPrinterEvent } from "../../notifications/service";
 
 /**
@@ -15,17 +16,37 @@ export type { ConnectionTestResult };
 
 const prismaJobStore: JobStore = {
   findOpen: (printerId) => prisma.printerJob.findFirst({ where: { printerId, endedAt: null }, orderBy: { startedAt: "desc" }, select: { id: true, name: true, startedAt: true } }),
-  create: (data) => prisma.printerJob.create({ data, select: { id: true, name: true, startedAt: true } }),
+  create: async (data) => {
+    const job = await prisma.printerJob.create({ data, select: { id: true, name: true, startedAt: true } });
+    // Aus der App gesendeter Druck: erwarteten Verbrauch (Slicer-Angabe) an den Auftrag hängen
+    await attachPlanToJob(data.printerId, job.id, data.name).catch((err) => logger.warn({ err: (err as Error).message }, "Slicer-Verbrauch konnte dem Auftrag nicht zugeordnet werden"));
+    return job;
+  },
   close: async (id, data) => {
     await prisma.printerJob.update({ where: { id }, data });
   },
 };
 
+/** Zuletzt gemeldeter Fortschritt je laufendem Auftrag - für die anteilige Abbuchung bei abgebrochenen Drucken. */
+const lastProgress = new Map<string, number>();
+
 const core = new BambuMonitorCore({
   store: prismaJobStore,
   log: logger,
-  onReport: (target, status, jobId) => amsBooking.onStatus(target.printerId, status, jobId),
+  onReport: async (target, status, jobId) => {
+    if (jobId && status.progressPercent !== null && ["RUNNING", "PAUSE"].includes(status.state)) lastProgress.set(jobId, status.progressPercent);
+    await amsBooking.onStatus(target.printerId, status, jobId);
+  },
   onJobEnd: async (target, info) => {
+    if (info.jobId) {
+      const progress = lastProgress.get(info.jobId) ?? null;
+      lastProgress.delete(info.jobId);
+      try {
+        await bookPlanAtEnd(target.printerId, info.jobId, info.result, progress, info.status);
+      } catch (err) {
+        logger.warn({ err: (err as Error).message }, "Materialabbuchung nach Slicer-Angabe fehlgeschlagen");
+      }
+    }
     if (info.result !== "FINISHED" && info.result !== "FAILED") return; // abgebrochen oder unbekannt: keine Meldung
     const printer = await prisma.printer.findUnique({ where: { id: target.printerId }, select: { name: true } });
     const job = info.jobId ? await prisma.printerJob.findUnique({ where: { id: info.jobId }, select: { materialUsage: true } }) : null;

@@ -878,6 +878,8 @@ model PrinterJob {
   minutes   Int? // Dauer inklusive Pausen
   // Aus dem AMS gemessener Materialverbrauch dieses Drucks: [{ materialId, name, grams }]
   materialUsage Json?
+  // Aus der 3MF-Datei (Slicer-Angabe) erwarteter Verbrauch je Fach, solange noch nicht abgebucht: [{ filament, slot, grams }]
+  slicedPlan Json?
 
   @@index([printerId, startedAt])
   @@index([companyId])
@@ -903,6 +905,22 @@ model AmsSlotMapping {
 
   @@unique([printerId, slot])
   @@index([materialId])
+  @@index([companyId])
+}
+
+// ---------- Materialabbuchung nach Slicer-Angabe (für Spulen ohne Chip) ----------
+// Wird beim Senden eines Drucks aus der App angelegt: welches Filament der 3MF-Datei in welchem Fach liegt und wie viele Gramm der Slicer
+// dafür berechnet hat. Beginnt am Drucker ein Auftrag mit demselben Namen, wandert der Plan in PrinterJob.slicedPlan und wird bei
+// Druckende abgebucht.
+model PrintPlan {
+  id        String   @id @default(uuid())
+  companyId String
+  printerId String
+  jobName   String // normalisierter Dateiname (ohne .gcode.3mf, kleingeschrieben)
+  entries   Json // [{ filament, slot, grams }]
+  createdAt DateTime @default(now())
+
+  @@index([printerId, jobName])
   @@index([companyId])
 }
 

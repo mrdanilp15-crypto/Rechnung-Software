@@ -137,6 +137,7 @@ implementiert.
 | Oberfläche: wählbare Akzentfarbe, warmes/kühles dunkles Design, Menü-Symbole, Handy-Leiste unten, Dashboard mit Kennzahlen/Diagrammen, einheitliche Status-Chips | ✅ |
 | Belege an Ausgaben (Upload im Ausgabenformular) landen automatisch im Belegarchiv; bisherige per Knopfdruck übernehmbar | ✅ |
 | AMS-Materialabbuchung (Fach-Zuordnung, laufende Abbuchung nach Füllstand, Verbrauch je Druckauftrag) | 🟡 Berechnung mit Tests und Zuordnung gegen echte Datenbank geprüft; nicht mit einem echten AMS |
+| Materialabbuchung nach Slicer-Angabe für Spulen ohne Chip (aus 3MF, bei Druckende, anteilig bei Abbruch; nur für über die App gesendete Drucke) | 🟡 Berechnung mit Tests, Ablauf (Plan merken → Auftrag → Abbuchung, nur einmal) gegen echte Datenbank geprüft; nicht mit einem echten Drucker - ob der Auftragsname am Drucker dem Dateinamen entspricht, ist beim ersten Druck zu prüfen |
 | Benachrichtigungen (Druck fertig/fehlgeschlagen/Druckerfehler: Meldungsliste + optional E-Mail) | 🟡 Texte, Hooks und Datenbank geprüft; E-Mail-Versand nicht neu getestet, echte Druckerfehlercodes nicht gesehen |
 | Bereits gelaufene Stunden vor der Erfassung (Abschreibung, Gesamtstunden) | ✅ |
 | Push-Nachrichten aufs Handy (Web Push, je Gerät anmeldbar) | 🟡 Schlüssel, Verschlüsselung und Zustell-Logik getestet; echte Zustellung an ein Gerät nicht gesehen (braucht HTTPS) |

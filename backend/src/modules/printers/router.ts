@@ -10,6 +10,7 @@ import { CAMERA_MODELS, RTSP_MODELS, buildRtspUrl, cameraHub, jpegPortSource, rt
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import fs from "fs";
+import { buildPlanEntries, savePrintPlan } from "./bambu/slicedBooking";
 import { buildAmsMapping, buildStartPayload, inspect3mf, publishToPrinter, remoteFileName, uploadToPrinter } from "./bambu/printJob";
 
 /**
@@ -336,8 +337,11 @@ printersRouter.post("/:id/print", async (req, res) => {
   } catch (err) {
     throw new HttpError(502, (err as Error).message);
   }
+  // Erwarteten Verbrauch (Slicer-Angabe) für die Abbuchung bei Druckende merken - gilt für Spulen ohne Chip
+  const planEntries = body.useAms ? buildPlanEntries(plate.filaments, assignment) : [];
+  await savePrintPlan(req.auth!.companyId, p.id, fileName, planEntries).catch(() => undefined);
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: body.mode === "start" ? "printer.print.start" : "printer.print.upload", entityType: "Printer", entityId: p.id, metadata: { documentId: doc.id, fileName, plate: plate.index } });
-  res.json({ ok: true, fileName, started: body.mode === "start" });
+  res.json({ ok: true, fileName, started: body.mode === "start", planned: planEntries.length });
 });
 
 printersRouter.get("/:id/jobs", async (req, res) => {
