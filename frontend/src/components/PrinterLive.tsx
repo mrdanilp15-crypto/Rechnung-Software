@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useAuthStore } from "../store/authStore";
+import { PrintSendDialog } from "./PrintSendDialog";
 
 export interface Tray {
   slot: number;
@@ -111,7 +112,7 @@ function SlotAssign({ tray, mapping, materials, canEdit, onChange }: { tray: Tra
 }
 
 /** Live-Anzeige eines Druckers: Zustand, Fortschritt, Temperaturen, AMS-Spulen, optional Kamerabild und Verlauf. */
-export function PrinterLiveCard({ printerId, status, model, trackedMinutes, lifetimeHours, usedHoursBefore = 0 }: { printerId: string; status: LiveStatus; model?: string | null; trackedMinutes: number; lifetimeHours: number; usedHoursBefore?: number }) {
+export function PrinterLiveCard({ printerId, status, model, trackedMinutes, lifetimeHours, usedHoursBefore = 0, printerName }: { printerName?: string; printerId: string; status: LiveStatus; model?: string | null; trackedMinutes: number; lifetimeHours: number; usedHoursBefore?: number }) {
   const [photo, setPhoto] = useState<{ url: string | null; error: string | null; loading: boolean } | null>(null);
   const [jobs, setJobs] = useState<PrinterJobRow[] | null>(null);
   const [live, setLive] = useState<{ key: number; error: string | null } | null>(null);
@@ -119,6 +120,7 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
   const [mappings, setMappings] = useState<SlotMapping[]>([]);
   const [materials, setMaterials] = useState<MaterialOption[]>([]);
   const [slotError, setSlotError] = useState<string | null>(null);
+  const [showPrint, setShowPrint] = useState(false);
   const canCamera = !!model && CAMERA_MODELS.includes(model);
   const online = status.connection === "online";
   const active = status.state === "RUNNING" || status.state === "PREPARE" || status.state === "PAUSE";
@@ -244,9 +246,11 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
         {canCamera && online && !live && <button type="button" onClick={() => { setPhoto(null); setLive({ key: Date.now(), error: null }); }} className="text-brand hover:underline">Live-Ansicht</button>}
         {live && <button type="button" onClick={() => setLive(null)} className="text-slate-500 hover:underline">Live-Ansicht beenden</button>}
         {live && <button type="button" onClick={() => setLive({ key: Date.now(), error: null })} className="text-brand hover:underline">Neu starten</button>}
+        {isAdmin && online && <button type="button" onClick={() => setShowPrint(true)} className="text-brand hover:underline">Druck senden</button>}
         <button type="button" onClick={toggleJobs} className="text-brand hover:underline">{jobs ? "Verlauf ausblenden" : "Druckverlauf"}</button>
-        {(trackedMinutes > 0 || usedHoursBefore > 0) && <span className="text-slate-500 ml-auto" title="Beim Kauf gelaufene Stunden plus die aus den erkannten Druckaufträgen erfassten (inkl. Pausen, ab Einrichtung der Live-Verbindung).">Gesamt: {(usedHoursBefore + trackedMinutes / 60).toFixed(1).replace(".", ",")} h von {lifetimeHours} h Lebensdauer ({Math.min(100, ((usedHoursBefore + trackedMinutes / 60) / lifetimeHours) * 100).toFixed(1).replace(".", ",")} %){usedHoursBefore > 0 ? ` · ${usedHoursBefore} h vom Vorbesitzer` : ""}</span>}
+        {(trackedMinutes > 0 || usedHoursBefore > 0) && <span className="text-slate-500 ml-auto" title="Vorher bereits gelaufene Stunden plus die aus den erkannten Druckaufträgen erfassten (inkl. Pausen, ab Einrichtung der Live-Verbindung).">Gesamt: {(usedHoursBefore + trackedMinutes / 60).toFixed(1).replace(".", ",")} h von {lifetimeHours} h Lebensdauer ({Math.min(100, ((usedHoursBefore + trackedMinutes / 60) / lifetimeHours) * 100).toFixed(1).replace(".", ",")} %){usedHoursBefore > 0 ? ` · davon ${usedHoursBefore} h schon vorher gelaufen` : ""}</span>}
       </div>
+      {showPrint && <PrintSendDialog printerId={printerId} printerName={printerName ?? "Drucker"} status={status} onClose={() => setShowPrint(false)} />}
       {photo?.error && <p className="text-xs text-amber-600">{photo.error}</p>}
       {live && !live.error && (
         <div>

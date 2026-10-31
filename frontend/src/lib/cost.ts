@@ -16,7 +16,7 @@
  * Ist kein Drucker gewählt, gilt stattdessen der pauschale Maschinenstundensatz (Strom/Abschreibung/Verschleiß = 0).
  */
 
-/** Abschreibung je Druckstunde: Kaufpreis geteilt durch die Restlebensdauer (Lebensdauer minus bereits gelaufene Stunden beim Kauf). */
+/** Abschreibung je Druckstunde: Kaufpreis geteilt durch die Restlebensdauer (Lebensdauer minus vorher bereits gelaufene Stunden). */
 export function depreciationPerHour(p: PrinterCosts): number {
   const remaining = p.lifetimeHours - Math.max(0, p.usedHoursBefore ?? 0);
   return remaining > 0 ? p.purchasePriceCents / remaining : 0;
@@ -25,7 +25,7 @@ export function depreciationPerHour(p: PrinterCosts): number {
 export interface PrinterCosts {
   purchasePriceCents: number;
   lifetimeHours: number;
-  usedHoursBefore?: number; // beim Kauf schon gelaufene Stunden (Gebrauchtdrucker)
+  usedHoursBefore?: number; // vor der Erfassung schon gelaufene Stunden
   powerWatts: number;
   wearCentsPerHour: number;
 }

@@ -9,6 +9,8 @@ import { PRINTER_MODELS, fetchBambuSnapshot, isAllowedPrinterHost } from "./bamb
 import { CAMERA_MODELS, RTSP_MODELS, buildRtspUrl, cameraHub, jpegPortSource, rtspSource, type SourceFactory } from "./bambu/camera";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
+import fs from "fs";
+import { buildAmsMapping, buildStartPayload, inspect3mf, publishToPrinter, remoteFileName, uploadToPrinter } from "./bambu/printJob";
 
 /**
  * Drucker/Maschinen mit eigenen Kostenwerten (Anschaffungspreis + Lebensdauer -> Abschreibung je Stunde, Leistung -> Strom,
@@ -260,6 +262,82 @@ printersRouter.delete("/:id/ams-slots/:slot", async (req, res) => {
   await prisma.amsSlotMapping.deleteMany({ where: { printerId: p.id, slot: Number(req.params.slot) } });
   bambuMonitor.refreshAmsMappings(p.id);
   res.status(204).send();
+});
+
+// ---------- Druck an den Drucker senden (3MF aus dem Belegarchiv) ----------
+// Nur Administratoren. "upload" lädt die Datei nur auf die SD-Karte (Start am Drucker); "start" startet zusätzlich den Druck.
+const MAX_PRINT_FILE = 150 * 1024 * 1024;
+
+async function printFile(companyId: string, documentId: string) {
+  const doc = await prisma.archiveDocument.findFirst({ where: { id: documentId, companyId } });
+  if (!doc || !/\.3mf$/i.test(doc.fileName)) throw new HttpError(404, "3MF-Datei nicht gefunden.");
+  if (!fs.existsSync(doc.filePath)) throw new HttpError(404, "Die Datei liegt nicht mehr im Archiv.");
+  if (fs.statSync(doc.filePath).size > MAX_PRINT_FILE) throw new HttpError(413, "Die Datei ist zu groß (maximal 150 MB).");
+  return { doc, data: fs.readFileSync(doc.filePath) };
+}
+
+printersRouter.get("/print/files", async (req, res) => {
+  if (req.auth!.role !== "ADMIN") throw new HttpError(403, "Nur ein Administrator darf Drucke senden.");
+  const docs = await prisma.archiveDocument.findMany({ where: { companyId: req.auth!.companyId, fileName: { endsWith: ".3mf", mode: "insensitive" } }, orderBy: { createdAt: "desc" }, take: 100, select: { id: true, title: true, fileName: true, sizeBytes: true, createdAt: true } });
+  res.json(docs);
+});
+
+printersRouter.get("/print/files/:docId/inspect", async (req, res) => {
+  if (req.auth!.role !== "ADMIN") throw new HttpError(403, "Nur ein Administrator darf Drucke senden.");
+  const { data } = await printFile(req.auth!.companyId, req.params.docId);
+  try {
+    res.json({ plates: inspect3mf(data) });
+  } catch (err) {
+    throw new HttpError(422, (err as Error).message);
+  }
+});
+
+const printSchema = z.object({
+  documentId: z.string().min(1),
+  plate: z.number().int().min(1).max(100),
+  mode: z.enum(["upload", "start"]),
+  useAms: z.boolean().default(true),
+  assignment: z.record(z.string(), z.number().int().min(0).max(254)).default({}), // Filament-Nr. -> AMS-Fach (254 = externe Spule)
+  confirmPlateClear: z.boolean().optional(),
+});
+
+printersRouter.post("/:id/print", async (req, res) => {
+  if (req.auth!.role !== "ADMIN") throw new HttpError(403, "Nur ein Administrator darf Drucke senden.");
+  const body = printSchema.parse(req.body);
+  const p = await prisma.printer.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId, isArchived: false } });
+  if (!p || p.connectionType !== "BAMBU_LAN" || !p.host || !p.serial || !p.accessCodeEncrypted) throw new HttpError(404, "Für diesen Drucker ist keine Verbindung eingerichtet.");
+  const target = { host: p.host, serial: p.serial, accessCode: decryptField(p.accessCodeEncrypted) };
+
+  if (body.mode === "start") {
+    if (!body.confirmPlateClear) throw new HttpError(400, "Bitte bestätigen, dass die Druckplatte leer und sauber ist.");
+    const status = bambuMonitor.getStatus(p.id);
+    if (status.connection !== "online") throw new HttpError(409, "Der Drucker ist nicht verbunden - ein Start ist nur bei bestehender Live-Verbindung möglich.");
+    if (!["IDLE", "FINISH", "FAILED"].includes(status.state)) throw new HttpError(409, `Der Drucker ist gerade nicht bereit (${status.stateLabel}).`);
+  }
+
+  const { doc, data } = await printFile(req.auth!.companyId, body.documentId);
+  let plates;
+  try {
+    plates = inspect3mf(data);
+  } catch (err) {
+    throw new HttpError(422, (err as Error).message);
+  }
+  const plate = plates.find((x) => x.index === body.plate);
+  if (!plate) throw new HttpError(422, `Platte ${body.plate} ist in der Datei nicht geslict.`);
+  const assignment = Object.fromEntries(Object.entries(body.assignment).map(([k, v]) => [Number(k), v]));
+  if (body.mode === "start" && body.useAms && plate.filaments.some((f) => assignment[f.id] === undefined)) throw new HttpError(400, "Bitte für jedes Filament ein AMS-Fach wählen.");
+
+  const fileName = remoteFileName(doc.fileName);
+  try {
+    await uploadToPrinter(target, data, fileName);
+    if (body.mode === "start") {
+      await publishToPrinter(target, buildStartPayload({ fileName, plate, amsMapping: buildAmsMapping(plate.filaments, assignment), useAms: body.useAms }));
+    }
+  } catch (err) {
+    throw new HttpError(502, (err as Error).message);
+  }
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: body.mode === "start" ? "printer.print.start" : "printer.print.upload", entityType: "Printer", entityId: p.id, metadata: { documentId: doc.id, fileName, plate: plate.index } });
+  res.json({ ok: true, fileName, started: body.mode === "start" });
 });
 
 printersRouter.get("/:id/jobs", async (req, res) => {

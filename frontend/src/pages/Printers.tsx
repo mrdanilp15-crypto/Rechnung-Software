@@ -188,9 +188,9 @@ export default function Printers() {
               <span className="block text-xs text-slate-500 mt-0.5">Wie viele Stunden der Drucker voraussichtlich läuft, bis er ersetzt wird. Preis ÷ Stunden = Abschreibung pro Stunde.</span>
             </label>
             <label className="block text-sm">
-              Schon gelaufene Stunden beim Kauf
+              Bereits gelaufene Stunden (vor der Erfassung hier)
               <input type="number" min="0" step="any" value={form.usedBefore} onChange={(e) => setForm({ ...form, usedBefore: e.target.value })} className={inputClass} />
-              <span className="block text-xs text-slate-500 mt-0.5">Bei einem Gebrauchtdrucker: Betriebsstunden, die er beim Kauf schon hatte (steht am Drucker unter Einstellungen/Geräteinfo oder beim Verkäufer). Die Abschreibung rechnet dann Preis ÷ (Lebensdauer minus diese Stunden). Bei neu: 0.</span>
+              <span className="block text-xs text-slate-500 mt-0.5">Betriebsstunden, die der Drucker schon hatte, bevor er hier erfasst wurde, z.B. gebraucht gekauft oder neu gekauft und schon vor der Gewerbeanmeldung benutzt (steht am Drucker in der Geräteinfo). Die Abschreibung rechnet dann Preis ÷ (Lebensdauer minus diese Stunden). Sonst 0.</span>
             </label>
             <label className="block text-sm">
               Leistung (Watt)
@@ -280,7 +280,7 @@ export default function Printers() {
               <div className="min-w-0 flex-1 basis-80">
                 <div className="font-medium">{p.name}</div>
                 <div className="text-xs text-slate-500">
-                  {money(p.purchasePriceCents, 0)} · {p.lifetimeHours} h Lebensdauer{p.usedHoursBefore ? ` (davon ${p.usedHoursBefore} h schon beim Kauf gelaufen)` : ""} · {p.powerWatts} W · Verschleiß {money(p.wearCentsPerHour, 3)}/h
+                  {money(p.purchasePriceCents, 0)} · {p.lifetimeHours} h Lebensdauer{p.usedHoursBefore ? ` (davon ${p.usedHoursBefore} h schon vor der Erfassung gelaufen)` : ""} · {p.powerWatts} W · Verschleiß {money(p.wearCentsPerHour, 3)}/h
                 </div>
                 <div className="text-xs text-slate-500">
                   = <strong>{money(h.total, 3)} pro Druckstunde</strong> (Strom {money(h.electricity, 3)}, Abschreibung {money(h.depreciation, 3)}, Verschleiß {money(h.wear, 3)})
@@ -288,7 +288,7 @@ export default function Printers() {
                 </div>
                 {p.notes && <div className="text-xs text-amber-600 dark:text-amber-400">{p.notes}</div>}
                 {p.connectionType === "BAMBU_LAN" && p.liveEnabled && liveMap[p.id] && (
-                  <PrinterLiveCard printerId={p.id} status={liveMap[p.id]} model={p.model} trackedMinutes={p.trackedMinutes} lifetimeHours={p.lifetimeHours} usedHoursBefore={p.usedHoursBefore ?? 0} />
+                  <PrinterLiveCard printerName={p.name} printerId={p.id} status={liveMap[p.id]} model={p.model} trackedMinutes={p.trackedMinutes} lifetimeHours={p.lifetimeHours} usedHoursBefore={p.usedHoursBefore ?? 0} />
                 )}
               </div>
               <div className="flex gap-3">

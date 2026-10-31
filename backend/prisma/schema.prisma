@@ -335,7 +335,7 @@ model Printer {
   name               String
   purchasePriceCents Int      @default(0) // Anschaffungspreis
   lifetimeHours      Float    @default(5000) // geschätzte Lebensdauer in Druckstunden -> Abschreibung je Stunde
-  usedHoursBefore    Float    @default(0) // beim Kauf schon gelaufene Betriebsstunden (Gebrauchtkauf); die Restlebensdauer ist lifetimeHours minus dieser Wert
+  usedHoursBefore    Float    @default(0) // vor der Erfassung schon gelaufene Betriebsstunden (z.B. gebraucht gekauft oder vor der Gewerbeanmeldung genutzt); die Restlebensdauer ist lifetimeHours minus dieser Wert
   powerWatts         Float    @default(120) // durchschnittliche Leistungsaufnahme beim Drucken -> Stromkosten
   wearCentsPerHour   Float    @default(10) // Verschleiß/Wartung (Düse, Bett, Riemen, Lager ...) je Druckstunde in Cent
   notes              String?
