@@ -83,11 +83,11 @@ export function computePlanBookings(entries: PlanEntry[], factor: number, trays:
 }
 
 /** Beim Senden eines Drucks merken (auch bei "Nur senden", der Start erfolgt dann am Drucker). Alte Pläne desselben Namens werden ersetzt. */
-export async function savePrintPlan(companyId: string, printerId: string, fileName: string, entries: PlanEntry[]) {
+export async function savePrintPlan(companyId: string, printerId: string, fileName: string, entries: PlanEntry[], orderConfirmationId: string | null = null) {
   const jobName = normalizeJobName(fileName);
   await prisma.printPlan.deleteMany({ where: { printerId, OR: [{ jobName }, { createdAt: { lt: new Date(Date.now() - PLAN_VALID_MS) } }] } });
-  if (entries.length === 0) return;
-  await prisma.printPlan.create({ data: { companyId, printerId, jobName, entries: entries as unknown as object[] } });
+  if (entries.length === 0 && !orderConfirmationId) return;
+  await prisma.printPlan.create({ data: { companyId, printerId, jobName, entries: entries as unknown as object[], orderConfirmationId } });
 }
 
 /** Beginnt ein Auftrag am Drucker: passenden Plan (gleicher Name, höchstens 48 h alt) an den Auftrag hängen. */
@@ -95,8 +95,9 @@ export async function attachPlanToJob(printerId: string, jobId: string, jobName:
   if (!jobName) return;
   const plan = await prisma.printPlan.findFirst({ where: { printerId, jobName: normalizeJobName(jobName), createdAt: { gte: new Date(Date.now() - PLAN_VALID_MS) } }, orderBy: { createdAt: "desc" } });
   if (!plan) return;
+  const entries = Array.isArray(plan.entries) ? (plan.entries as unknown[]) : [];
   await prisma.$transaction([
-    prisma.printerJob.update({ where: { id: jobId }, data: { slicedPlan: plan.entries as object[] } }),
+    prisma.printerJob.update({ where: { id: jobId }, data: { ...(entries.length > 0 ? { slicedPlan: entries as object[] } : {}), ...(plan.orderConfirmationId ? { orderConfirmationId: plan.orderConfirmationId } : {}) } }),
     prisma.printPlan.delete({ where: { id: plan.id } }),
   ]);
 }
@@ -123,9 +124,10 @@ export async function bookPlanAtEnd(printerId: string, jobId: string, result: Jo
         }
         continue;
       }
-      await tx.material.update({ where: { id: b.materialId }, data: { stockQuantity: { decrement: b.amount } } });
-      usage = mergeUsage(usage, { materialId: b.materialId, name: b.name, grams: b.grams });
-      booked.push({ materialId: b.materialId, name: b.name, grams: b.grams });
+      const material = await tx.material.update({ where: { id: b.materialId }, data: { stockQuantity: { decrement: b.amount } }, select: { costPerUnitCents: true } });
+      const cents = b.amount * material.costPerUnitCents;
+      usage = mergeUsage(usage, { materialId: b.materialId, name: b.name, grams: b.grams, cents });
+      booked.push({ materialId: b.materialId, name: b.name, grams: b.grams, cents });
     }
     await tx.printerJob.update({ where: { id: jobId }, data: { slicedPlan: Prisma.DbNull, ...(booked.length > 0 ? { materialUsage: usage as object[] } : {}) } });
   });

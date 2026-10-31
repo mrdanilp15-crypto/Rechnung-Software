@@ -1,5 +1,6 @@
 import { prisma } from "../../../db/prisma";
 import { logger } from "../../../utils/logger";
+import { checkLowStock } from "../../notifications/lowStock";
 import type { PrinterLiveStatus, Tray } from "./status";
 
 /**
@@ -62,13 +63,19 @@ export interface UsageEntry {
   materialId: string;
   name: string;
   grams: number;
+  /** Materialkosten dieser Menge in Cent zum Zeitpunkt der Abbuchung (Einkaufspreis damals); fehlt bei älteren Einträgen */
+  cents?: number;
 }
 
 export function mergeUsage(existing: unknown, add: UsageEntry): UsageEntry[] {
   const list: UsageEntry[] = Array.isArray(existing) ? (existing as UsageEntry[]).map((e) => ({ ...e })) : [];
   const hit = list.find((e) => e.materialId === add.materialId);
-  if (hit) hit.grams = Math.round((hit.grams + add.grams) * 100) / 100;
-  else list.push({ ...add, grams: Math.round(add.grams * 100) / 100 });
+  if (hit) {
+    hit.grams = Math.round((hit.grams + add.grams) * 100) / 100;
+    if (add.cents !== undefined) hit.cents = Math.round(((hit.cents ?? 0) + add.cents) * 100) / 100;
+  } else {
+    list.push({ ...add, grams: Math.round(add.grams * 100) / 100, ...(add.cents !== undefined ? { cents: Math.round(add.cents * 100) / 100 } : {}) });
+  }
   return list;
 }
 
@@ -111,16 +118,17 @@ class AmsBooking {
       await prisma.$transaction(async (tx) => {
         await tx.amsSlotMapping.update({ where: { id: u.id }, data: { lastRemain: u.lastRemain, lastTag: u.lastTag } });
         if (amount !== null && amount > 0) {
-          await tx.material.update({ where: { id: slot.materialId }, data: { stockQuantity: { decrement: amount } } });
+          const material = await tx.material.update({ where: { id: slot.materialId }, data: { stockQuantity: { decrement: amount } }, select: { costPerUnitCents: true } });
           if (jobId) {
             const job = await tx.printerJob.findUnique({ where: { id: jobId }, select: { materialUsage: true } });
-            await tx.printerJob.update({ where: { id: jobId }, data: { materialUsage: mergeUsage(job?.materialUsage, { materialId: slot.materialId, name: slot.materialName, grams: u.deductGrams }) as object[] } });
+            await tx.printerJob.update({ where: { id: jobId }, data: { materialUsage: mergeUsage(job?.materialUsage, { materialId: slot.materialId, name: slot.materialName, grams: u.deductGrams, cents: amount * material.costPerUnitCents }) as object[] } });
           }
         }
       });
       slot.lastRemain = u.lastRemain;
       slot.lastTag = u.lastTag;
     }
+    if (updates.some((u) => u.deductGrams > 0)) void checkLowStock(); // Mindestbestand prüfen
   }
 }
 

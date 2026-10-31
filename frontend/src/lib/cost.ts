@@ -138,3 +138,48 @@ export function unitPriceForQuantity(basePriceCents: number, tiers: PriceTier[] 
   const hit = [...tiers].filter((t) => quantity >= t.minQuantity).sort((a, b) => b.minQuantity - a.minQuantity)[0];
   return hit ? hit.unitPriceCents : basePriceCents;
 }
+
+/** Kalkulationssätze aus den Firmendaten (GET /companies/me); fehlende Werte fallen auf die Standardwerte zurück. */
+export function ratesFromCompany(c: Partial<CostRates> | null | undefined): CostRates {
+  return {
+    machineRateCentsPerHour: c?.machineRateCentsPerHour ?? 0,
+    laborRateCentsPerHour: c?.laborRateCentsPerHour ?? 0,
+    materialWastePercent: c?.materialWastePercent ?? 5,
+    targetMarginPercent: c?.targetMarginPercent ?? 30,
+    electricityCentsPerKwh: c?.electricityCentsPerKwh ?? 35,
+    overheadPercent: c?.overheadPercent ?? 5,
+    failRatePercent: c?.failRatePercent ?? 5,
+    platformFeePercent: c?.platformFeePercent ?? 0,
+    priceRounding: c?.priceRounding ?? "NONE",
+    minPriceCents: c?.minPriceCents ?? 0,
+  };
+}
+
+/** Produktdaten, die für den Soll-Ist-Vergleich gebraucht werden (Teilmenge von Product in der Produktverwaltung). */
+export interface CostProduct {
+  printTimeMinutes?: number;
+  laborMinutes?: number;
+  setupMinutes?: number;
+  packagingCents?: number;
+  extraMaterialPercent?: number;
+  extraCosts?: { amountCents: number }[] | null;
+  materials: { quantityPerUnit: number; costOverrideCents?: number | null; material: { costPerUnitCents?: number } }[];
+}
+
+/** Soll-Kosten (Kalkulation) von Material und Maschine für eine Menge Stück - die beiden Posten, die sich aus Drucken messen lassen. */
+export interface SollParts {
+  material: number;
+  machine: number; // Strom + Abschreibung + Verschleiß bzw. pauschaler Maschinensatz, ohne Fehldruck-Zuschlag
+  minutes: number;
+}
+export function sollParts(p: CostProduct, printer: PrinterCosts | null | undefined, rates: CostRates, quantity = 1): SollParts {
+  const c = calcCost(
+    p.materials.map((m) => ({ quantityPerUnit: m.quantityPerUnit, costPerUnitCents: m.costOverrideCents ?? m.material.costPerUnitCents ?? 0 })),
+    p.printTimeMinutes ?? 0,
+    p.laborMinutes ?? 0,
+    rates,
+    printer,
+    { setupMinutes: p.setupMinutes, packagingCents: p.packagingCents, extraMaterialPercent: p.extraMaterialPercent, extraCostsCents: (p.extraCosts ?? []).reduce((s, x) => s + x.amountCents, 0), quantity },
+  );
+  return { material: c.material * quantity, machine: (c.electricity + c.depreciation + c.wear + c.machineFlat) * quantity, minutes: (p.printTimeMinutes ?? 0) * quantity };
+}

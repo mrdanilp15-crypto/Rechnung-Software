@@ -5,6 +5,7 @@ import { BambuMonitorCore, testBambuConnection as testCore, type ConnectionTestR
 import type { PrinterLiveStatus } from "./status";
 import { amsBooking } from "./amsBooking";
 import { attachPlanToJob, bookPlanAtEnd } from "./slicedBooking";
+import { checkLowStock } from "../../notifications/lowStock";
 import { notifyPrinterEvent } from "../../notifications/service";
 
 /**
@@ -42,7 +43,8 @@ const core = new BambuMonitorCore({
       const progress = lastProgress.get(info.jobId) ?? null;
       lastProgress.delete(info.jobId);
       try {
-        await bookPlanAtEnd(target.printerId, info.jobId, info.result, progress, info.status);
+        const booked = await bookPlanAtEnd(target.printerId, info.jobId, info.result, progress, info.status);
+        if (booked.length > 0) void checkLowStock(target.companyId);
       } catch (err) {
         logger.warn({ err: (err as Error).message }, "Materialabbuchung nach Slicer-Angabe fehlgeschlagen");
       }

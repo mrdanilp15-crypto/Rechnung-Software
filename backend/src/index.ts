@@ -8,6 +8,7 @@ import { markOverdueInvoices } from "./modules/invoices/overdueJob";
 import { runBackup } from "./modules/backup/runBackup";
 import { runDueRecurringInvoices } from "./modules/recurring/service";
 import { bambuMonitor } from "./modules/printers/bambu/monitor";
+import { checkLowStock } from "./modules/notifications/lowStock";
 
 // Sicherheitsnetz: normale HTTP-Fehler (404, 400, ...) werden bereits über
 // express-async-errors + middleware/errorHandler.ts korrekt behandelt (siehe app.ts).
@@ -32,6 +33,10 @@ async function main() {
   if (env.PRINTER_MONITOR_ENABLED) {
     bambuMonitor.init().catch((err) => logger.error({ err }, "Drucker-Live-Verbindung konnte nicht gestartet werden"));
   }
+
+  // Mindestbestand bei Material: alle 5 Minuten prüfen (Bestand ändert sich auch durch Rechnungen und Druckabbuchungen)
+  const lowStockInterval = setInterval(() => void checkLowStock(), 5 * 60 * 1000);
+  setTimeout(() => void checkLowStock(), 30 * 1000);
 
   // Prüft stündlich auf überfällige Rechnungen (status SENT + dueDate in der Vergangenheit).
   const overdueInterval = setInterval(() => {
@@ -62,6 +67,7 @@ async function main() {
     logger.info(`${signal} empfangen, fahre Server geordnet herunter...`);
     clearInterval(overdueInterval);
     clearInterval(recurringInterval);
+    clearInterval(lowStockInterval);
     bambuMonitor.stopAll();
     if (backupInterval) clearInterval(backupInterval);
     server.close();

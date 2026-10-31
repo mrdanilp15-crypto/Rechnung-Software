@@ -5,6 +5,7 @@ import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { weightedAverageCost } from "../../utils/materialCost";
+import { checkLowStock } from "../notifications/lowStock";
 
 export const materialsRouter = Router();
 materialsRouter.use(requireAuth);
@@ -29,6 +30,8 @@ const materialSchema = z.object({
   // automatische Ausgabe, im Unterschied zu initialCostCents/POST /:id/restock.
   costPerUnitCents: z.number().min(0).optional(),
   supplierId: z.string().nullish(),
+  // Mindestbestand in der Einheit des Materials; null/0 = keine Meldung bei knappem Bestand
+  minStock: z.number().min(0).nullish(),
 });
 
 // Nur beim Anlegen: Gesamtpreis für den angegebenen Anfangsbestand - daraus wird der
@@ -72,6 +75,7 @@ materialsRouter.post("/", async (req, res) => {
   });
 
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "material.create", entityType: "Material", entityId: material.id });
+  void checkLowStock(req.auth!.companyId);
   res.status(201).json(material);
 });
 
@@ -80,8 +84,9 @@ materialsRouter.patch("/:id", async (req, res) => {
   const existing = await prisma.material.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!existing) throw new HttpError(404, "Material nicht gefunden");
   if (body.supplierId !== undefined) body.supplierId = (await supplierOf(req.auth!.companyId, body.supplierId))?.id ?? null;
-  const updated = await prisma.material.update({ where: { id: existing.id }, data: body });
+  const updated = await prisma.material.update({ where: { id: existing.id }, data: { ...body, minStock: body.minStock === undefined ? undefined : body.minStock || null } });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "material.update", entityType: "Material", entityId: existing.id, metadata: body });
+  void checkLowStock(req.auth!.companyId);
   res.json(updated);
 });
 
@@ -135,5 +140,6 @@ materialsRouter.post("/:id/restock", async (req, res) => {
     entityId: material.id,
     metadata: { quantity: body.quantity, totalCostCents: body.totalCostCents },
   });
+  void checkLowStock(req.auth!.companyId); // setzt die Meldung zurück, wenn der Bestand wieder über der Grenze liegt
   res.json(updated);
 });

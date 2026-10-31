@@ -6,7 +6,7 @@ import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
 import { MobileCard, MobileField } from "../components/MobileCard";
-import { calcCost, feesAt, type CostRates, type PriceTier, type PrinterCosts } from "../lib/cost";
+import { calcCost, feesAt, sollParts, type CostRates, type PriceTier, type PrinterCosts } from "../lib/cost";
 
 interface Material {
   id: string;
@@ -45,6 +45,14 @@ interface Product {
   extraCosts?: { label: string; amountCents: number }[] | null;
   materials: ProductMaterial[];
 }
+/** Ist-Werte aus Drucken, die Aufträgen mit diesem Produkt zugeordnet sind (GET /production/product-actuals) */
+interface ProductActual {
+  productId: string;
+  orders: number;
+  quantity: number;
+  materialCents: number;
+  machineCents: number;
+}
 interface TierRow {
   minQuantity: string;
   priceEur: string;
@@ -77,6 +85,7 @@ export default function Products() {
   const [error, setError] = useState<string | null>(null);
   const [rates, setRates] = useState<Rates>({ machineRateCentsPerHour: 0, laborRateCentsPerHour: 0, materialWastePercent: 5, targetMarginPercent: 30, electricityCentsPerKwh: 35, overheadPercent: 5, failRatePercent: 5, platformFeePercent: 0, priceRounding: "NONE", minPriceCents: 0 });
   const [printers, setPrinters] = useState<PrinterOption[]>([]);
+  const [actuals, setActuals] = useState<Map<string, ProductActual>>(new Map());
   const [tierRows, setTierRows] = useState<TierRow[]>([]);
   const [calcQty, setCalcQty] = useState("1");
   const [extraRows, setExtraRows] = useState<ExtraRow[]>([]);
@@ -104,6 +113,7 @@ export default function Products() {
       })
     );
     api.get("/printers").then((res) => setPrinters(res.data));
+    api.get("/production/product-actuals").then((res) => setActuals(new Map((res.data as ProductActual[]).map((a) => [a.productId, a])))).catch(() => undefined);
   }, []);
 
   const fuse = useMemo(() => new Fuse(products, { keys: ["name", "sku", "description"], threshold: 0.35 }), [products]);
@@ -556,6 +566,21 @@ export default function Products() {
                     return (
                       <div className={`text-xs ${profit < 0 ? "text-red-600" : "text-green-600"}`}>
                         Kosten {formatPrice(cost.total)}{(p.setupMinutes ?? 0) > 0 ? " (bei 1 Stk.)" : ""} · Gewinn {formatPrice(profit)} ({Math.round((profit / p.unitPriceCents) * 100)}%)
+                      </div>
+                    );
+                  })()}
+                  {(() => {
+                    const a = actuals.get(p.id);
+                    if (!a || a.quantity <= 0) return null;
+                    const soll = sollParts(p, printers.find((pr) => pr.id === p.printerId), rates, 1);
+                    const istMat = a.materialCents / a.quantity;
+                    const istMach = a.machineCents / a.quantity;
+                    const sollSum = soll.material + soll.machine;
+                    const pct = sollSum > 0 ? Math.round(((istMat + istMach - sollSum) / sollSum) * 100) : null;
+                    return (
+                      <div className="text-xs text-slate-500" title="Aus den Drucken, die Aufträgen mit genau diesem Produkt zugeordnet sind (Fehldrucke eingerechnet)">
+                        Ist je Stück ({a.orders} {a.orders === 1 ? "Auftrag" : "Aufträge"}, {a.quantity} Stk.): Material {formatPrice(istMat)} · Maschine {formatPrice(istMach)}
+                        {pct !== null && <span className={pct > 10 ? "text-red-600" : pct < -10 ? "text-green-600" : ""}> · {pct > 0 ? "+" : ""}{pct} % gegenüber Kalkulation ({formatPrice(sollSum)})</span>}
                       </div>
                     );
                   })()}

@@ -8,7 +8,7 @@ import { sendPushToCompany } from "./push";
  * zusätzlich als E-Mail über das SMTP-Postfach der Firma. Die Einstellungen liegen in der Tabelle Setting (ein JSON-Wert).
  */
 
-export type NotificationType = "PRINT_FINISHED" | "PRINT_FAILED" | "PRINTER_ERROR";
+export type NotificationType = "PRINT_FINISHED" | "PRINT_FAILED" | "PRINTER_ERROR" | "LOW_STOCK";
 
 export interface NotifySettings {
   email: string;
@@ -16,10 +16,11 @@ export interface NotifySettings {
   onFinish: boolean;
   onFail: boolean;
   onError: boolean;
+  onLowStock: boolean;
 }
 
 const KEY = "notifySettings";
-export const DEFAULT_SETTINGS: NotifySettings = { email: "", byMail: false, onFinish: true, onFail: true, onError: true };
+export const DEFAULT_SETTINGS: NotifySettings = { email: "", byMail: false, onFinish: true, onFail: true, onError: true, onLowStock: true };
 
 export async function getNotifySettings(companyId: string): Promise<NotifySettings> {
   const row = await prisma.setting.findUnique({ where: { companyId_key: { companyId, key: KEY } } });
@@ -39,7 +40,7 @@ export async function saveNotifySettings(companyId: string, s: NotifySettings): 
   });
 }
 
-export const isEnabled = (type: NotificationType, s: NotifySettings) => (type === "PRINT_FINISHED" ? s.onFinish : type === "PRINT_FAILED" ? s.onFail : s.onError);
+export const isEnabled = (type: NotificationType, s: NotifySettings) => (type === "PRINT_FINISHED" ? s.onFinish : type === "PRINT_FAILED" ? s.onFail : type === "LOW_STOCK" ? s.onLowStock : s.onError);
 
 export function formatDuration(minutes: number): string {
   const m = Math.max(0, Math.round(minutes));
@@ -72,10 +73,15 @@ export function buildMessage(e: PrinterEvent): { title: string; body: string } {
 
 /** Meldung anlegen und je nach Einstellung per E-Mail verschicken. Fehler beim Mailversand werden nur protokolliert. */
 export async function notifyPrinterEvent(companyId: string, event: PrinterEvent): Promise<void> {
-  const settings = await getNotifySettings(companyId);
-  if (!isEnabled(event.type, settings)) return;
   const { title, body } = buildMessage(event);
-  await prisma.notification.create({ data: { companyId, type: event.type, title, body, printerId: event.printerId } });
+  await notify(companyId, event.type, title, body, event.printerId);
+}
+
+/** Meldung anlegen (sofern für diese Art eingeschaltet), als Push an alle Geräte schicken und optional per E-Mail verschicken. */
+export async function notify(companyId: string, type: NotificationType, title: string, body: string, printerId: string | null = null): Promise<void> {
+  const settings = await getNotifySettings(companyId);
+  if (!isEnabled(type, settings)) return;
+  await prisma.notification.create({ data: { companyId, type, title, body, printerId } });
   // Push aufs Handy an alle angemeldeten Geräte (jedes Gerät hat sich selbst dafür angemeldet)
   sendPushToCompany(companyId, { title, body, url: "/" }).catch((err) => logger.warn({ err: (err as Error).message }, "Push-Nachricht fehlgeschlagen"));
   if (!settings.byMail || !settings.email) return;

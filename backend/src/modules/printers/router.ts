@@ -300,6 +300,7 @@ const printSchema = z.object({
   useAms: z.boolean().default(true),
   assignment: z.record(z.string(), z.number().int().min(0).max(254)).default({}), // Filament-Nr. -> AMS-Fach (254 = externe Spule)
   confirmPlateClear: z.boolean().optional(),
+  orderConfirmationId: z.string().min(1).nullish(), // Auftrag, für den gedruckt wird (Zeit und Material gehen in dessen Ist-Kosten ein)
 });
 
 printersRouter.post("/:id/print", async (req, res) => {
@@ -328,6 +329,13 @@ printersRouter.post("/:id/print", async (req, res) => {
   const assignment = Object.fromEntries(Object.entries(body.assignment).map(([k, v]) => [Number(k), v]));
   if (body.mode === "start" && body.useAms && plate.filaments.some((f) => assignment[f.id] === undefined)) throw new HttpError(400, "Bitte für jedes Filament ein AMS-Fach wählen.");
 
+  let orderId: string | null = null;
+  if (body.orderConfirmationId) {
+    const order = await prisma.orderConfirmation.findFirst({ where: { id: body.orderConfirmationId, companyId: req.auth!.companyId, voidedAt: null }, select: { id: true } });
+    if (!order) throw new HttpError(400, "Auftrag nicht gefunden.");
+    orderId = order.id;
+  }
+
   const fileName = remoteFileName(doc.fileName);
   try {
     await uploadToPrinter(target, data, fileName);
@@ -339,7 +347,7 @@ printersRouter.post("/:id/print", async (req, res) => {
   }
   // Erwarteten Verbrauch (Slicer-Angabe) für die Abbuchung bei Druckende merken - gilt für Spulen ohne Chip
   const planEntries = body.useAms ? buildPlanEntries(plate.filaments, assignment) : [];
-  await savePrintPlan(req.auth!.companyId, p.id, fileName, planEntries).catch(() => undefined);
+  await savePrintPlan(req.auth!.companyId, p.id, fileName, planEntries, orderId).catch(() => undefined);
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: body.mode === "start" ? "printer.print.start" : "printer.print.upload", entityType: "Printer", entityId: p.id, metadata: { documentId: doc.id, fileName, plate: plate.index } });
   res.json({ ok: true, fileName, started: body.mode === "start", planned: planEntries.length });
 });
@@ -347,8 +355,27 @@ printersRouter.post("/:id/print", async (req, res) => {
 printersRouter.get("/:id/jobs", async (req, res) => {
   const p = await prisma.printer.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!p) throw new HttpError(404, "Drucker nicht gefunden");
-  const jobs = await prisma.printerJob.findMany({ where: { printerId: p.id }, orderBy: { startedAt: "desc" }, take: 30 });
-  res.json(jobs);
+  const jobs = await prisma.printerJob.findMany({
+    where: { printerId: p.id },
+    orderBy: { startedAt: "desc" },
+    take: 30,
+    include: { orderConfirmation: { select: { id: true, confirmationNumber: true, customer: { select: { name: true } } } } },
+  });
+  res.json(jobs.map(({ orderConfirmation, ...j }) => ({ ...j, order: orderConfirmation ? { id: orderConfirmation.id, number: orderConfirmation.confirmationNumber, customerName: orderConfirmation.customer.name } : null })));
+});
+
+// Druckauftrag einem Auftrag (Auftragsbestätigung) zuordnen bzw. lösen - auch für Drucke, die direkt am Drucker oder in Bambu Studio gestartet wurden
+printersRouter.patch("/jobs/:jobId", async (req, res) => {
+  const { orderConfirmationId } = z.object({ orderConfirmationId: z.string().min(1).nullable() }).parse(req.body);
+  const job = await prisma.printerJob.findFirst({ where: { id: req.params.jobId, companyId: req.auth!.companyId } });
+  if (!job) throw new HttpError(404, "Druckauftrag nicht gefunden");
+  if (orderConfirmationId) {
+    const order = await prisma.orderConfirmation.findFirst({ where: { id: orderConfirmationId, companyId: req.auth!.companyId, voidedAt: null }, select: { id: true } });
+    if (!order) throw new HttpError(400, "Auftrag nicht gefunden.");
+  }
+  await prisma.printerJob.update({ where: { id: job.id }, data: { orderConfirmationId } });
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "printer.job.assign", entityType: "PrinterJob", entityId: job.id, metadata: { orderConfirmationId } });
+  res.json({ ok: true });
 });
 
 // Archivieren statt Löschen: Produkte, die diesen Drucker nutzen, behalten ihre Zuordnung nicht - sie fallen auf den

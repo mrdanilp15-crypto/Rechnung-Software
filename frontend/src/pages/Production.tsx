@@ -6,6 +6,7 @@ import { InfoBox } from "../components/InfoBox";
 import { StatusChip } from "../components/StatusChip";
 import { useToast } from "../components/Toast";
 import { EtsyImport } from "../components/EtsyImport";
+import { OrderCostDialog } from "../components/OrderCostDialog";
 
 type ProductionStatus = "CREATED" | "IN_PRODUCTION" | "READY_TO_SHIP" | "SHIPPED";
 interface Order {
@@ -21,6 +22,7 @@ interface Order {
   itemCount: number;
   itemSummary: string[];
   printMinutes: number;
+  prints: { count: number; minutes: number; grams: number; materialCents: number } | null;
 }
 
 const COLUMNS: { key: ProductionStatus; label: string; dot: string; hint: string }[] = [
@@ -41,6 +43,7 @@ export default function Production() {
   const [loading, setLoading] = useState(true);
   const [showAllShipped, setShowAllShipped] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [costOrderId, setCostOrderId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overColumn, setOverColumn] = useState<ProductionStatus | null>(null);
 
@@ -105,12 +108,15 @@ export default function Production() {
         </div>
       </div>
 
+      {costOrderId && <OrderCostDialog orderId={costOrderId} onClose={() => setCostOrderId(null)} />}
+
       {showImport && <EtsyImport onImported={() => { setShowImport(false); load(); }} />}
 
       <InfoBox title="So funktioniert das Produktionsboard">
         <p>Jede <strong>Auftragsbestätigung</strong> erscheint hier automatisch als Karte (Belege → Neuer Beleg → Auftragsbestätigung, oder aus einem Angebot heraus). Ziehen Sie eine Karte in die nächste Spalte oder nutzen Sie die Pfeile <strong>← →</strong> - das geht auch am Handy.</p>
         <p><strong>Erstellt</strong> = angenommen, <strong>In Produktion</strong> = wird gedruckt/nachbearbeitet, <strong>Versandbereit</strong> = verpackt, <strong>Versendet</strong> = unterwegs. Versendete Aufträge verschwinden nach 14 Tagen vom Board (über "auch ältere versendete" sehen Sie alle).</p>
         <p>Die <strong>Druckzeit</strong> auf der Karte ist eine Schätzung: Sie wird berechnet, wenn der Positionstext genau dem Namen eines Produkts mit hinterlegter Druckzeit entspricht (Katalog → Produkte). Der Produktionsstatus hat nichts mit dem Belegstatus zu tun - er ändert weder Rechnung noch Materialbestand.</p>
+        <p><strong>Drucke und Kosten:</strong> Wählst du beim Senden eines Drucks (Druckerkarte → Druck senden) einen Auftrag, oder ordnest du einen Druck im Druckverlauf zu, erscheint er als grünes Zeichen auf der Karte. Über <strong>Kosten</strong> siehst du, was Material und Maschine tatsächlich gekostet haben, verglichen mit der Kalkulation.</p>
       </InfoBox>
 
       {loading ? (
@@ -161,6 +167,7 @@ export default function Production() {
                         {o.notes && <p className="mt-2 text-xs rounded bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 px-2 py-1">{o.notes}</p>}
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
                           {o.printMinutes > 0 && <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" title="Geschätzte Druckzeit"><Icon name="clock" className="w-3 h-3" />{hours(o.printMinutes)}</span>}
+                          {o.prints && <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" title="Zugeordnete Drucke: Anzahl, Druckzeit, Filament">{o.prints.count} {o.prints.count === 1 ? "Druck" : "Drucke"} · {hours(o.prints.minutes)}{o.prints.grams > 0 ? ` · ${o.prints.grams} g` : ""}</span>}
                           {o.expectedDeliveryDate && (
                             <span className={`text-xs px-2 py-0.5 rounded-full ${overdue ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"}`} title="Gewünschtes Lieferdatum">
                               bis {date(o.expectedDeliveryDate)}
@@ -175,6 +182,7 @@ export default function Production() {
                             <button type="button" disabled={colIndex === COLUMNS.length - 1} onClick={() => move(o, COLUMNS[colIndex + 1].key)} className="w-8 h-8 rounded-lg bg-brand text-white disabled:opacity-30" aria-label="Eine Spalte weiter">→</button>
                           </div>
                           <div className="flex gap-3 text-xs">
+                            <button type="button" onClick={() => setCostOrderId(o.id)} className="text-brand hover:underline">Kosten</button>
                             <button type="button" onClick={() => editNote(o)} className="text-brand hover:underline">Notiz</button>
                             <Link to={o.documentStatus === "DRAFT" ? `/order-confirmations/${o.id}/edit` : "/documents?type=ORDER_CONFIRMATION"} className="text-brand hover:underline">Beleg</Link>
                           </div>

@@ -314,6 +314,10 @@ model Material {
   // deutlich unter einem Cent liegt (z.B. 24,99€/kg = 2,499 Cent/g) - ein ganzzahliger
   // Cent-Betrag würde hier sichtbar falsch runden.
   costPerUnitCents Float    @default(0)
+  // Mindestbestand in Material.unit: fällt der Bestand darauf oder darunter, kommt einmal eine Meldung (lowStockNotifiedAt merkt sich das,
+  // bis der Bestand wieder über der Grenze liegt). null/0 = keine Überwachung.
+  minStock         Float?
+  lowStockNotifiedAt DateTime?
   isArchived       Boolean  @default(false)
   // Bevorzugter Lieferant (wird bei Nachbestellungen als Händler der Ausgabe verwendet)
   supplier         Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
@@ -623,6 +627,7 @@ model OrderConfirmation {
 
   items         OrderConfirmationItem[]
   deliveryNotes DeliveryNote[]
+  printerJobs   PrinterJob[]
 
   @@unique([companyId, confirmationNumber])
   @@index([companyId])
@@ -880,8 +885,12 @@ model PrinterJob {
   materialUsage Json?
   // Aus der 3MF-Datei (Slicer-Angabe) erwarteter Verbrauch je Fach, solange noch nicht abgebucht: [{ filament, slot, grams }]
   slicedPlan Json?
+  // Zugeordneter Auftrag (Auftragsbestätigung): Druckzeit und Material gehen in die Ist-Kosten des Auftrags ein
+  orderConfirmation   OrderConfirmation? @relation(fields: [orderConfirmationId], references: [id], onDelete: SetNull)
+  orderConfirmationId String?
 
   @@index([printerId, startedAt])
+  @@index([orderConfirmationId])
   @@index([companyId])
 }
 
@@ -918,6 +927,7 @@ model PrintPlan {
   printerId String
   jobName   String // normalisierter Dateiname (ohne .gcode.3mf, kleingeschrieben)
   entries   Json // [{ filament, slot, grams }]
+  orderConfirmationId String? // beim Senden gewählter Auftrag, wird an den Druckauftrag weitergegeben
   createdAt DateTime @default(now())
 
   @@index([printerId, jobName])

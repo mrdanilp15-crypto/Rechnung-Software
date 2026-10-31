@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 import { PrintSendDialog } from "./PrintSendDialog";
+import { OrderSelect } from "./OrderSelect";
 
 export interface Tray {
   slot: number;
@@ -42,6 +43,7 @@ export interface PrinterJobRow {
   result: string | null;
   minutes: number | null;
   materialUsage?: { materialId: string; name: string; grams: number }[] | null;
+  order?: { id: string; number: string; customerName: string } | null;
 }
 
 interface SlotMapping {
@@ -172,6 +174,15 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
       setSlotError(err?.response?.data?.error ?? "Zuordnung nicht gespeichert.");
     }
   }
+  async function assignJob(jobId: string, orderId: string) {
+    try {
+      await api.patch(`/printers/jobs/${jobId}`, { orderConfirmationId: orderId || null });
+      const res = await api.get(`/printers/${printerId}/jobs`);
+      setJobs(res.data);
+    } catch (err: any) {
+      window.alert(err?.response?.data?.error ?? "Zuordnung hat nicht geklappt.");
+    }
+  }
   async function toggleJobs() {
     if (jobs) return setJobs(null);
     const res = await api.get(`/printers/${printerId}/jobs`);
@@ -267,6 +278,10 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
             <li key={j.id} className="px-2 py-1.5 flex flex-wrap justify-between gap-2">
               <span className="truncate">{j.name ?? "Druckauftrag"}{j.materialUsage && j.materialUsage.length > 0 ? <span className="text-slate-500"> · {j.materialUsage.map((u) => `${u.name} ${Math.round(u.grams)} g`).join(", ")}</span> : null}</span>
               <span className="text-slate-500">{new Date(j.startedAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · {j.endedAt ? `${formatMinutes(j.minutes ?? 0)} · ${resultLabel[j.result ?? "UNKNOWN"] ?? j.result}` : "läuft"}</span>
+              <span className="w-full flex items-center gap-2">
+                <span className="text-slate-500 shrink-0">Auftrag:</span>
+                <OrderSelect value={j.order?.id ?? ""} current={j.order} onChange={(id) => assignJob(j.id, id)} className="min-w-0 flex-1 max-w-xs px-1.5 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs" emptyLabel="keinem Auftrag zugeordnet" />
+              </span>
             </li>
           ))}
           {jobs.length === 0 && <li className="px-2 py-2 text-slate-500">Noch keine Druckaufträge erfasst.</li>}

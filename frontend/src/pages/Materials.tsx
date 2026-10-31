@@ -16,9 +16,10 @@ interface Material {
   stockQuantity: number;
   costPerUnitCents: number;
   supplierId?: string | null;
+  minStock?: number | null;
 }
 
-const emptyForm = { name: "", unit: "g", stockQuantity: "0", initialCostEur: "", costPerUnitEur: "", supplierId: "" };
+const emptyForm = { name: "", unit: "g", stockQuantity: "0", initialCostEur: "", costPerUnitEur: "", supplierId: "", minStock: "" };
 const emptyRestock = { quantity: "", totalCostEur: "", vendor: "" };
 
 const formatEuro = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
@@ -64,6 +65,7 @@ export default function Materials() {
       initialCostEur: "",
       costPerUnitEur: m.costPerUnitCents ? String(m.costPerUnitCents / 100) : "",
       supplierId: m.supplierId ?? "",
+      minStock: m.minStock ? String(m.minStock) : "",
     });
     setShowForm(true);
   }
@@ -72,7 +74,7 @@ export default function Materials() {
     e.preventDefault();
     setError(null);
     const stockQuantity = parseFloat(form.stockQuantity) || 0;
-    const payload: Record<string, unknown> = { name: form.name, unit: form.unit, stockQuantity, supplierId: form.supplierId || null };
+    const payload: Record<string, unknown> = { name: form.name, unit: form.unit, stockQuantity, supplierId: form.supplierId || null, minStock: parseFloat(form.minStock) > 0 ? parseFloat(form.minStock) : null };
     if (editingId) {
       if (form.costPerUnitEur) payload.costPerUnitCents = parseFloat(form.costPerUnitEur) * 100;
     } else {
@@ -170,7 +172,12 @@ export default function Materials() {
               <p className="text-xs text-slate-500 mt-1">Was du für den oben angegebenen Bestand insgesamt bezahlt hast - der Preis/Einheit wird automatisch berechnet, eine Ausgabe automatisch angelegt.</p>
             </div>
           )}
-          <div className="sm:col-span-3">
+          <div>
+            <label className="block text-sm mb-1">Mindestbestand (optional)</label>
+            <input type="number" step="any" min="0" placeholder={`z.B. 500 ${form.unit || ""}`.trim()} value={form.minStock} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, minStock: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            <p className="text-xs text-slate-500 mt-1">Fällt der Bestand auf diese Menge oder darunter, bekommst du eine Meldung (Startseite, Push aufs Handy). Leer lassen = keine Meldung.</p>
+          </div>
+          <div className="sm:col-span-2">
             <label className="block text-sm mb-1">Lieferant (optional)</label>
             <select value={form.supplierId} onChange={(e) => setForm((f) => ({ ...f, supplierId: e.target.value }))} className="w-full sm:max-w-sm px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
               <option value="">Kein Lieferant</option>
@@ -193,9 +200,11 @@ export default function Materials() {
           <span></span>
         </div>
         {materials.map((m) => {
+          const low = !!m.minStock && m.minStock > 0 && m.stockQuantity <= m.minStock;
           const stockValue = (
             <span className={m.stockQuantity < 0 ? "text-red-600 font-medium" : ""}>
               {formatQty(m.stockQuantity)} {m.unit}
+              {low && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-normal" title={`Mindestbestand ${formatQty(m.minStock!)} ${m.unit}`}>wenig</span>}
             </span>
           );
           const actions = (

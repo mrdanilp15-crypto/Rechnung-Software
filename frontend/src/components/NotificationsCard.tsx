@@ -16,9 +16,11 @@ interface Settings {
   onFinish: boolean;
   onFail: boolean;
   onError: boolean;
+  onLowStock: boolean;
 }
 
 const TONE: Record<string, string> = {
+  LOW_STOCK: "bg-amber-500",
   PRINT_FINISHED: "bg-green-500",
   PRINT_FAILED: "bg-red-500",
   PRINTER_ERROR: "bg-amber-500",
@@ -155,6 +157,7 @@ export function NotificationsCard() {
             <label className="flex items-center gap-2"><input type="checkbox" checked={settings.onFinish} onChange={(e) => set({ onFinish: e.target.checked })} /> Druck fertig</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={settings.onFail} onChange={(e) => set({ onFail: e.target.checked })} /> Druck fehlgeschlagen</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={settings.onError} onChange={(e) => set({ onError: e.target.checked })} /> Druckerfehler</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={settings.onLowStock} onChange={(e) => set({ onLowStock: e.target.checked })} /> Material wird knapp</label>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={save} className="bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded text-sm">Speichern</button>

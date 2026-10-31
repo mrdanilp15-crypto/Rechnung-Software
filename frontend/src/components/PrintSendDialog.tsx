@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { LiveStatus } from "./PrinterLive";
+import { OrderSelect } from "./OrderSelect";
 
 /**
  * Druck an einen Bambu-Lab-Drucker senden: fertig geslicte 3MF-Datei (G-Code 3MF aus Bambu Studio) aus dem Belegarchiv wählen,
@@ -41,6 +42,7 @@ export function PrintSendDialog({ printerId, printerName, status, onClose }: { p
   const [assignment, setAssignment] = useState<Record<number, number>>({});
   const [useAms, setUseAms] = useState(true);
   const [clear, setClear] = useState(false);
+  const [orderId, setOrderId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export function PrintSendDialog({ printerId, printerName, status, onClose }: { p
     setBusy(true);
     setError(null);
     try {
-      const { data } = await api.post(`/printers/${printerId}/print`, { documentId: docId, plate: plateIdx, mode, useAms, assignment, confirmPlateClear: clear });
+      const { data } = await api.post(`/printers/${printerId}/print`, { documentId: docId, plate: plateIdx, mode, useAms, assignment, confirmPlateClear: clear, orderConfirmationId: orderId || null });
       setDone(mode === "start" ? `Druck gestartet (${data.fileName}). Der Fortschritt erscheint in der Druckerkarte.` : `Datei ${data.fileName} liegt auf dem Drucker. Am Drucker unter "SD-Karte" starten.`);
     } catch (e: any) {
       setError(e?.response?.data?.error ?? "Senden hat nicht geklappt.");
@@ -151,6 +153,12 @@ export function PrintSendDialog({ printerId, printerName, status, onClose }: { p
                       {plate.filaments.some((f) => f.usedGrams) && <p className="text-xs text-slate-500">Der Verbrauch laut Slicer wird nach dem Druck vom Material abgebucht, das dem gewählten Fach zugeordnet ist (Spulen ohne Chip). Bei Abbruch anteilig nach Fortschritt.</p>}
                     </div>
                   )}
+
+                  <label className="block">
+                    Für Auftrag (optional)
+                    <OrderSelect value={orderId} onChange={setOrderId} className={sel} emptyLabel="Kein Auftrag (Lagerproduktion)" />
+                    <span className="block text-xs text-slate-500 mt-1">Zeit und Material des Drucks gehen dann in die tatsächlichen Kosten dieses Auftrags ein (Produktion → Kosten).</span>
+                  </label>
 
                   <label className="flex items-start gap-2"><input type="checkbox" className="mt-0.5" checked={clear} onChange={(e) => setClear(e.target.checked)} /> <span>Die Druckplatte ist leer und sauber (nötig zum Starten - sonst kann der Druckkopf in das alte Teil fahren).</span></label>
                   {!ready && <p className="text-xs text-amber-700 dark:text-amber-400">Der Drucker ist gerade nicht bereit ({status.stateLabel}) - Starten ist nur im Zustand "Bereit" oder "Fertig" möglich. Senden geht trotzdem.</p>}
