@@ -130,6 +130,10 @@ implementiert.
 | E-Mail-Vorlagen je Anlass mit Platzhaltern, Standardvorlage füllt den Versanddialog, Beispielvorlagen | ✅ Tests, Ablauf mit Test-Mailserver (Betreff/Empfänger/Nummer bei Rechnungs-Entwurf) und im Browser geprüft |
 | Textbausteine für Begrüßung/Schlusstext | ✅ im Browser geprüft |
 | Versandbescheid beim Versenden eines Auftrags (Versanddienst, Sendungsnummer, Mail nur auf Klick) | 🟡 Mailversand gegen Test-Mailserver und Oberfläche geprüft; die Sendungslinks der Versanddienste sind nicht gegen die echten Seiten geprüft |
+| Wartungsplan für Drucker (Intervall in Betriebsstunden/Tagen, Richtwerte, Meldung einmal bei Fälligkeit, Erledigt) | ✅ Berechnung mit Tests, Ablauf (anlegen, fällig, einmal melden, erledigt, erneut fällig) gegen echte Datenbank und im Browser geprüft; Push-Zustellung wie oben nur mit HTTPS prüfbar; Richtwerte sind keine Herstellerangaben |
+| Gemessene Fehldruckquote aus erkannten Druckaufträgen mit Vorschlag für das Kalkulationsfeld | 🟡 Berechnung mit Tests und Abfrage gegen echte Datenbank geprüft; Oberfläche gebaut und kompiliert, nicht im Browser angesehen; Werte hängen an der Ende-Erkennung der Drucke (Drucker mit Live-Verbindung) |
+| Zeiterfassung (Start/Stopp, nachtragen, Tätigkeit, Auftrag, Monat nach deutscher Zeit, Stundenzettel-PDF, CSV) und Arbeitskosten im Auftrags-Ist | ✅ Tests (u.a. Monatsgrenzen, Sommerzeit), Ablauf gegen echte Datenbank und im Browser geprüft; keine Lohnabrechnung |
+| DATEV-Buchungsstapel (EXTF 700, SKR03/SKR04, Einnahmen zum Zahlungsdatum, Ausgaben, Kleinunternehmer/Regelbesteuerung, Vorschau mit Hinweisen) | 🟡 Aufbau nach der DATEV-Beschreibung, Buchungslogik mit Tests, Download gegen echte Datenbank und Oberfläche im Browser geprüft; **nicht mit einem echten DATEV-Import getestet**, Kontenvorschläge sind Vorschläge; nur die ersten 14 Spalten werden geschrieben; ohne AfA |
 | Tablet/Handy: Leiste oben/unten, Symbolleiste quer, Kartenlisten, PDF-Ansicht in der App | ✅ alle Seiten und Reiter auf Überlauf geprüft (390/844/768/820/1024/1180 px) |
 | Bambu-Lab-Live-Anbindung (LAN, nur lesend): Status, Fortschritt, Temperaturen, AMS, Kamerabild und Live-Ansicht (P1/A1 per Einzelbild, X1/P2S/H2 per RTSP+ffmpeg), Druckverlauf, Betriebsstunden | 🟡 getestet mit simuliertem Drucker (MQTT/TLS, Kamera-Port, Bildfolge) und ffmpeg-Ausgabe; die RTSP-Verbindung zu einem echten X1C ist nicht getestet - bitte beim ersten Einrichten prüfen |
 | Produktionsboard (Erstellt, In Produktion, Versandbereit, Versendet) aus Auftragsbestätigungen | ✅ |
@@ -152,7 +156,7 @@ implementiert.
 | Druck an den Drucker senden (3MF aus dem Archiv per FTPS, optional Start per MQTT) | 🟡 3MF-Auswertung, Upload (simulierter FTP-Server) und Befehl (simulierter Broker) getestet; nicht mit einem echten Drucker - Start bitte beim ersten Mal beaufsichtigen |
 | Beleg scannen: lokale Texterkennung (Tesseract im Browser, keine Cloud), Vorschläge für Datum/Händler/Betrag/MwSt/Kategorie, Nachbessern, Lernen aus früheren Ausgaben, Doppelt-Warnung | ✅ Parser mit Tests, Foto- und PDF-Pfad im Browser geprüft (Test-Belege); Treffsicherheit bei echten Handyfotos hängt von der Aufnahme ab |
 | Belegarchiv: Dokumente ablegen, Volltextsuche (inkl. PDF-Text), Filter, Sortierung, ZIP-Export, Aufbewahrungsfristen | ✅ Ablage, kein revisionssicheres GoBD-Archiv (Dokumente änderbar/löschbar) |
-| Steuerberater-Paket, USt-Übersicht | 🟡 Orientierungshilfe, kein DATEV-Format, keine Voranmeldung |
+| Steuerberater-Paket, USt-Übersicht | 🟡 Orientierungshilfe, keine Voranmeldung (DATEV-Buchungsstapel siehe eigene Zeile) |
 | Passwort vergessen per E-Mail | ✅ benötigt eingerichtetes SMTP |
 | Grenzüberschreitende USt. (ig. Lieferung, Reverse-Charge, Ausfuhr) | 🟡 Logik umgesetzt; im Einzelfall vom Steuerberater bestätigen lassen |
 

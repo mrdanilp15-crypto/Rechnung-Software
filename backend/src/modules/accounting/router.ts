@@ -11,9 +11,11 @@ import { writeAuditLog } from "../audit/auditLog";
 import { env } from "../../config/env";
 import { bookValueAtYearEnd, depreciationForYear } from "../assets/depreciation";
 import { generateAndStoreInvoicePdf } from "../invoices/pdfHelper";
+import { datevRouter } from "./datevRouter";
 
 export const accountingRouter = Router();
 accountingRouter.use(requireAuth);
+accountingRouter.use("/datev", datevRouter);
 
 const eurDe = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 const dateDe = (d?: Date | null) => (d ? new Intl.DateTimeFormat("de-DE").format(d) : "");

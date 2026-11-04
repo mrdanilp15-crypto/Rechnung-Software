@@ -49,7 +49,7 @@ export function TaxPanel({ year }: { year: number }) {
         <h2 className="font-medium mb-1">Steuerberater-Paket {year}</h2>
         <p className="text-sm text-slate-500 mb-3">
           Ein ZIP mit Einnahmen- und Ausgabenliste (CSV für Excel), Umsatzsteuer-Übersicht je Quartal, allen ausgestellten Rechnungen als PDF und den hochgeladenen Ausgabenbelegen -
-          alles, was die Kanzlei zum Jahresabschluss braucht. Kein DATEV-Buchungsstapel: die Konten ordnet die Kanzlei zu.
+          alles, was die Kanzlei zum Jahresabschluss braucht. Hier gibt es keine Kontenzuordnung - die ordnet die Kanzlei zu. Wenn die Kanzlei mit DATEV arbeitet, steht darunter ein DATEV-Buchungsstapel mit Kontenvorschlägen.
         </p>
         <PdfLink url={`/accounting/package?year=${year}`} filename={`steuerberater-${year}.zip`} download className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
           Paket für {year} herunterladen

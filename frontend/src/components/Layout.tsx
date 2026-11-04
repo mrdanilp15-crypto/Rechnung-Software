@@ -15,6 +15,7 @@ const navItems: readonly { to: string; key: string; icon: IconName; match: reado
   { to: "/", key: "start", icon: "home", match: [] },
   { to: "/documents", key: "documents", icon: "document", match: ["/documents", "/invoices", "/quotes", "/order-confirmations", "/delivery-notes", "/recurring"] },
   { to: "/production", key: "production", icon: "board", match: ["/production"] },
+  { to: "/time", key: "time", icon: "clock", match: ["/time"] },
   { to: "/customers", key: "customers", icon: "users", match: ["/customers"] },
   { to: "/catalog", key: "catalog", icon: "cube", match: ["/catalog", "/products", "/materials"] },
   { to: "/finance", key: "finance", icon: "chart", match: ["/finance"] },

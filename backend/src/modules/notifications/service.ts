@@ -8,7 +8,7 @@ import { sendPushToCompany } from "./push";
  * zusätzlich als E-Mail über das SMTP-Postfach der Firma. Die Einstellungen liegen in der Tabelle Setting (ein JSON-Wert).
  */
 
-export type NotificationType = "PRINT_FINISHED" | "PRINT_FAILED" | "PRINTER_ERROR" | "LOW_STOCK";
+export type NotificationType = "PRINT_FINISHED" | "PRINT_FAILED" | "PRINTER_ERROR" | "LOW_STOCK" | "MAINTENANCE_DUE";
 
 export interface NotifySettings {
   email: string;
@@ -17,10 +17,11 @@ export interface NotifySettings {
   onFail: boolean;
   onError: boolean;
   onLowStock: boolean;
+  onMaintenance: boolean;
 }
 
 const KEY = "notifySettings";
-export const DEFAULT_SETTINGS: NotifySettings = { email: "", byMail: false, onFinish: true, onFail: true, onError: true, onLowStock: true };
+export const DEFAULT_SETTINGS: NotifySettings = { email: "", byMail: false, onFinish: true, onFail: true, onError: true, onLowStock: true, onMaintenance: true };
 
 export async function getNotifySettings(companyId: string): Promise<NotifySettings> {
   const row = await prisma.setting.findUnique({ where: { companyId_key: { companyId, key: KEY } } });
@@ -40,7 +41,15 @@ export async function saveNotifySettings(companyId: string, s: NotifySettings): 
   });
 }
 
-export const isEnabled = (type: NotificationType, s: NotifySettings) => (type === "PRINT_FINISHED" ? s.onFinish : type === "PRINT_FAILED" ? s.onFail : type === "LOW_STOCK" ? s.onLowStock : s.onError);
+export function isEnabled(type: NotificationType, s: NotifySettings): boolean {
+  switch (type) {
+    case "PRINT_FINISHED": return s.onFinish;
+    case "PRINT_FAILED": return s.onFail;
+    case "LOW_STOCK": return s.onLowStock;
+    case "MAINTENANCE_DUE": return s.onMaintenance;
+    default: return s.onError;
+  }
+}
 
 export function formatDuration(minutes: number): string {
   const m = Math.max(0, Math.round(minutes));

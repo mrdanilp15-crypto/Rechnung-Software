@@ -29,6 +29,8 @@ import { labelsRouter } from "./modules/labels/router";
 import { archiveRouter } from "./modules/archive/router";
 import { productionRouter } from "./modules/production/router";
 import { templatesRouter } from "./modules/templates/router";
+import { maintenanceRouter } from "./modules/maintenance/router";
+import { timeRouter } from "./modules/timetracking/router";
 import { assetsRouter } from "./modules/assets/router";
 import { suppliersRouter } from "./modules/suppliers/router";
 import { orderImportRouter } from "./modules/orderImport/router";
@@ -126,6 +128,8 @@ export function createApp() {
   app.use("/api/archive", archiveRouter);
   app.use("/api/production", productionRouter);
   app.use("/api/templates", templatesRouter);
+  app.use("/api/maintenance", maintenanceRouter);
+  app.use("/api/time", timeRouter);
   app.use("/api/assets", assetsRouter);
   app.use("/api/suppliers", suppliersRouter);
   app.use("/api/order-import", orderImportRouter);

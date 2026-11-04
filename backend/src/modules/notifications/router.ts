@@ -31,6 +31,7 @@ const settingsSchema = z.object({
   onFail: z.boolean(),
   onError: z.boolean(),
   onLowStock: z.boolean().default(true),
+  onMaintenance: z.boolean().default(true),
 });
 notificationsRouter.put("/settings", async (req, res) => {
   if (req.auth!.role !== "ADMIN") throw new HttpError(403, "Nur ein Administrator darf die Benachrichtigungen einstellen.");

@@ -359,6 +359,7 @@ model Printer {
   products           Product[]
   jobs               PrinterJob[]
   amsSlots           AmsSlotMapping[]
+  maintenanceTasks   MaintenanceTask[]
 
   @@index([companyId])
 }
@@ -633,6 +634,7 @@ model OrderConfirmation {
   items         OrderConfirmationItem[]
   deliveryNotes DeliveryNote[]
   printerJobs   PrinterJob[]
+  timeEntries   TimeEntry[]
 
   @@unique([companyId, confirmationNumber])
   @@index([companyId])
@@ -921,6 +923,51 @@ model AmsSlotMapping {
 
   @@unique([printerId, slot])
   @@index([materialId])
+  @@index([companyId])
+}
+
+// ---------- Zeiterfassung ----------
+// Arbeitszeit eines Benutzers, optional einem Auftrag zugeordnet (fließt dort in die Ist-Kosten "Arbeit" ein). endedAt = null: läuft gerade.
+// userId bewusst ohne Fremdschlüssel: Zeiten bleiben als Nachweis auch dann erhalten, wenn ein Benutzer später entfernt wird.
+model TimeEntry {
+  id                  String             @id @default(uuid())
+  companyId           String
+  userId              String
+  startedAt           DateTime
+  endedAt             DateTime?
+  minutes             Int? // Dauer, beim Beenden festgehalten
+  activity            String             @default("SONSTIGES")
+  note                String?
+  orderConfirmation   OrderConfirmation? @relation(fields: [orderConfirmationId], references: [id], onDelete: SetNull)
+  orderConfirmationId String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@index([companyId, startedAt])
+  @@index([userId, startedAt])
+  @@index([orderConfirmationId])
+}
+
+// ---------- Wartungsplan der Drucker ----------
+// Eine wiederkehrende Wartungsaufgabe (z.B. Düse wechseln) mit Intervall in Betriebsstunden und/oder Tagen. lastDoneHours ist der
+// Betriebsstundenstand des Druckers bei der letzten Erledigung; fällig ist die Aufgabe, wenn seitdem das Stunden- oder das Tagesintervall
+// erreicht ist. notifiedAt merkt sich, dass die Meldung schon kam (wird beim Erledigen zurückgesetzt).
+model MaintenanceTask {
+  id            String    @id @default(uuid())
+  companyId     String
+  printer       Printer   @relation(fields: [printerId], references: [id], onDelete: Cascade)
+  printerId     String
+  name          String
+  intervalHours Float?
+  intervalDays  Int?
+  lastDoneHours Float     @default(0)
+  lastDoneAt    DateTime  @default(now())
+  notes         String?
+  notifiedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([printerId])
   @@index([companyId])
 }
 

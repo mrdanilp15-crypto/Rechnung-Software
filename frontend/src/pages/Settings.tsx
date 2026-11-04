@@ -11,6 +11,7 @@ import Users from "./Users";
 import { useToast } from "../components/Toast";
 import { PlaceholderHint } from "../components/DocumentTexts";
 import { TemplatesManager } from "../components/TemplatesManager";
+import { FailRateHint } from "../components/FailRateHint";
 import AuditLog from "./AuditLog";
 import { ACCENTS, applyAppearance, cacheAppearance, DEFAULT_APPEARANCE, type DarkStyle } from "../theme/appearance";
 
@@ -400,6 +401,7 @@ export default function Settings() {
               <input type="number" min={0} step="0.5" value={company.failRatePercent ?? 5} onChange={(e) => setCompany({ ...company, failRatePercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               <span className="block text-xs text-slate-500 mt-0.5">Wie oft ein Druck misslingt: dann sind Druckzeit, Strom und Verschleiß verloren. Aufschlag auf diese Maschinenkosten (das verlorene Material deckt der Materialausschuss). Erfahrungswert: 3-10 %, bei neuen Materialien mehr.</span>
             </label>
+            <FailRateHint current={company.failRatePercent ?? 5} onApply={(v) => setCompany({ ...company, failRatePercent: v })} />
             <label className="block text-sm">
               Plattform-/Zahlungsgebühren (% vom Verkaufspreis)
               <input type="number" min={0} max={90} step="0.1" value={company.platformFeePercent ?? 0} onChange={(e) => setCompany({ ...company, platformFeePercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />

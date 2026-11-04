@@ -5,6 +5,7 @@ import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { TaxPanel } from "../components/TaxPanel";
+import { DatevPanel } from "../components/DatevPanel";
 import { AssetsPanel } from "../components/AssetsPanel";
 import { ReceiptScanDialog } from "../components/ReceiptScanDialog";
 import { FinanceChart, FinanceLegend, type FinanceMonth } from "../components/FinanceChart";
@@ -157,6 +158,7 @@ export default function Finance() {
             </select>
           </div>
           <TaxPanel year={year} />
+          <DatevPanel year={year} />
         </div>
       )}
 

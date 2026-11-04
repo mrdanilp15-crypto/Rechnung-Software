@@ -24,6 +24,7 @@ interface Costs {
   order: { number: string; customerName: string; netCents: number; items: { description: string; quantity: number; unitPriceCents: number }[] };
   jobs: Job[];
   totals: { jobCount: number; minutes: number; grams: number; materialCents: number; machine: { electricity: number; depreciation: number; wear: number; total: number } };
+  labor: { entries: number; minutes: number; rateCentsPerHour: number; cents: number };
 }
 interface Product extends CostProduct {
   id: string;
@@ -58,7 +59,7 @@ export function OrderCostDialog({ orderId, onClose }: { orderId: string; onClose
   }, [orderId]);
 
   // Soll aus der Kalkulation für alle Positionen, die einem Produkt aus dem Katalog entsprechen
-  const acc = { material: 0, machine: 0, minutes: 0 };
+  const acc = { material: 0, machine: 0, minutes: 0, labor: 0, laborMinutes: 0 };
   let matched = 0;
   const unmatched: string[] = [];
   if (data && rates) {
@@ -73,13 +74,18 @@ export function OrderCostDialog({ orderId, onClose }: { orderId: string; onClose
       acc.material += s.material;
       acc.machine += s.machine;
       acc.minutes += s.minutes;
+      acc.labor += s.labor;
+      acc.laborMinutes += s.laborMinutes;
       matched += 1;
     }
   }
   const soll = matched > 0 ? acc : null;
 
   const t = data?.totals;
-  const istCost = t ? t.materialCents + t.machine.total : 0;
+  const labor = data?.labor;
+  const hasLabor = !!labor && labor.entries > 0;
+  const istCost = t ? t.materialCents + t.machine.total + (hasLabor ? labor!.cents : 0) : 0;
+  const sollCost = soll ? soll.material + soll.machine + (hasLabor ? soll.labor : 0) : null;
   const net = data?.order.netCents ?? 0;
   const row = "grid grid-cols-[1fr_5.5rem_5.5rem_3.5rem] gap-2 py-1.5 items-baseline";
 
@@ -109,13 +115,14 @@ export function OrderCostDialog({ orderId, onClose }: { orderId: string; onClose
                     <div className={row}><span>Druckzeit</span><span className="text-right text-slate-500">{soll ? hours(soll.minutes) : "-"}</span><span className="text-right">{hours(t.minutes)}</span><span className="text-right"><Diff soll={soll?.minutes ?? null} ist={t.minutes} /></span></div>
                     <div className={row}><span>Material{t.grams > 0 ? ` (${Math.round(t.grams)} g)` : ""}</span><span className="text-right text-slate-500">{soll ? euro(soll.material) : "-"}</span><span className="text-right">{euro(t.materialCents)}</span><span className="text-right"><Diff soll={soll?.material ?? null} ist={t.materialCents} /></span></div>
                     <div className={row}><span title="Strom, Abschreibung und Verschleiß des Druckers">Maschine</span><span className="text-right text-slate-500">{soll ? euro(soll.machine) : "-"}</span><span className="text-right">{euro(t.machine.total)}</span><span className="text-right"><Diff soll={soll?.machine ?? null} ist={t.machine.total} /></span></div>
-                    <div className={`${row} border-t border-slate-200 dark:border-slate-700 font-medium`}><span>Messbare Kosten</span><span className="text-right text-slate-500">{soll ? euro(soll.material + soll.machine) : "-"}</span><span className="text-right">{euro(istCost)}</span><span className="text-right font-normal"><Diff soll={soll ? soll.material + soll.machine : null} ist={istCost} /></span></div>
+                    <div className={row}><span title="Arbeitszeit aus der Zeiterfassung mal Arbeitsstundensatz">Arbeit{hasLabor ? ` (${hours(labor!.minutes)})` : ""}</span><span className="text-right text-slate-500">{soll ? euro(soll.labor) : "-"}</span><span className="text-right">{hasLabor ? euro(labor!.cents) : "-"}</span><span className="text-right">{hasLabor ? <Diff soll={soll?.labor ?? null} ist={labor!.cents} /> : <span className="text-slate-400">-</span>}</span></div>
+                    <div className={`${row} border-t border-slate-200 dark:border-slate-700 font-medium`}><span>Messbare Kosten</span><span className="text-right text-slate-500">{sollCost !== null ? euro(sollCost) : "-"}</span><span className="text-right">{euro(istCost)}</span><span className="text-right font-normal"><Diff soll={sollCost} ist={istCost} /></span></div>
                   </div>
 
                   <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 space-y-1">
                     <div className="flex justify-between"><span>Auftragswert (netto)</span><span>{euro(net)}</span></div>
-                    <div className="flex justify-between"><span>abzüglich Material und Maschine</span><span>- {euro(istCost)}</span></div>
-                    <div className="flex justify-between font-medium border-t border-slate-200 dark:border-slate-700 pt-1"><span>Bleibt vor Arbeit, Verpackung, Gemeinkosten</span><span className={net - istCost < 0 ? "text-red-600" : ""}>{euro(net - istCost)}</span></div>
+                    <div className="flex justify-between"><span>abzüglich Material, Maschine{hasLabor ? " und Arbeit" : ""}</span><span>- {euro(istCost)}</span></div>
+                    <div className="flex justify-between font-medium border-t border-slate-200 dark:border-slate-700 pt-1"><span>Bleibt vor {hasLabor ? "" : "Arbeit, "}Verpackung, Gemeinkosten</span><span className={net - istCost < 0 ? "text-red-600" : ""}>{euro(net - istCost)}</span></div>
                   </div>
 
                   {unmatched.length > 0 && <p className="text-xs text-slate-500">Für {unmatched.map((u) => `"${u}"`).join(", ")} gibt es kein Produkt mit gleichem Namen im Katalog - der Soll-Wert enthält diese Position nicht.</p>}
@@ -135,7 +142,7 @@ export function OrderCostDialog({ orderId, onClose }: { orderId: string; onClose
                   </div>
                 </>
               )}
-              <p className="text-xs text-slate-500">Material zum Einkaufspreis bei der Abbuchung, Maschine je Betriebsstunde des Druckers (Strom, Abschreibung, Verschleiß). Fehldrucke zählen mit, weil sie echtes Geld kosten. Im Soll steckt der Ausschuss-Zuschlag aus der Kalkulation; Ist-Werte stammen aus dem Slicer bzw. der AMS-Messung und lassen den Spülanteil beim Farbwechsel aus.</p>
+              <p className="text-xs text-slate-500">Material zum Einkaufspreis bei der Abbuchung, Maschine je Betriebsstunde des Druckers (Strom, Abschreibung, Verschleiß), Arbeit aus der Zeiterfassung (Menü Zeit) mal Arbeitsstundensatz{hasLabor ? "" : " - für diesen Auftrag ist noch keine Zeit erfasst, deshalb steht Arbeit nicht in der Summe"}. Fehldrucke zählen mit, weil sie echtes Geld kosten. Im Soll steckt der Ausschuss-Zuschlag aus der Kalkulation; Ist-Werte stammen aus dem Slicer bzw. der AMS-Messung und lassen den Spülanteil beim Farbwechsel aus.</p>
             </>
           )}
         </div>

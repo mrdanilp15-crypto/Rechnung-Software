@@ -6,6 +6,7 @@ import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { isSmtpConfigured, sendMailForCompany } from "../email/mailer";
 import { BUILTIN_SHIPPED, CARRIERS, carrierLabel, dropEmptyShippingLines, loadPlaceholderValues, renderText, trackingLink } from "../templates/render";
+import { laborCents } from "../timetracking/calc";
 import { itemProductKey, machineCost, usageWithCosts, type MaterialPrice } from "./actuals";
 
 /**
@@ -108,10 +109,14 @@ productionRouter.get("/:id/costs", async (req, res) => {
     include: { customer: { select: { name: true } }, items: { orderBy: { position: "asc" } } },
   });
   if (!order) throw new HttpError(404, "Auftrag nicht gefunden");
-  const company = await prisma.company.findUnique({ where: { id: companyId }, select: { electricityCentsPerKwh: true } });
+  const company = await prisma.company.findUnique({ where: { id: companyId }, select: { electricityCentsPerKwh: true, laborRateCentsPerHour: true } });
   const electricity = company?.electricityCentsPerKwh ?? 35;
   const prices = await materialPrices(companyId);
   const jobs = await prisma.printerJob.findMany({ where: { orderConfirmationId: order.id }, orderBy: { startedAt: "asc" }, include: { printer: true } });
+  // Arbeitszeit aus der Zeiterfassung (beendete Einträge dieses Auftrags) mal Arbeitsstundensatz
+  const timeSum = await prisma.timeEntry.aggregate({ where: { orderConfirmationId: order.id, endedAt: { not: null } }, _sum: { minutes: true }, _count: { _all: true } });
+  const laborMinutes = timeSum._sum.minutes ?? 0;
+  const labor = { entries: timeSum._count._all, minutes: laborMinutes, rateCentsPerHour: company?.laborRateCentsPerHour ?? 0, cents: laborCents(laborMinutes, company?.laborRateCentsPerHour ?? 0) };
 
   const totals = { jobCount: jobs.length, minutes: 0, grams: 0, materialCents: 0, machine: { electricity: 0, depreciation: 0, wear: 0, total: 0 } };
   const rows = jobs.map((j) => {
@@ -135,6 +140,7 @@ productionRouter.get("/:id/costs", async (req, res) => {
     },
     jobs: rows,
     totals,
+    labor,
   });
 });
 

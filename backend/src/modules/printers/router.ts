@@ -11,6 +11,7 @@ import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import fs from "fs";
 import { buildPlanEntries, savePrintPlan } from "./bambu/slicedBooking";
+import { computeFailStats } from "./failStats";
 import { buildAmsMapping, buildStartPayload, inspect3mf, publishToPrinter, remoteFileName, uploadToPrinter } from "./bambu/printJob";
 
 /**
@@ -66,6 +67,26 @@ function present<T extends { accessCodeEncrypted: string | null }>(p: T, jobs?: 
 printersRouter.get("/live", async (req, res) => {
   const printers = await prisma.printer.findMany({ where: { companyId: req.auth!.companyId, isArchived: false, connectionType: "BAMBU_LAN", liveEnabled: true }, select: { id: true } });
   res.json(Object.fromEntries(printers.map((p) => [p.id, bambuMonitor.getStatus(p.id)])));
+});
+
+// Echte Fehldruckquote der letzten Tage aus den erkannten Druckaufträgen (gesamt und je Drucker)
+printersRouter.get("/fail-stats", async (req, res) => {
+  const days = Math.min(730, Math.max(7, Number(req.query.days) || 90));
+  const jobs = await prisma.printerJob.findMany({
+    where: { companyId: req.auth!.companyId, endedAt: { not: null, gte: new Date(Date.now() - days * 86_400_000) } },
+    select: { printerId: true, result: true, minutes: true, printer: { select: { name: true } } },
+  });
+  const byPrinter = new Map<string, { name: string; jobs: typeof jobs }>();
+  for (const j of jobs) {
+    const e = byPrinter.get(j.printerId) ?? { name: j.printer.name, jobs: [] };
+    e.jobs.push(j);
+    byPrinter.set(j.printerId, e);
+  }
+  res.json({
+    days,
+    total: computeFailStats(jobs),
+    printers: [...byPrinter.entries()].map(([id, e]) => ({ id, name: e.name, ...computeFailStats(e.jobs) })),
+  });
 });
 
 const hostSchema = z.string().trim().max(100).refine(isAllowedPrinterHost, "Bitte die IP-Adresse aus Ihrem Heimnetz angeben (z.B. 192.168.1.50) - Adressen außerhalb des eigenen Netzes sind nicht erlaubt.");

@@ -171,6 +171,8 @@ export interface SollParts {
   material: number;
   machine: number; // Strom + Abschreibung + Verschleiß bzw. pauschaler Maschinensatz, ohne Fehldruck-Zuschlag
   minutes: number;
+  labor: number; // Arbeit (inkl. Rüstzeit) laut Kalkulation
+  laborMinutes: number;
 }
 export function sollParts(p: CostProduct, printer: PrinterCosts | null | undefined, rates: CostRates, quantity = 1): SollParts {
   const c = calcCost(
@@ -181,5 +183,5 @@ export function sollParts(p: CostProduct, printer: PrinterCosts | null | undefin
     printer,
     { setupMinutes: p.setupMinutes, packagingCents: p.packagingCents, extraMaterialPercent: p.extraMaterialPercent, extraCostsCents: (p.extraCosts ?? []).reduce((s, x) => s + x.amountCents, 0), quantity },
   );
-  return { material: c.material * quantity, machine: (c.electricity + c.depreciation + c.wear + c.machineFlat) * quantity, minutes: (p.printTimeMinutes ?? 0) * quantity };
+  return { material: c.material * quantity, machine: (c.electricity + c.depreciation + c.wear + c.machineFlat) * quantity, minutes: (p.printTimeMinutes ?? 0) * quantity, labor: c.labor * quantity, laborMinutes: (p.laborMinutes ?? 0) * quantity + (p.setupMinutes ?? 0) };
 }

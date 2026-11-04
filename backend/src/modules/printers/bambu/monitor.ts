@@ -6,6 +6,7 @@ import type { PrinterLiveStatus } from "./status";
 import { amsBooking } from "./amsBooking";
 import { attachPlanToJob, bookPlanAtEnd } from "./slicedBooking";
 import { checkLowStock } from "../../notifications/lowStock";
+import { checkMaintenance } from "../../maintenance/service";
 import { notifyPrinterEvent } from "../../notifications/service";
 
 /**
@@ -45,6 +46,7 @@ const core = new BambuMonitorCore({
       try {
         const booked = await bookPlanAtEnd(target.printerId, info.jobId, info.result, progress, info.status);
         if (booked.length > 0) void checkLowStock(target.companyId);
+        void checkMaintenance(target.companyId); // die Betriebsstunden sind gerade gestiegen
       } catch (err) {
         logger.warn({ err: (err as Error).message }, "Materialabbuchung nach Slicer-Angabe fehlgeschlagen");
       }

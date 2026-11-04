@@ -4,6 +4,7 @@ import { useToast } from "../components/Toast";
 import { InfoBox } from "../components/InfoBox";
 import { printerHourlyCost } from "../lib/cost";
 import { useAuthStore } from "../store/authStore";
+import { MaintenancePanel, type MaintenanceTaskRow } from "../components/MaintenancePanel";
 import { CAMERA_MODELS, PrinterLiveCard, type LiveStatus } from "../components/PrinterLive";
 
 interface Printer {
@@ -47,9 +48,13 @@ export default function Printers() {
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [testing, setTesting] = useState(false);
   const [clearCode, setClearCode] = useState(false);
+  const [maintenance, setMaintenance] = useState<MaintenanceTaskRow[]>([]);
 
   function load() {
     api.get("/printers").then((r) => setPrinters(r.data));
+  }
+  function loadMaintenance() {
+    api.get("/maintenance").then((r) => setMaintenance(r.data)).catch(() => {});
   }
   function loadLive() {
     api.get("/printers/live").then((r) => setLiveMap(r.data)).catch(() => {});
@@ -62,6 +67,7 @@ export default function Printers() {
   }, []);
   useEffect(() => {
     load();
+    loadMaintenance();
     api.get("/companies/me").then((r) => setElectricity(r.data.electricityCentsPerKwh ?? 35));
   }, []);
 
@@ -278,7 +284,7 @@ export default function Printers() {
           return (
             <div key={p.id} className="px-4 py-3 text-sm flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1 basis-80">
-                <div className="font-medium">{p.name}</div>
+                <div className="font-medium">{p.name}{maintenance.some((t) => t.printerId === p.id && t.due) && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 font-normal">Wartung fällig</span>}</div>
                 <div className="text-xs text-slate-500">
                   {money(p.purchasePriceCents, 0)} · {p.lifetimeHours} h Lebensdauer{p.usedHoursBefore ? ` (davon ${p.usedHoursBefore} h schon vor der Erfassung gelaufen)` : ""} · {p.powerWatts} W · Verschleiß {money(p.wearCentsPerHour, 3)}/h
                 </div>
@@ -287,6 +293,7 @@ export default function Printers() {
                   {p._count?.products ? ` · von ${p._count.products} Produkt(en) genutzt` : ""}
                 </div>
                 {p.notes && <div className="text-xs text-amber-600 dark:text-amber-400">{p.notes}</div>}
+                <MaintenancePanel printerId={p.id} tasks={maintenance.filter((t) => t.printerId === p.id)} isAdmin={isAdmin} onChange={loadMaintenance} />
                 {p.connectionType === "BAMBU_LAN" && p.liveEnabled && liveMap[p.id] && (
                   <PrinterLiveCard printerName={p.name} printerId={p.id} status={liveMap[p.id]} model={p.model} trackedMinutes={p.trackedMinutes} lifetimeHours={p.lifetimeHours} usedHoursBefore={p.usedHoursBefore ?? 0} />
                 )}
