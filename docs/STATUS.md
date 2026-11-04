@@ -125,6 +125,11 @@ implementiert.
 | Anzahlungs- und Schlussrechnung (XRechnung: Typ 326 + BT-113) | ✅ mit KoSIT geprüft |
 | Wiederkehrende Rechnungen (erzeugen nur Entwürfe) | ✅ |
 | E-Mail-Versand für Angebote, Aufträge, Lieferscheine; HTML-Mails mit Logo, "Erneut senden", Kopie an mich | ✅ getestet mit lokalem Testserver (nicht mit echtem Postfach) |
+| Produktdateien mit Versionen (Revisionen, aktuelle Druckdatei, Änderungsnotiz, Zuordnung aus dem Belegarchiv) | ✅ Ablauf gegen echte Datenbank und im Browser geprüft |
+| Werte aus 3MF in die Kalkulation übernehmen (Druckzeit, Gramm je Filament, Material-Vorschlag, Objektzahl) | 🟡 getestet mit selbst gebauten 3MF-Dateien im Bambu-Aufbau und im Browser; echte Dateien aus Bambu Studio sind nicht geprüft (Aufbau von slice_info.config nach Beschreibung) |
+| E-Mail-Vorlagen je Anlass mit Platzhaltern, Standardvorlage füllt den Versanddialog, Beispielvorlagen | ✅ Tests, Ablauf mit Test-Mailserver (Betreff/Empfänger/Nummer bei Rechnungs-Entwurf) und im Browser geprüft |
+| Textbausteine für Begrüßung/Schlusstext | ✅ im Browser geprüft |
+| Versandbescheid beim Versenden eines Auftrags (Versanddienst, Sendungsnummer, Mail nur auf Klick) | 🟡 Mailversand gegen Test-Mailserver und Oberfläche geprüft; die Sendungslinks der Versanddienste sind nicht gegen die echten Seiten geprüft |
 | Tablet/Handy: Leiste oben/unten, Symbolleiste quer, Kartenlisten, PDF-Ansicht in der App | ✅ alle Seiten und Reiter auf Überlauf geprüft (390/844/768/820/1024/1180 px) |
 | Bambu-Lab-Live-Anbindung (LAN, nur lesend): Status, Fortschritt, Temperaturen, AMS, Kamerabild und Live-Ansicht (P1/A1 per Einzelbild, X1/P2S/H2 per RTSP+ffmpeg), Druckverlauf, Betriebsstunden | 🟡 getestet mit simuliertem Drucker (MQTT/TLS, Kamera-Port, Bildfolge) und ffmpeg-Ausgabe; die RTSP-Verbindung zu einem echten X1C ist nicht getestet - bitte beim ersten Einrichten prüfen |
 | Produktionsboard (Erstellt, In Produktion, Versandbereit, Versendet) aus Auftragsbestätigungen | ✅ |

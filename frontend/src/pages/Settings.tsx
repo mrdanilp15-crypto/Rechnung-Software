@@ -10,6 +10,7 @@ import { useSaveStatus } from "../hooks/useSaveStatus";
 import Users from "./Users";
 import { useToast } from "../components/Toast";
 import { PlaceholderHint } from "../components/DocumentTexts";
+import { TemplatesManager } from "../components/TemplatesManager";
 import AuditLog from "./AuditLog";
 import { ACCENTS, applyAppearance, cacheAppearance, DEFAULT_APPEARANCE, type DarkStyle } from "../theme/appearance";
 
@@ -91,6 +92,7 @@ const TABS = [
   { key: "design", label: "Beleg-Design" },
   { key: "dunning", label: "Mahnwesen" },
   { key: "email", label: "E-Mail-Versand" },
+  { key: "templates", label: "Vorlagen" },
   { key: "security", label: "Sicherheit" },
   { key: "audit", label: "Protokoll" },
   { key: "data", label: "Daten" },
@@ -535,6 +537,8 @@ export default function Settings() {
       )}
 
       {tab === "users" && user?.role === "ADMIN" && <Users />}
+
+      {tab === "templates" && user?.role === "ADMIN" && <TemplatesManager />}
 
       {tab === "dunning" && user?.role === "ADMIN" && (
         <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-5">

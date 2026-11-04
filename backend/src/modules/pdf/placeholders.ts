@@ -14,6 +14,13 @@ export const PLACEHOLDER_HELP: { key: string; description: string }[] = [
   { key: "{firma}", description: "Name Ihrer Firma" },
 ];
 
+/** Zusätzliche Platzhalter für E-Mail-Vorlagen (Versandbescheid); in PDF-Texten bleiben sie leer. */
+export const SHIPPING_PLACEHOLDER_HELP: { key: string; description: string }[] = [
+  { key: "{versanddienst}", description: "Versanddienst (z.B. DHL)" },
+  { key: "{sendungsnummer}", description: "Sendungsnummer" },
+  { key: "{sendungslink}", description: "Link zur Sendungsverfolgung" },
+];
+
 export interface PlaceholderValues {
   kunde: string;
   ansprechpartner: string;
@@ -22,11 +29,14 @@ export interface PlaceholderValues {
   faellig: string;
   betrag: string;
   firma: string;
+  versanddienst?: string;
+  sendungsnummer?: string;
+  sendungslink?: string;
 }
 
 export function fillPlaceholders(text: string | null | undefined, values: PlaceholderValues): string {
   if (!text) return "";
   // Ohne Datum (z.B. Angebot ohne Gültigkeit) lieber ganz weglassen als "bis zum ." auszugeben
   if (!values.faellig) text = text.replace(/\s*(?:bis zum|bis|until|by)\s*\{faellig\}/gi, "");
-  return text.replace(/\{(kunde|ansprechpartner|nummer|datum|faellig|betrag|firma)\}/gi, (_m, key: string) => values[key.toLowerCase() as keyof PlaceholderValues] ?? "");
+  return text.replace(/\{(kunde|ansprechpartner|nummer|datum|faellig|betrag|firma|versanddienst|sendungsnummer|sendungslink)\}/gi, (_m, key: string) => values[key.toLowerCase() as keyof PlaceholderValues] ?? "");
 }

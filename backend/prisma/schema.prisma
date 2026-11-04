@@ -290,6 +290,7 @@ model Product {
   invoiceItems  InvoiceItem[]
   quoteItems    QuoteItem[]
   materials     ProductMaterial[]
+  files         ProductFile[]
 
   @@index([companyId])
 }
@@ -620,6 +621,10 @@ model OrderConfirmation {
   productionNote      String?
   productionUpdatedAt DateTime?
   shippedAt           DateTime?
+  // Versand: Versanddienst und Sendungsnummer (für die Versandmail und das Produktionsboard); shippedMailAt = wann der Versandbescheid verschickt wurde
+  carrier             String?
+  trackingNumber      String?
+  shippedMailAt       DateTime?
   // Wann der Beleg per E-Mail verschickt wurde (null = nicht per E-Mail versendet; "Fertigstellen" allein verschickt nichts)
   emailSentAt   DateTime?
   createdAt     DateTime @default(now())
@@ -815,6 +820,8 @@ model ArchiveDocument {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  productFiles ProductFile[]
+
   @@index([companyId, documentDate])
   @@index([companyId, sha256])
 }
@@ -914,6 +921,55 @@ model AmsSlotMapping {
 
   @@unique([printerId, slot])
   @@index([materialId])
+  @@index([companyId])
+}
+
+// ---------- Vorlagen: E-Mail-Texte und Textbausteine ----------
+// E-Mail-Vorlagen je Anlass (kind: QUOTE | ORDER_CONFIRMATION | DELIVERY_NOTE | INVOICE | SHIPPED | OTHER) mit Platzhaltern wie {kunde};
+// die Vorlage mit isDefault füllt den Versanddialog des jeweiligen Belegs vor. Textbausteine sind kurze Texte zum Einfügen in Beleg-Texte.
+model EmailTemplate {
+  id        String   @id @default(uuid())
+  companyId String
+  kind      String
+  name      String
+  subject   String
+  body      String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, kind])
+}
+
+model TextSnippet {
+  id        String   @id @default(uuid())
+  companyId String
+  name      String
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+}
+
+// ---------- Produktdateien mit Versionen (PDM) ----------
+// Verknüpft ein Produkt mit Dateien aus dem Belegarchiv (STL, 3MF, STEP, Bilder ...). Jede Datei ist eine Version (Revision 1, 2, 3 ...)
+// mit Änderungsnotiz; genau eine Version ist die aktuelle Druckdatei. Die Datei selbst liegt im Archiv (Suche, Backup, ZIP-Export dort).
+model ProductFile {
+  id         String          @id @default(uuid())
+  companyId  String
+  product    Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId  String
+  document   ArchiveDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String
+  revision   Int
+  note       String?
+  isCurrent  Boolean         @default(false)
+  createdAt  DateTime        @default(now())
+
+  @@unique([productId, documentId])
+  @@index([productId])
+  @@index([documentId])
   @@index([companyId])
 }
 

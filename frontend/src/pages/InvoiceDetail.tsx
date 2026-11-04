@@ -6,6 +6,7 @@ import { PdfLink } from "../components/PdfLink";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { useToast } from "../components/Toast";
 import { DunningPanel } from "../components/DunningPanel";
+import { TemplatePicker } from "../components/TemplatePicker";
 
 interface InvoiceItem {
   id: string;
@@ -235,6 +236,7 @@ export default function InvoiceDetail() {
       {showEmailForm && (
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 space-y-3">
           <h2 className="font-medium text-sm">Rechnung per E-Mail senden</h2>
+          {id && <TemplatePicker docType="INVOICE" docId={id} onPick={(s, m) => setEmailForm((f) => ({ ...f, subject: s, message: m }))} />}
           <input placeholder="Empfänger-E-Mail" value={emailForm.to} onChange={(e) => setEmailForm((f) => ({ ...f, to: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
           <input placeholder="Betreff (optional)" value={emailForm.subject} onChange={(e) => setEmailForm((f) => ({ ...f, subject: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
           <textarea placeholder="Nachricht (optional, sonst Standardtext)" value={emailForm.message} onChange={(e) => setEmailForm((f) => ({ ...f, message: e.target.value }))} rows={4} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />

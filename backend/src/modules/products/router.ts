@@ -5,9 +5,11 @@ import { prisma } from "../../db/prisma";
 import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
+import { productFilesRouter } from "./files";
 
 export const productsRouter = Router();
 productsRouter.use(requireAuth);
+productsRouter.use("/:id/files", productFilesRouter);
 
 productsRouter.get("/", async (req, res) => {
   const q = (req.query.q as string | undefined)?.trim();

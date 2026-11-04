@@ -23,6 +23,8 @@ export interface PlateInfo {
   predictionSeconds: number | null;
   weightGrams: number | null;
   filaments: PlateFilament[];
+  /** Anzahl der Objekte auf der Platte (ohne übersprungene); null, wenn die Datei das nicht angibt */
+  objectCount: number | null;
 }
 
 function attrs(tag: string): Record<string, string> {
@@ -49,7 +51,7 @@ export function inspect3mf(buffer: Buffer): PlateInfo[] {
   if (gcodes.length === 0) {
     throw new Error("Die Datei enthält keinen G-Code. In Bambu Studio die Platte slicen und über \"Exportieren\" → \"G-Code 3MF\" speichern (die reine Projektdatei lässt sich nicht drucken).");
   }
-  const info = new Map<number, { prediction: number | null; weight: number | null; filaments: PlateFilament[] }>();
+  const info = new Map<number, { prediction: number | null; weight: number | null; filaments: PlateFilament[]; objectCount: number | null }>();
   const sliceInfo = zip.getEntry("Metadata/slice_info.config");
   if (sliceInfo) {
     const xml = sliceInfo.getData().toString("utf8");
@@ -65,7 +67,8 @@ export function inspect3mf(buffer: Buffer): PlateInfo[] {
         const a = attrs(m[0]);
         return { id: Number(a.id), type: a.type || null, color: a.color ? a.color.slice(0, 7).toLowerCase() : null, usedGrams: num(a.used_g) };
       }).filter((f) => Number.isFinite(f.id));
-      info.set(index, { prediction: num(meta.prediction), weight: num(meta.weight), filaments });
+      const objects = [...block[1].matchAll(/<object\b[^>]*\/?>/g)].filter((m) => attrs(m[0]).skipped !== "true");
+      info.set(index, { prediction: num(meta.prediction), weight: num(meta.weight), filaments, objectCount: objects.length > 0 ? objects.length : null });
     }
   }
   return [...new Set(gcodes)].sort((a, b) => a - b).map((index) => {
@@ -78,6 +81,7 @@ export function inspect3mf(buffer: Buffer): PlateInfo[] {
       predictionSeconds: i?.prediction ?? null,
       weightGrams: i?.weight ?? null,
       filaments: i?.filaments ?? [],
+      objectCount: i?.objectCount ?? null,
     };
   });
 }

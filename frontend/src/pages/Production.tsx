@@ -7,6 +7,7 @@ import { StatusChip } from "../components/StatusChip";
 import { useToast } from "../components/Toast";
 import { EtsyImport } from "../components/EtsyImport";
 import { OrderCostDialog } from "../components/OrderCostDialog";
+import { ShippedDialog } from "../components/ShippedDialog";
 
 type ProductionStatus = "CREATED" | "IN_PRODUCTION" | "READY_TO_SHIP" | "SHIPPED";
 interface Order {
@@ -19,6 +20,9 @@ interface Order {
   totalCents: number;
   notes: string | null;
   shippedAt: string | null;
+  carrier: string | null;
+  trackingNumber: string | null;
+  shippedMailAt: string | null;
   itemCount: number;
   itemSummary: string[];
   printMinutes: number;
@@ -32,6 +36,8 @@ const COLUMNS: { key: ProductionStatus; label: string; dot: string; hint: string
   { key: "SHIPPED", label: "Versendet", dot: "bg-green-500", hint: "Unterwegs zum Kunden" },
 ];
 
+const CARRIER_NAMES: Record<string, string> = { DHL: "DHL", DPD: "DPD", GLS: "GLS", HERMES: "Hermes", DEUTSCHE_POST: "Deutsche Post", ABHOLUNG: "Abholung", SONSTIGE: "Versand" };
+const carrierName = (key: string | null) => (key ? CARRIER_NAMES[key] ?? key : "");
 const money = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
 const date = (iso: string) => new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit" }).format(new Date(iso));
 const hours = (min: number) => `${(min / 60).toFixed(1).replace(".", ",")} h`;
@@ -44,6 +50,7 @@ export default function Production() {
   const [showAllShipped, setShowAllShipped] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [costOrderId, setCostOrderId] = useState<string | null>(null);
+  const [shipDialog, setShipDialog] = useState<{ order: Order; markShipped: boolean } | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overColumn, setOverColumn] = useState<ProductionStatus | null>(null);
 
@@ -57,11 +64,15 @@ export default function Production() {
 
   async function move(order: Order, status: ProductionStatus) {
     if (order.productionStatus === status) return;
+    // Beim Versenden zuerst Versanddienst/Sendungsnummer abfragen und optional den Versandbescheid senden
+    if (status === "SHIPPED") {
+      setShipDialog({ order, markShipped: true });
+      return;
+    }
     const before = orders;
-    setOrders((cur) => cur.map((o) => (o.id === order.id ? { ...o, productionStatus: status, shippedAt: status === "SHIPPED" ? new Date().toISOString() : null } : o)));
+    setOrders((cur) => cur.map((o) => (o.id === order.id ? { ...o, productionStatus: status, shippedAt: null } : o)));
     try {
       await api.patch(`/production/${order.id}`, { productionStatus: status });
-      if (status === "SHIPPED") showToast(`${order.number} als versendet markiert`, "success");
     } catch (err: any) {
       setOrders(before);
       showToast(err.response?.data?.error || "Status konnte nicht geändert werden", "error");
@@ -109,6 +120,23 @@ export default function Production() {
       </div>
 
       {costOrderId && <OrderCostDialog orderId={costOrderId} onClose={() => setCostOrderId(null)} />}
+      {shipDialog && (
+        <ShippedDialog
+          orderId={shipDialog.order.id}
+          number={shipDialog.order.number}
+          customerName={shipDialog.order.customerName}
+          markShipped={shipDialog.markShipped}
+          initialCarrier={shipDialog.order.carrier}
+          initialTracking={shipDialog.order.trackingNumber}
+          onClose={() => { setShipDialog(null); load(); }}
+          onDone={({ mailSentTo }) => {
+            const n = shipDialog.order.number;
+            setShipDialog(null);
+            load();
+            showToast(mailSentTo ? `${n} als versendet markiert, Versandmail an ${mailSentTo} gesendet` : `${n} als versendet markiert`, "success");
+          }}
+        />
+      )}
 
       {showImport && <EtsyImport onImported={() => { setShowImport(false); load(); }} />}
 
@@ -175,6 +203,10 @@ export default function Production() {
                           )}
                           {o.documentStatus === "DRAFT" && <StatusChip status="DRAFT" />}
                           {o.shippedAt && col.key === "SHIPPED" && <span className="text-xs text-slate-500">versendet {date(o.shippedAt)}</span>}
+                          {col.key === "SHIPPED" && (o.carrier || o.trackingNumber) && <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300" title="Versanddienst und Sendungsnummer">{[carrierName(o.carrier), o.trackingNumber].filter(Boolean).join(" ")}</span>}
+                          {col.key === "SHIPPED" && (o.shippedMailAt
+                            ? <span className="text-xs text-green-700 dark:text-green-400" title="Versandbescheid per E-Mail gesendet">✉ {date(o.shippedMailAt)}</span>
+                            : <button type="button" onClick={() => setShipDialog({ order: o, markShipped: false })} className="text-xs text-brand hover:underline">Versandmail senden</button>)}
                         </div>
                         <div className="mt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-700 pt-2">
                           <div className="flex gap-1">

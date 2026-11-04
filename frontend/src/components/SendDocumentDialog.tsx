@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { TemplatePicker, docTypeForBase } from "./TemplatePicker";
 
 /**
  * Beleg (Angebot, Auftragsbestätigung, Lieferschein) per E-Mail verschicken: Empfänger, Betreff und Text prüfen/ändern,
@@ -72,6 +73,7 @@ export function SendDocumentDialog({
           <input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="E-Mail-Adresse des Kunden" className={`${inputClass} mt-1`} autoFocus />
           {customerEmail === null && <span className="block text-xs text-amber-600 mt-0.5">Beim Kunden ist keine E-Mail-Adresse hinterlegt - bitte hier eintragen (oder beim Kunden ergänzen).</span>}
         </label>
+        {docTypeForBase(base) && <TemplatePicker docType={docTypeForBase(base)!} docId={id} onPick={(s, m) => { setSubject(s); setMessage(m); }} />}
         <label className="block text-sm">
           Betreff (optional)
           <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={`${label} ${number ?? ""}`.trim()} className={`${inputClass} mt-1`} />

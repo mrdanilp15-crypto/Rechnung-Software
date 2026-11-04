@@ -4,6 +4,8 @@ import { prisma } from "../../db/prisma";
 import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
+import { isSmtpConfigured, sendMailForCompany } from "../email/mailer";
+import { BUILTIN_SHIPPED, CARRIERS, carrierLabel, dropEmptyShippingLines, loadPlaceholderValues, renderText, trackingLink } from "../templates/render";
 import { itemProductKey, machineCost, usageWithCosts, type MaterialPrice } from "./actuals";
 
 /**
@@ -71,6 +73,9 @@ productionRouter.get("/", async (req, res) => {
         totalCents: o.totalCents,
         notes: o.productionNote,
         shippedAt: o.shippedAt,
+        carrier: o.carrier,
+        trackingNumber: o.trackingNumber,
+        shippedMailAt: o.shippedMailAt,
         itemCount: o.items.length,
         itemSummary: o.items.slice(0, 3).map((i) => `${Number.isInteger(i.quantity) ? i.quantity : String(i.quantity).replace(".", ",")}× ${i.description.split("\n")[0]}`),
         printMinutes: Math.round(printMinutes),
@@ -173,9 +178,59 @@ productionRouter.get("/product-actuals", async (req, res) => {
   res.json([...out.values()].map((a) => ({ ...a, minutes: Math.round(a.minutes), grams: Math.round(a.grams), materialCents: Math.round(a.materialCents), machineCents: Math.round(a.machineCents) })));
 });
 
+const CARRIER_KEYS = CARRIERS.map((c) => c.key) as [string, ...string[]];
+/** Entwurf des Versandbescheids: Standardvorlage der Art SHIPPED (sonst der eingebaute Text), mit Daten des Auftrags und den angegebenen Versandangaben gefüllt. */
+productionRouter.get("/:id/shipped-draft", async (req, res) => {
+  const companyId = req.auth!.companyId;
+  const order = await prisma.orderConfirmation.findFirst({ where: { id: req.params.id, companyId, voidedAt: null }, include: { customer: { select: { email: true } } } });
+  if (!order) throw new HttpError(404, "Auftrag nicht gefunden");
+  const q = (k: string) => (typeof req.query[k] === "string" ? (req.query[k] as string) : undefined);
+  const carrier = q("carrier") ?? order.carrier;
+  const tracking = q("tracking") ?? order.trackingNumber;
+  const values = await loadPlaceholderValues(companyId, "ORDER_CONFIRMATION", order.id);
+  values.versanddienst = carrierLabel(carrier);
+  values.sendungsnummer = (tracking ?? "").trim();
+  values.sendungslink = trackingLink(carrier, tracking);
+  const template = await prisma.emailTemplate.findFirst({ where: { companyId, kind: "SHIPPED", isDefault: true } });
+  const source = template ?? BUILTIN_SHIPPED;
+  const company = await prisma.company.findUnique({ where: { id: companyId } });
+  res.json({
+    to: order.customer.email ?? "",
+    subject: renderText(source.subject, values),
+    message: dropEmptyShippingLines(renderText(source.body, values)),
+    smtpConfigured: company ? isSmtpConfigured(company) : false,
+    alreadySentAt: order.shippedMailAt,
+  });
+});
+
+const shippedMailSchema = z.object({
+  to: z.string().trim().email().optional(),
+  subject: z.string().trim().min(1).max(200),
+  message: z.string().trim().min(1).max(5000),
+  copyToSelf: z.boolean().optional(),
+});
+
+/** Versandbescheid per E-Mail an den Kunden (ohne Anhang). Wird nur auf ausdrücklichen Wunsch gesendet, nie automatisch. */
+productionRouter.post("/:id/shipped-mail", async (req, res) => {
+  const companyId = req.auth!.companyId;
+  const body = shippedMailSchema.parse(req.body);
+  const order = await prisma.orderConfirmation.findFirst({ where: { id: req.params.id, companyId, voidedAt: null }, include: { customer: { select: { email: true } } } });
+  if (!order) throw new HttpError(404, "Auftrag nicht gefunden");
+  const to = body.to || order.customer.email;
+  if (!to) throw new HttpError(400, "Keine E-Mail-Adresse hinterlegt. Bitte beim Kunden eine E-Mail-Adresse eintragen oder eine Empfängeradresse angeben.");
+  const company = await prisma.company.findUnique({ where: { id: companyId } });
+  if (!company) throw new HttpError(404, "Firma nicht gefunden");
+  await sendMailForCompany(company, { to, bcc: body.copyToSelf ? company.smtpFromEmail || company.smtpUser || undefined : undefined, subject: body.subject, text: body.message });
+  await prisma.orderConfirmation.update({ where: { id: order.id }, data: { shippedMailAt: new Date() } });
+  await writeAuditLog({ req, companyId, userId: req.auth!.sub, action: "production.shipped_mail", entityType: "OrderConfirmation", entityId: order.id, metadata: { to } });
+  res.json({ ok: true, sentTo: to });
+});
+
 const patchSchema = z.object({
   productionStatus: z.enum(PRODUCTION_STATUSES).optional(),
   productionNote: z.string().trim().max(500).nullish(),
+  carrier: z.enum(CARRIER_KEYS).nullish(),
+  trackingNumber: z.string().trim().max(60).regex(/^[A-Za-z0-9 ._/-]*$/, "Die Sendungsnummer darf nur Buchstaben, Ziffern und . - _ / enthalten.").nullish(),
 });
 
 productionRouter.patch("/:id", async (req, res) => {
@@ -188,9 +243,11 @@ productionRouter.patch("/:id", async (req, res) => {
     data: {
       ...(body.productionStatus !== undefined ? { productionStatus: body.productionStatus } : {}),
       ...(body.productionNote !== undefined ? { productionNote: body.productionNote || null } : {}),
+      ...(body.carrier !== undefined ? { carrier: body.carrier || null } : {}),
+      ...(body.trackingNumber !== undefined ? { trackingNumber: body.trackingNumber || null } : {}),
       ...(statusChanged ? { productionUpdatedAt: new Date(), shippedAt: body.productionStatus === "SHIPPED" ? new Date() : null } : {}),
     },
-    select: { id: true, productionStatus: true, productionNote: true, shippedAt: true },
+    select: { id: true, productionStatus: true, productionNote: true, shippedAt: true, carrier: true, trackingNumber: true, shippedMailAt: true },
   });
   if (statusChanged) {
     await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "production.status", entityType: "OrderConfirmation", entityId: existing.id, metadata: { from: existing.productionStatus, to: body.productionStatus } });

@@ -6,6 +6,7 @@ import { SaveButton } from "../components/SaveButton";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
 import { MobileCard, MobileField } from "../components/MobileCard";
+import { ProductFiles, type Applied3mf } from "../components/ProductFiles";
 import { calcCost, feesAt, sollParts, type CostRates, type PriceTier, type PrinterCosts } from "../lib/cost";
 
 interface Material {
@@ -158,6 +159,12 @@ export default function Products() {
     if (materials.length === 0) return;
     setMaterialRows((rows) => [...rows, { materialId: materials[0].id, quantityPerUnit: "", override: "" }]);
   }
+  // Werte aus einer fertig geslicten 3MF: Druckzeit und Materialverbrauch gelten für die ganze Platte
+  function applyFrom3mf(r: Applied3mf) {
+    setForm((f) => ({ ...f, printTimeMinutes: String(r.printMinutes), ...(r.pieces ? { piecesPerPlate: String(r.pieces) } : {}) }));
+    setMaterialRows(r.rows.map((x) => ({ materialId: x.materialId, quantityPerUnit: field(x.quantity), override: "" })));
+  }
+
   function updateMaterialRow(idx: number, patch: Partial<MaterialUsageRow>) {
     setMaterialRows((rows) => rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
   }
@@ -288,6 +295,12 @@ export default function Products() {
               </select>
             </div>
           </div>
+
+          {editingId ? (
+            <ProductFiles productId={editingId} productName={form.name} materials={materials} onApply={applyFrom3mf} />
+          ) : (
+            <p className="text-xs text-slate-500">Dateien (STL, 3MF, STEP) mit Versionen lassen sich zuordnen, sobald das Produkt einmal gespeichert ist. Aus einer 3MF kannst du dann Druckzeit und Materialverbrauch übernehmen.</p>
+          )}
 
           <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
             <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-start">

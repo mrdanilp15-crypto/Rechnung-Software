@@ -443,6 +443,10 @@ invoicesRouter.post("/:id/send-email", async (req, res) => {
 
   const locale = (invoice.company.defaultLocale as "de" | "en") || "de";
   const pdfBuffer = await generateAndStoreInvoicePdf(invoice, locale);
+  // Aus einer E-Mail-Vorlage kann {nummer} noch im Text stehen (Entwurf ohne Nummer) - jetzt, nach der Vergabe, einsetzen
+  const withNumber = (s: string | undefined) => s?.replace(/\{nummer\}/gi, invoiceNumber);
+  body.subject = withNumber(body.subject);
+  body.message = withNumber(body.message);
   const text =
     body.message ||
     buildInvoiceEmailText({

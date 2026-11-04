@@ -15,6 +15,9 @@ const SLICE_INFO = `<?xml version="1.0" encoding="UTF-8"?>
     <metadata key="index" value="1"/>
     <metadata key="prediction" value="5400"/>
     <metadata key="weight" value="24.5"/>
+    <object identify_id="101" name="Halter links" skipped="false" />
+    <object identify_id="102" name="Halter rechts" skipped="false" />
+    <object identify_id="103" name="Probe" skipped="true" />
     <filament id="1" tray_info_idx="GFA00" type="PLA" color="#161616" used_m="5.1" used_g="15.2" />
     <filament id="3" tray_info_idx="GFA01" type="PETG" color="#FFFFFF" used_m="3.0" used_g="9.3" />
   </plate>
@@ -49,6 +52,11 @@ describe("Druck senden: 3MF lesen", () => {
     ]);
     expect(plates[1].md5).toBeNull();
     expect(plates[1].filaments[0].color).toBe("#161616");
+  });
+  it("zählt die Objekte auf der Platte ohne übersprungene", () => {
+    const plates = inspect3mf(make3mf());
+    expect(plates[0].objectCount).toBe(2);
+    expect(plates[1].objectCount).toBeNull();
   });
   it("lehnt Dateien ohne G-Code mit hilfreichem Hinweis ab", () => {
     expect(() => inspect3mf(make3mf({ withGcode: false }))).toThrow(/enthält keinen G-Code/);
