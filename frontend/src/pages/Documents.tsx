@@ -127,7 +127,16 @@ export default function Documents() {
     setParams(next, { replace: true });
   }
 
-  async function convert(row: DocRow, path: string, targetBase: string, message: string) {
+  /** Gibt es für denselben Kunden und Betrag schon einen Auftrag, der nicht aus diesem Angebot stammt? Dann vor dem Anlegen eines weiteren nachfragen. */
+  function confirmNoDuplicateOrder(row: DocRow): boolean {
+    if (row.kind !== "QUOTE") return true;
+    const dup = rows.find((r) => r.kind === "ORDER_CONFIRMATION" && r.customerName === row.customerName && r.totalCents === row.totalCents && r.status !== "CANCELLED");
+    if (!dup) return true;
+    return window.confirm(`Für ${row.customerName} gibt es schon einen Auftrag über denselben Betrag (${dup.number ?? "Entwurf"}). Trotzdem einen weiteren Auftrag aus diesem Angebot anlegen?`);
+  }
+
+  async function convert(row: DocRow, path: string, targetBase: string, message: string, alreadyChecked = false) {
+    if (!alreadyChecked && path === "convert-to-order-confirmation" && !confirmNoDuplicateOrder(row)) return;
     try {
       const { data } = await api.post(`${KIND_INFO[row.kind].base}/${row.id}/${path}`);
       showToast(message, "success");
@@ -219,8 +228,9 @@ export default function Documents() {
         label: "Angenommen → Auftrag",
         title: "Der Kunde hat zugesagt: Angebot als angenommen markieren und daraus die Auftragsbestätigung anlegen",
         run: async () => {
+          if (!confirmNoDuplicateOrder(row)) return;
           await api.patch(`/quotes/${row.id}/status`, { status: "ACCEPTED" });
-          void convert(row, "convert-to-order-confirmation", "/order-confirmations", "Angebot angenommen, Auftragsbestätigung als Entwurf angelegt");
+          void convert(row, "convert-to-order-confirmation", "/order-confirmations", "Angebot angenommen, Auftragsbestätigung als Entwurf angelegt", true);
         },
       };
     }
