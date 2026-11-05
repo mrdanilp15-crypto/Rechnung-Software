@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { PdfLink } from "./PdfLink";
+import { PrintStartButton } from "./PrintStartButton";
+import { useAuthStore } from "../store/authStore";
 
 /**
  * Dateien eines Produkts mit Versionen (Revision 1, 2, 3 ...): Neue Version hochladen oder eine Datei aus dem Belegarchiv zuordnen,
@@ -75,6 +77,7 @@ export function guessMaterial(type: string | null, materials: Material[]): strin
 const sel = "px-2 py-1.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm";
 
 export function ProductFiles({ productId, productName, materials, onApply, imageDocumentId, onSetImage }: { productId: string; productName: string; materials: Material[]; onApply: (r: Applied3mf) => void; imageDocumentId?: string | null; onSetImage?: (docId: string | null) => void }) {
+  const isAdmin = useAuthStore((s) => s.user?.role) === "ADMIN";
   const [files, setFiles] = useState<PFile[] | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -249,6 +252,7 @@ export function ProductFiles({ productId, productName, materials, onApply, image
               {f.note && <p className="text-xs text-slate-500">{f.note}</p>}
               <div className="flex flex-wrap gap-3 text-xs">
                 <PdfLink url={`/archive/${f.documentId}/file?download=1`} filename={f.fileName} download className="text-brand hover:underline">Herunterladen</PdfLink>
+                {is3mf(f.fileName) && isAdmin && <PrintStartButton documentId={f.documentId} label="Drucken" className="text-brand hover:underline font-medium" />}
                 {is3mf(f.fileName) && <button type="button" onClick={() => analyse(f)} className="text-brand hover:underline">Werte aus 3MF übernehmen</button>}
                 {onSetImage && f.mimeType?.startsWith("image/") && (imageDocumentId === f.documentId ? <button type="button" onClick={() => onSetImage(null)} className="text-green-600 hover:underline">Produktbild (entfernen)</button> : <button type="button" onClick={() => onSetImage(f.documentId)} className="text-brand hover:underline">Als Produktbild</button>)}
                 {!f.isCurrent && <button type="button" onClick={() => setCurrent(f)} className="text-brand hover:underline">Als aktuell setzen</button>}

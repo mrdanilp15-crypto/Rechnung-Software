@@ -43,7 +43,7 @@ const kindLabel = (row: { kind: Kind; invoiceKind?: string }) =>
 const money = (cents: number | null) => (cents === null ? "-" : new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100));
 const formatDate = (iso?: string | null) => (iso ? new Intl.DateTimeFormat("de-DE").format(new Date(iso)) : "-");
 
-const ROW_COLUMNS = "90px 130px 1fr 90px 100px 110px 230px";
+const ROW_COLUMNS = "90px 130px 1fr 90px 100px 110px 300px";
 
 /** Alle Belegarten in einer Liste - Entwürfe zuerst, Filter nach Art/Entwurf, Suche, Weiterführen zum nächsten Beleg. */
 export default function Documents() {
@@ -195,6 +195,28 @@ export default function Documents() {
     return list;
   }
 
+  /** Der eine nächste Schritt je Beleg als auffälliger Knopf (alles Weitere bleibt im ⋮-Menü). */
+  function nextStep(row: DocRow): { label: string; title: string; run: () => void } | null {
+    if (row.status === "DRAFT" || row.isCancellationDocument || row.hasNext) return null;
+    if (row.kind === "QUOTE" && row.status === "SENT") {
+      return {
+        label: "Angenommen → Auftrag",
+        title: "Der Kunde hat zugesagt: Angebot als angenommen markieren und daraus die Auftragsbestätigung anlegen",
+        run: async () => {
+          await api.patch(`/quotes/${row.id}/status`, { status: "ACCEPTED" });
+          void convert(row, "convert-to-order-confirmation", "/order-confirmations", "Angebot angenommen, Auftragsbestätigung als Entwurf angelegt");
+        },
+      };
+    }
+    if (row.kind === "QUOTE" && row.status === "ACCEPTED") {
+      return { label: "→ Auftrag anlegen", title: "Aus dem angenommenen Angebot die Auftragsbestätigung anlegen (alle Positionen werden übernommen)", run: () => convert(row, "convert-to-order-confirmation", "/order-confirmations", "Auftragsbestätigung als Entwurf angelegt") };
+    }
+    if (row.kind === "ORDER_CONFIRMATION") {
+      return { label: "→ Rechnung", title: "Aus dem Auftrag die Rechnung als Entwurf anlegen (Lieferschein und Anzahlung über das ⋮-Menü)", run: () => convert(row, "convert-to-invoice", "/invoices", "Rechnung als Entwurf angelegt") };
+    }
+    return null;
+  }
+
   function primary(row: DocRow) {
     const path = openPath(row);
     if (path) {
@@ -259,6 +281,10 @@ export default function Documents() {
           const actions = (
             <div className="flex gap-2 justify-end items-center flex-wrap">
               {row.hasNext && <span className="text-xs text-green-600" title="Daraus wurde bereits ein Folgebeleg erstellt">✓ weitergeführt</span>}
+              {(() => {
+                const step = nextStep(row);
+                return step ? <button type="button" onClick={step.run} title={step.title} className="bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded text-sm whitespace-nowrap">{step.label}</button> : null;
+              })()}
               {primary(row)}
               {row.status !== "CANCELLED" && !row.isCancellationDocument && (
                 <button type="button" onClick={() => setSendRow(row)} className="text-brand hover:underline" title={row.emailSentAt ? `Zuletzt per E-Mail gesendet am ${formatDate(row.emailSentAt)}` : "Per E-Mail an den Kunden senden (PDF im Anhang)"}>

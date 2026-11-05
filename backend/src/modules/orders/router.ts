@@ -59,7 +59,20 @@ ordersRouter.get("/:id", async (req, res) => {
   for (const t of times) events.push({ at: t.startedAt, kind: "time", text: `Zeit erfasst: ${hm(t.minutes ?? 0)} h, ${activityLabel(t.activity)}${t.note ? ` (${t.note})` : ""}`, by: nameOf(t.userId) });
   for (const f of files) events.push({ at: f.createdAt, kind: "file", text: `Datei zugeordnet: ${f.document.fileName}`, by: null });
 
+  // Was lässt sich für diesen Auftrag drucken? Direkt zugeordnete 3MF-Dateien und die aktuelle 3MF der Produkte, deren Name einer Position entspricht
+  const norm = (t: string) => t.trim().toLowerCase();
+  const itemNames = new Set(order.items.map((i) => norm(i.description)));
+  const productFiles = await prisma.productFile.findMany({
+    where: { companyId, isCurrent: true, document: { fileName: { endsWith: ".3mf", mode: "insensitive" } } },
+    select: { revision: true, product: { select: { name: true } }, document: { select: { id: true, fileName: true, title: true } } },
+  });
+  const printables = [
+    ...files.filter((f) => /\.3mf$/i.test(f.document.fileName)).map((f) => ({ documentId: f.document.id, fileName: f.document.fileName, label: f.document.title, source: "order" as const, revision: null as number | null })),
+    ...productFiles.filter((p) => itemNames.has(norm(p.product.name))).map((p) => ({ documentId: p.document.id, fileName: p.document.fileName, label: p.product.name, source: "product" as const, revision: p.revision })),
+  ].filter((p, i, all) => all.findIndex((x) => x.documentId === p.documentId) === i);
+
   res.json({
+    printables,
     order: {
       id: order.id,
       number: order.confirmationNumber,

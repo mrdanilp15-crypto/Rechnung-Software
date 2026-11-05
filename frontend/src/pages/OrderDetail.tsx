@@ -4,10 +4,13 @@ import { api } from "../api/client";
 import { OrderCostDialog } from "../components/OrderCostDialog";
 import { PdfLink } from "../components/PdfLink";
 import { Panel, eur } from "../components/dashboard/widgets";
+import { PrintStartButton } from "../components/PrintStartButton";
+import { useAuthStore } from "../store/authStore";
 
 /** Auftragsseite: alles zu einem Auftrag an einem Ort - Positionen, Belege, Drucke, Zeiten, Dateien, Kommentare und Verlauf. */
 
 interface Detail {
+  printables: { documentId: string; fileName: string; label: string; source: "order" | "product"; revision: number | null }[];
   order: {
     id: string; number: string; documentStatus: string; productionStatus: string; priority: number; issueDate: string; expectedDeliveryDate: string | null;
     totalCents: number; subtotalCents: number; notes: string | null; productionNote: string | null; carrier: string | null; trackingNumber: string | null;
@@ -48,6 +51,7 @@ export default function OrderDetail() {
   const [q, setQ] = useState("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
+  const isAdmin = useAuthStore((s) => s.user?.role) === "ADMIN";
 
   const load = useCallback(() => {
     api.get(`/orders/${id}`).then((r) => setD(r.data)).catch((e) => setError(e?.response?.data?.error ?? "Auftrag konnte nicht geladen werden."));
@@ -193,6 +197,22 @@ export default function OrderDetail() {
             </ul>
           </Panel>
           <Panel title="Drucke">
+            {isAdmin && d.printables.length > 0 && (
+              <div className="mb-3 rounded-lg border border-brand/30 bg-brand/5 p-3">
+                <p className="text-xs font-medium text-slate-500 mb-2">Jetzt drucken</p>
+                <ul className="space-y-2 text-sm">
+                  {d.printables.map((p) => (
+                    <li key={p.documentId} className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-medium truncate">{p.label}</span>
+                        <span className="block text-xs text-slate-500 truncate">{p.source === "product" ? `Produktdatei, Version ${p.revision}` : "Datei am Auftrag"} · {p.fileName}</span>
+                      </span>
+                      <PrintStartButton documentId={p.documentId} orderId={d.order.id} label="Drucken" className="shrink-0 bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded-lg text-sm" />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {d.jobs.length === 0 ? <p className="text-sm text-slate-500">Noch kein Druck zugeordnet. Beim Senden eines Drucks oder im Druckverlauf des Druckers den Auftrag wählen.</p> : (
               <ul className="text-sm space-y-1.5">{d.jobs.map((j) => <li key={j.id}><span className="font-medium">{j.name ?? "Druckauftrag"}</span> <span className="text-xs text-slate-500">· {j.printerName} · {j.endedAt ? `${hm(j.minutes ?? 0)} h · ${j.result === "FINISHED" ? "fertig" : j.result === "FAILED" ? "fehlgeschlagen" : j.result === "CANCELLED" ? "abgebrochen" : "beendet"}` : "läuft"}</span></li>)}</ul>
             )}

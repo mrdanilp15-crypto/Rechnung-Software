@@ -14,6 +14,7 @@ import { buildPlanEntries, savePrintPlan } from "./bambu/slicedBooking";
 import { computeFailStats } from "./failStats";
 import { buildAmsMapping, buildStartPayload, inspect3mf, publishToPrinter, remoteFileName, uploadToPrinter } from "./bambu/printJob";
 import { absolutePath } from "../archive/service";
+import AdmZip from "adm-zip";
 
 /**
  * Drucker/Maschinen mit eigenen Kostenwerten (Anschaffungspreis + Lebensdauer -> Abschreibung je Stunde, Leistung -> Strom,
@@ -313,8 +314,33 @@ async function printFile(companyId: string, documentId: string) {
 
 printersRouter.get("/print/files", async (req, res) => {
   if (req.auth!.role !== "ADMIN") throw new HttpError(403, "Nur ein Administrator darf Drucke senden.");
-  const docs = await prisma.archiveDocument.findMany({ where: { companyId: req.auth!.companyId, fileName: { endsWith: ".3mf", mode: "insensitive" } }, orderBy: { createdAt: "desc" }, take: 100, select: { id: true, title: true, fileName: true, sizeBytes: true, createdAt: true } });
-  res.json(docs);
+  const companyId = req.auth!.companyId;
+  const docs = await prisma.archiveDocument.findMany({ where: { companyId, fileName: { endsWith: ".3mf", mode: "insensitive" } }, orderBy: { createdAt: "desc" }, take: 300, select: { id: true, title: true, fileName: true, sizeBytes: true, createdAt: true } });
+  // zu welchem Produkt gehört die Datei? (Produktdateien mit Version) - so erkennt man, welches Teil gedruckt wird
+  const links = await prisma.productFile.findMany({ where: { companyId, documentId: { in: docs.map((d) => d.id) } }, select: { documentId: true, revision: true, isCurrent: true, product: { select: { id: true, name: true } } } });
+  const rows = docs.map((d) => ({ ...d, products: links.filter((l) => l.documentId === d.id).map((l) => ({ id: l.product.id, name: l.product.name, revision: l.revision, isCurrent: l.isCurrent })) }));
+  // Dateien mit Produktzuordnung zuerst (aktuelle Version vor älteren), dann der Rest nach Datum
+  const rank = (r: (typeof rows)[number]) => (r.products.some((p) => p.isCurrent) ? 0 : r.products.length > 0 ? 1 : 2);
+  res.json(rows.sort((a, b) => rank(a) - rank(b)));
+});
+
+// Vorschaubild der Platte aus der 3MF (Bambu Studio legt Metadata/plate_N.png ab) - zeigt, welches Teil gedruckt wird
+printersRouter.get("/print/files/:docId/thumbnail", async (req, res) => {
+  if (req.auth!.role !== "ADMIN") throw new HttpError(403, "Nur ein Administrator darf Drucke senden.");
+  const plate = Math.max(1, Math.min(100, Number(req.query.plate) || 1));
+  const { data } = await printFile(req.auth!.companyId, req.params.docId);
+  let img: Buffer | null = null;
+  try {
+    const zip = new AdmZip(data);
+    const entry = [`Metadata/plate_${plate}.png`, `Metadata/top_${plate}.png`, "Metadata/plate_1.png"].map((n) => zip.getEntry(n)).find((e) => !!e);
+    img = entry ? entry.getData() : null;
+  } catch {
+    img = null;
+  }
+  if (!img) throw new HttpError(404, "Kein Vorschaubild in der Datei.");
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Cache-Control", "private, max-age=3600");
+  res.send(img);
 });
 
 printersRouter.get("/print/files/:docId/inspect", async (req, res) => {

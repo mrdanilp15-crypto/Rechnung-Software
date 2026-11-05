@@ -14,6 +14,8 @@ interface FileRow {
   title: string;
   fileName: string;
   sizeBytes: number;
+  createdAt?: string;
+  products?: { id: string; name: string; revision: number; isCurrent: boolean }[];
 }
 interface Filament {
   id: number;
@@ -34,7 +36,7 @@ const minutes = (s: number) => {
   return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min` : `${m} min`;
 };
 
-export function PrintSendDialog({ printerId, printerName, status, onClose }: { printerId: string; printerName: string; status: LiveStatus; onClose: () => void }) {
+export function PrintSendDialog({ printerId, printerName, status, onClose, initialDocId, initialOrderId }: { printerId: string; printerName: string; status: LiveStatus; onClose: () => void; initialDocId?: string; initialOrderId?: string }) {
   const [files, setFiles] = useState<FileRow[] | null>(null);
   const [docId, setDocId] = useState("");
   const [plates, setPlates] = useState<Plate[] | null>(null);
@@ -42,7 +44,9 @@ export function PrintSendDialog({ printerId, printerName, status, onClose }: { p
   const [assignment, setAssignment] = useState<Record<number, number>>({});
   const [useAms, setUseAms] = useState(true);
   const [clear, setClear] = useState(false);
-  const [orderId, setOrderId] = useState("");
+  const [orderId, setOrderId] = useState(initialOrderId ?? "");
+  const [q, setQ] = useState("");
+  const [noThumb, setNoThumb] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
@@ -52,11 +56,12 @@ export function PrintSendDialog({ printerId, printerName, status, onClose }: { p
   const ready = ["IDLE", "FINISH", "FAILED"].includes(status.state);
 
   useEffect(() => {
-    api.get("/printers/print/files").then((r) => setFiles(r.data)).catch((e) => setError(e?.response?.data?.error ?? "Dateiliste nicht verfügbar."));
+    api.get("/printers/print/files").then((r) => { setFiles(r.data); if (initialDocId) void choose(initialDocId); }).catch((e) => setError(e?.response?.data?.error ?? "Dateiliste nicht verfügbar."));
   }, []);
 
   async function choose(id: string) {
     setDocId(id);
+    setNoThumb(false);
     setPlates(null);
     setError(null);
     if (!id) return;
@@ -85,6 +90,13 @@ export function PrintSendDialog({ printerId, printerName, status, onClose }: { p
     setAssignment(next);
   }
 
+  const chosen = files?.find((f) => f.id === docId);
+  // Anzeigename: Produkt (Version) vor dem Dateititel, damit sofort klar ist, welches Teil gedruckt wird
+  const label = (f: FileRow) => (f.products && f.products.length > 0 ? `${f.products.map((p) => p.name).join(", ")} · Version ${f.products[0].revision}` : f.title);
+  const matches = (f: FileRow) => {
+    const t = q.trim().toLowerCase();
+    return !t || [f.title, f.fileName, ...(f.products ?? []).map((p) => p.name)].some((x) => x.toLowerCase().includes(t));
+  };
   const plate = plates?.find((p) => p.index === plateIdx);
   const allAssigned = !useAms || !plate || plate.filaments.every((f) => assignment[f.id] !== undefined);
 
@@ -115,14 +127,37 @@ export function PrintSendDialog({ printerId, printerName, status, onClose }: { p
           ) : (
             <>
               <p className="text-xs text-slate-500">Es geht nur eine fertig geslicte Datei: in Bambu Studio die Platte slicen und als <strong>G-Code 3MF</strong> exportieren, dann im Belegarchiv ablegen.</p>
-              <label className="block">
-                3MF-Datei aus dem Belegarchiv
-                <select value={docId} onChange={(e) => choose(e.target.value)} className={sel}>
-                  <option value="">- wählen -</option>
-                  {files?.map((f) => <option key={f.id} value={f.id}>{f.title} ({f.fileName}, {(f.sizeBytes / 1048576).toFixed(1)} MB)</option>)}
-                </select>
-                {files && files.length === 0 && <span className="block text-xs text-slate-500 mt-1">Keine 3MF-Datei im Archiv. Lade sie unter Belegarchiv hoch.</span>}
-              </label>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="flex-1">Welche Datei soll gedruckt werden?</span>
+                  {docId && <button type="button" onClick={() => { setDocId(""); setPlates(null); }} className="text-xs text-brand hover:underline">andere wählen</button>}
+                </div>
+                {docId && chosen ? (
+                  <div className="rounded-lg border border-brand/40 bg-brand/5 px-3 py-2">
+                    <div className="font-medium">{label(chosen)}</div>
+                    <div className="text-xs text-slate-500">{chosen.fileName} · {(chosen.sizeBytes / 1048576).toFixed(1)} MB</div>
+                  </div>
+                ) : (
+                  <>
+                    <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Suchen (Produkt, Name, Datei) ..." className={sel + " mb-2"} />
+                    <ul className="max-h-60 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">
+                      {(files ?? []).filter(matches).map((f) => (
+                        <li key={f.id}>
+                          <button type="button" onClick={() => choose(f.id)} className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800">
+                            <span className="block font-medium truncate">{label(f)}</span>
+                            <span className="block text-xs text-slate-500 truncate">
+                              {f.products?.some((p) => p.isCurrent) && <span className="mr-1.5 px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">aktuelle Version</span>}
+                              {f.fileName} · {(f.sizeBytes / 1048576).toFixed(1)} MB{f.createdAt ? ` · ${new Date(f.createdAt).toLocaleDateString("de-DE")}` : ""}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                      {files && files.filter(matches).length === 0 && <li className="px-3 py-3 text-xs text-slate-500">{files.length === 0 ? "Keine 3MF-Datei im Archiv. Lade sie unter Belegarchiv hoch (oder direkt beim Produkt unter Dateien)." : "Nichts gefunden."}</li>}
+                    </ul>
+                    <p className="text-xs text-slate-500 mt-1">Dateien, die einem Produkt zugeordnet sind, stehen oben und tragen den Produktnamen.</p>
+                  </>
+                )}
+              </div>
 
               {plates && plate && (
                 <>
@@ -134,6 +169,7 @@ export function PrintSendDialog({ printerId, printerName, status, onClose }: { p
                       </select>
                     </label>
                   )}
+                  {!noThumb && <img src={`/api/printers/print/files/${docId}/thumbnail?plate=${plateIdx}`} alt="Vorschau der Platte" onError={() => setNoThumb(true)} className="h-40 w-full rounded-lg bg-white object-contain ring-1 ring-slate-200 dark:ring-slate-700" />}
                   {plates.length === 1 && <p className="text-xs text-slate-500">Platte 1{plate.predictionSeconds ? ` · Dauer ca. ${minutes(plate.predictionSeconds)}` : ""}{plate.weightGrams ? ` · ${Math.round(plate.weightGrams)} g Filament` : ""}</p>}
 
                   <label className="flex items-center gap-2"><input type="checkbox" checked={useAms} onChange={(e) => setUseAms(e.target.checked)} /> Filament aus dem AMS / von der Spule zuordnen</label>
