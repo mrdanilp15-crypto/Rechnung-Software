@@ -445,8 +445,8 @@ export default function Archive() {
             <option value="">Alle Tags</option>
             {facets?.tags.map((t) => <option key={t.tag} value={t.tag}>#{t.tag} ({t.count})</option>)}
           </select>
-          <label className="flex items-center gap-1 text-xs text-slate-500">von<input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setYear(""); }} className={inputClass} /></label>
-          <label className="flex items-center gap-1 text-xs text-slate-500">bis<input type="date" value={to} onChange={(e) => { setTo(e.target.value); setYear(""); }} className={inputClass} /></label>
+          <label className="flex items-center gap-1 text-xs text-slate-500 min-w-0">von<input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setYear(""); }} className={`${inputClass} min-w-0`} /></label>
+          <label className="flex items-center gap-1 text-xs text-slate-500 min-w-0">bis<input type="date" value={to} onChange={(e) => { setTo(e.target.value); setYear(""); }} className={`${inputClass} min-w-0`} /></label>
           <div className="flex gap-1">
             <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} className={inputClass} aria-label="Sortieren nach">
               <option value="date">Belegdatum</option>

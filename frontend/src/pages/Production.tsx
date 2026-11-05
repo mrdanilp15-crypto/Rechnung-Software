@@ -227,17 +227,17 @@ export default function Production() {
                           )}
                           {o.documentStatus === "DRAFT" && <StatusChip status="DRAFT" />}
                           {o.shippedAt && col.key === "SHIPPED" && <span className="text-xs text-slate-500">versendet {date(o.shippedAt)}</span>}
-                          {col.key === "SHIPPED" && (o.carrier || o.trackingNumber) && <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300" title="Versanddienst und Sendungsnummer">{[carrierName(o.carrier), o.trackingNumber].filter(Boolean).join(" ")}</span>}
+                          {col.key === "SHIPPED" && (o.carrier || o.trackingNumber) && <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 max-w-full break-all" title="Versanddienst und Sendungsnummer">{[carrierName(o.carrier), o.trackingNumber].filter(Boolean).join(" ")}</span>}
                           {col.key === "SHIPPED" && (o.shippedMailAt
                             ? <span className="text-xs text-green-700 dark:text-green-400" title="Versandbescheid per E-Mail gesendet">✉ {date(o.shippedMailAt)}</span>
                             : <button type="button" onClick={() => setShipDialog({ order: o, markShipped: false })} className="text-xs text-brand hover:underline">Versandmail senden</button>)}
                         </div>
-                        <div className="mt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-700 pt-2">
-                          <div className="flex gap-1">
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-2 border-t border-slate-100 dark:border-slate-700 pt-2">
+                          <div className="flex gap-1 shrink-0">
                             <button type="button" disabled={colIndex === 0} onClick={() => move(o, COLUMNS[colIndex - 1].key)} className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 disabled:opacity-30" aria-label="Eine Spalte zurück">←</button>
                             <button type="button" disabled={colIndex === COLUMNS.length - 1} onClick={() => move(o, COLUMNS[colIndex + 1].key)} className="w-8 h-8 rounded-lg bg-brand text-white disabled:opacity-30" aria-label="Eine Spalte weiter">→</button>
                           </div>
-                          <div className="flex gap-3 text-xs">
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
                             <Link to={`/orders/${o.id}`} className="text-brand hover:underline">Details</Link>
                             <button type="button" onClick={() => setCostOrderId(o.id)} className="text-brand hover:underline">Kosten</button>
                             <button type="button" onClick={() => editNote(o)} className="text-brand hover:underline">Notiz</button>
