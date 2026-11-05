@@ -8,6 +8,7 @@ import { attachPlanToJob, bookPlanAtEnd } from "./slicedBooking";
 import { checkLowStock } from "../../notifications/lowStock";
 import { checkMaintenance } from "../../maintenance/service";
 import { notifyPrinterEvent } from "../../notifications/service";
+import { emitEvent } from "../../plugins/hooks";
 
 /**
  * Anbindung des Monitor-Kerns an Datenbank und Einstellungen: lädt die Drucker mit aktiver Live-Verbindung, entschlüsselt die
@@ -50,6 +51,11 @@ const core = new BambuMonitorCore({
       } catch (err) {
         logger.warn({ err: (err as Error).message }, "Materialabbuchung nach Slicer-Angabe fehlgeschlagen");
       }
+    }
+    // Webhook "print.ended" für jedes Druckende (auch abgebrochen), unabhängig von der Meldung unten
+    if (info.jobId) {
+      const ended = await prisma.printerJob.findUnique({ where: { id: info.jobId }, select: { name: true, minutes: true, result: true, materialUsage: true, orderConfirmationId: true, printer: { select: { name: true } } } });
+      void emitEvent("print.ended", { companyId: target.companyId, job: { id: info.jobId, name: ended?.name ?? info.name, result: info.result, minutes: ended?.minutes ?? info.minutes, printer: ended?.printer.name ?? null, orderId: ended?.orderConfirmationId ?? null, materialUsage: ended?.materialUsage ?? null } }).catch(() => undefined);
     }
     if (info.result !== "FINISHED" && info.result !== "FAILED") return; // abgebrochen oder unbekannt: keine Meldung
     const printer = await prisma.printer.findUnique({ where: { id: target.printerId }, select: { name: true } });

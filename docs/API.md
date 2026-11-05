@@ -72,8 +72,7 @@ const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex
 if (expected !== req.headers["x-signature"]) return res.status(401).end();
 ```
 
-Verfügbare Event-Typen: `invoice.created`, `invoice.sent`, `invoice.paid`,
-`quote.created`, `quote.accepted`, `customer.created`.
+Verfügbare Event-Typen: `invoice.created`, `invoice.sent`, `invoice.paid`, `invoice.overdue`, `quote.created`, `quote.accepted`, `quote.expired`, `customer.created`, `order.status_changed`, `print.ended`, `stock.low` (aktuelle Liste: `GET /api/webhooks/events`). Einrichten und testen geht auch in der Oberfläche unter *Einstellungen → Schnittstellen*; dort gibt es einen Testknopf (Ereignis `webhook.test`) und die letzten Zustellungen. Erlaubt sind http/https-Adressen (auch im Heimnetz), nicht erlaubt sind Zugangsdaten in der Adresse und Metadaten-Adressen (169.254.x.x). Weiterleitungen werden nicht verfolgt, ein Aufruf hat 5 Sekunden Zeit; als erfolgreich gilt Status 200-299.
 
 ## Export/Import
 
@@ -85,3 +84,21 @@ Verfügbare Event-Typen: `invoice.created`, `invoice.sent`, `invoice.paid`,
 
 Aktuell nicht implementiert (nur REST). Siehe [ARCHITECTURE.md](ARCHITECTURE.md),
 Abschnitt "Erweiterbarkeit", für den vorgesehenen Erweiterungsweg.
+
+
+## API-Schlüssel
+
+Für Skripte und Automatisierung (n8n, Zapier, Make) ohne Benutzer-Anmeldung: *Einstellungen → Schnittstellen → API-Schlüssel* (nur Administratoren). Der Schlüssel hat die Form `hp_` plus 48 Hex-Zeichen, wird nur einmal angezeigt (gespeichert wird nur der Hash) und gilt für die eigene Firma:
+
+```
+curl -H "Authorization: Bearer hp_..." https://deine-adresse/api/invoices
+```
+
+- **Nur lesen:** erlaubt nur `GET`. **Lesen und schreiben:** erlaubt auch `POST/PATCH/PUT/DELETE`.
+- Nie erreichbar mit einem Schlüssel (`403`): `/api/auth`, `/api/users`, `/api/api-keys`, `/api/webhooks`, `/api/backups`, `/api/reset`, `/api/companies`, `/api/system`, `/api/notifications`, `/api/time`, `/api/audit-logs`, `/api/calendar`. Ebenso alle Funktionen, die nur Administratoren dürfen (z.B. Druck senden).
+- Ein Schlüssel handelt wie ein Mitarbeiter ohne Verwaltungsrechte. Im Protokoll erscheinen seine Aktionen ohne Benutzer, mit der Schlüssel-ID in den Details.
+- Widerrufen: Der Schlüssel funktioniert sofort nicht mehr. Es gibt höchstens 20 Schlüssel je Firma.
+
+## Kalender-Abo (ICS)
+
+*Einstellungen → Schnittstellen → Kalender-Abo* erzeugt eine geheime Adresse `/api/calendar/feed/<token>.ics`, die Kalender-Apps abonnieren können (Liefertermine offener Aufträge, Zahlungsziele offener Rechnungen, Angebotsfristen, Wartung nach Tagesintervall; Zeitraum 30 Tage zurück bis 180 Tage voraus; ohne Beträge). Die Adresse lässt sich jederzeit erneuern oder abschalten. Sie nutzt `PUBLIC_APP_URL` - für Handys muss das die echte Adresse sein.

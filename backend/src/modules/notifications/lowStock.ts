@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { logger } from "../../utils/logger";
 import { notify } from "./service";
+import { emitEvent } from "../plugins/hooks";
 
 /**
  * Mindestbestand bei Material: Fällt der Bestand auf die eingestellte Grenze oder darunter, kommt einmal eine Meldung (Startseite, Push,
@@ -59,6 +60,7 @@ export async function checkLowStock(companyId?: string): Promise<number> {
       const { title, body } = lowStockMessage(r);
       try {
         await notify(r.companyId, "LOW_STOCK", title, body);
+        void emitEvent("stock.low", { companyId: r.companyId, material: { id: r.id, name: r.name, unit: r.unit, stock: r.stockQuantity, minStock: r.minStock } }).catch(() => undefined);
       } catch (err) {
         // Meldung nicht angelegt: Markierung zurücknehmen, damit die nächste Prüfung es erneut versucht
         await prisma.material.update({ where: { id: r.id }, data: { lowStockNotifiedAt: null } });

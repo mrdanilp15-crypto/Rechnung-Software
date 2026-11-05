@@ -13,6 +13,7 @@ import { PlaceholderHint } from "../components/DocumentTexts";
 import { TemplatesManager } from "../components/TemplatesManager";
 import { FailRateHint } from "../components/FailRateHint";
 import { ConnectionsPanel } from "../components/ConnectionsPanel";
+import { IntegrationsPanel } from "../components/IntegrationsPanel";
 import { useSearchParams } from "react-router-dom";
 import AuditLog from "./AuditLog";
 import { ACCENTS, applyAppearance, cacheAppearance, DEFAULT_APP_NAME, DEFAULT_APPEARANCE } from "../theme/appearance";
@@ -96,6 +97,7 @@ const TABS = [
   { key: "dunning", label: "Mahnwesen", group: "Mein Betrieb" },
   { key: "verbindungen", label: "Verbindungen", group: "Verbindungen" },
   { key: "email", label: "E-Mail-Versand", group: "Verbindungen" },
+  { key: "schnittstellen", label: "Schnittstellen", group: "Verbindungen" },
   { key: "users", label: "Benutzer", group: "Konto & System" },
   { key: "password", label: "Passwort", group: "Konto & System" },
   { key: "security", label: "Sicherheit", group: "Konto & System" },
@@ -555,6 +557,7 @@ export default function Settings() {
 
       {tab === "templates" && user?.role === "ADMIN" && <TemplatesManager />}
       {tab === "verbindungen" && user?.role === "ADMIN" && <ConnectionsPanel />}
+      {tab === "schnittstellen" && user?.role === "ADMIN" && <IntegrationsPanel />}
 
       {tab === "dunning" && user?.role === "ADMIN" && (
         <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-5">

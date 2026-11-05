@@ -54,6 +54,8 @@ import { bankRouter } from "./modules/bank/router";
 import { materialsRouter } from "./modules/materials/router";
 import { auditRouter } from "./modules/audit/router";
 import { todoRouter } from "./modules/todo/router";
+import { apiKeysRouter } from "./modules/apikeys/router";
+import { calendarRouter } from "./modules/calendar/router";
 import { systemRouter } from "./modules/system/router";
 
 export function createApp() {
@@ -146,6 +148,8 @@ export function createApp() {
   app.use("/api/suppliers", suppliersRouter);
   app.use("/api/order-import", orderImportRouter);
   app.use("/api/todo", todoRouter);
+  app.use("/api/api-keys", apiKeysRouter);
+  app.use("/api/calendar", calendarRouter);
   app.use("/api/system", systemRouter);
 
   app.use(notFoundHandler);

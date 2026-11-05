@@ -134,6 +134,7 @@ model Company {
   dunnings            Dunning[]
   recurringInvoices   RecurringInvoice[]
   webhooks            Webhook[]
+  apiKeys     ApiKey[]
   settings            Setting[]
   expenses            Expense[]
 }
@@ -682,6 +683,23 @@ model Setting {
 }
 
 // ---------- Webhooks (Erweiterbarkeit) ----------
+
+// API-Schlüssel für eigene Skripte und Automatisierung (n8n, Zapier ...): nur der Hash wird gespeichert, der Schlüssel selbst nur einmal bei der Erstellung angezeigt.
+// scope READ = nur lesen (GET), FULL = lesen und schreiben, aber ohne Verwaltungsfunktionen (Benutzer, Backups, Einstellungen).
+model ApiKey {
+  id              String    @id @default(uuid())
+  company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId       String
+  name            String
+  keyHash         String    @unique
+  prefix          String
+  scope           String    @default("READ")
+  createdByUserId String?
+  lastUsedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([companyId])
+}
 
 model Webhook {
   id         String   @id @default(uuid())

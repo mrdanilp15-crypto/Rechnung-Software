@@ -30,6 +30,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
   { id: "go-import", label: "Bestellungen importieren (Etsy)", path: "/production", keywords: "etsy import bestellungen shop csv", group: "go" },
   { id: "go-dunning", label: "Mahnwesen einstellen", path: "/settings?tab=dunning", keywords: "mahnung erinnerung mahnwesen", group: "go", adminOnly: true },
   { id: "go-connections", label: "Verbindungen prüfen (E-Mail, Drucker, Backup)", path: "/settings?tab=verbindungen", keywords: "verbindung status backup email smtp push qr", group: "go", adminOnly: true },
+  { id: "go-integrations", label: "Schnittstellen (API-Schlüssel, Webhooks, Kalender)", path: "/settings?tab=schnittstellen", keywords: "api schlüssel webhook n8n zapier kalender ics automation", group: "go", adminOnly: true },
   { id: "go-datev", label: "DATEV-Export / Finanzen", path: "/finance", keywords: "datev export steuer euer finanzen bank", group: "go" },
   { id: "go-stats", label: "Statistik", path: "/stats", keywords: "statistik auswertung umsatz", group: "go" },
 ];

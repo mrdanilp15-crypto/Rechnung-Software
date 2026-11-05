@@ -1,6 +1,7 @@
 import { prisma } from "../../db/prisma";
 import { logger } from "../../utils/logger";
 import { notify } from "../notifications/service";
+import { emitEvent } from "../plugins/hooks";
 
 export interface OverdueInfo {
   number: string | null;
@@ -41,6 +42,9 @@ export async function markOverdueInvoices() {
     const list = byCompany.get(i.companyId) ?? [];
     list.push({ number: i.invoiceNumber, customer: i.customer.name, totalCents: i.totalCents });
     byCompany.set(i.companyId, list);
+  }
+  for (const i of due) {
+    void emitEvent("invoice.overdue", { companyId: i.companyId, invoice: { id: i.id, number: i.invoiceNumber, customer: i.customer.name, totalCents: i.totalCents } }).catch(() => undefined);
   }
   for (const [companyId, list] of byCompany) {
     try {

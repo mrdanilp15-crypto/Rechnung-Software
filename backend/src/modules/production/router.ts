@@ -7,6 +7,7 @@ import { writeAuditLog } from "../audit/auditLog";
 import { isSmtpConfigured, sendMailForCompany } from "../email/mailer";
 import { BUILTIN_SHIPPED, CARRIERS, carrierLabel, dropEmptyShippingLines, loadPlaceholderValues, renderText, trackingLink } from "../templates/render";
 import { laborCents } from "../timetracking/calc";
+import { emitEvent } from "../plugins/hooks";
 import { itemProductKey, machineCost, usageWithCosts, type MaterialPrice } from "./actuals";
 
 /**
@@ -260,6 +261,7 @@ productionRouter.patch("/:id", async (req, res) => {
   });
   if (statusChanged) {
     await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "production.status", entityType: "OrderConfirmation", entityId: existing.id, metadata: { from: existing.productionStatus, to: body.productionStatus } });
+    void emitEvent("order.status_changed", { companyId: req.auth!.companyId, order: { id: existing.id, number: existing.confirmationNumber, from: existing.productionStatus, to: updated.productionStatus } }).catch(() => undefined);
   }
   res.json(updated);
 });

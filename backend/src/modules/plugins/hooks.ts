@@ -16,9 +16,29 @@ export type EventName =
   | "invoice.created"
   | "invoice.sent"
   | "invoice.paid"
+  | "invoice.overdue"
   | "quote.created"
   | "quote.accepted"
-  | "customer.created";
+  | "quote.expired"
+  | "customer.created"
+  | "order.status_changed"
+  | "print.ended"
+  | "stock.low";
+
+/** Alle Ereignisse mit Beschreibung - für die Auswahl bei den Webhooks und die API-Doku. */
+export const EVENT_CATALOG: { name: EventName; label: string }[] = [
+  { name: "invoice.created", label: "Rechnung angelegt" },
+  { name: "invoice.sent", label: "Rechnung fertiggestellt/versendet" },
+  { name: "invoice.paid", label: "Rechnung bezahlt (auch durch den Bankabgleich)" },
+  { name: "invoice.overdue", label: "Rechnung ist überfällig geworden" },
+  { name: "quote.created", label: "Angebot angelegt" },
+  { name: "quote.accepted", label: "Angebot angenommen" },
+  { name: "quote.expired", label: "Angebot abgelaufen" },
+  { name: "customer.created", label: "Kunde angelegt" },
+  { name: "order.status_changed", label: "Auftragsstatus geändert (Produktion)" },
+  { name: "print.ended", label: "Druck beendet (fertig oder fehlgeschlagen)" },
+  { name: "stock.low", label: "Material unter dem Mindestbestand" },
+];
 
 export type EventPayload = { companyId: string; [key: string]: unknown };
 export type EventHandler = (payload: EventPayload) => void | Promise<void>;
