@@ -331,6 +331,7 @@ model Material {
 
   products         ProductMaterial[]
   amsSlots         AmsSlotMapping[]
+  spools           Spool[]
 
   @@index([companyId])
 }
@@ -960,6 +961,28 @@ model OrderFile {
 
   @@unique([orderConfirmationId, documentId])
   @@index([documentId])
+}
+
+// ---------- Spulen (einzelne Rollen eines Materials, mit QR-Etikett) ----------
+// Eine Spule gehört zu einem Material (Artikel). preBusiness = Altbestand, der schon vor Geschäftsbeginn vorhanden war (nur zur
+// Kennzeichnung; der Materialbestand wird dadurch nicht verändert). Der QR-Code auf dem Etikett führt zur Seite der Spule.
+model Spool {
+  id             String   @id @default(uuid())
+  companyId      String
+  material       Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  materialId     String
+  label          String?
+  initialGrams   Int      @default(1000)
+  remainingGrams Int?
+  preBusiness    Boolean  @default(false)
+  acquiredAt     DateTime?
+  note           String?
+  isEmpty        Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([materialId])
+  @@index([companyId])
 }
 
 // ---------- Zeiterfassung ----------

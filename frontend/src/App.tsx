@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Layout from "./components/Layout";
 import { useAuthStore } from "./store/authStore";
 import { api } from "./api/client";
@@ -24,12 +24,15 @@ import Production from "./pages/Production";
 import TimeTracking from "./pages/TimeTracking";
 import OrderDetail from "./pages/OrderDetail";
 import Statistics from "./pages/Statistics";
+import ScanItem from "./pages/ScanItem";
 import AuditLog from "./pages/AuditLog";
 import Settings from "./pages/Settings";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const status = useAuthStore((s) => s.status);
-  if (status !== "authenticated") return <Navigate to="/login" replace />;
+  const location = useLocation();
+  // Die gewünschte Seite merken (z.B. nach dem Scannen eines QR-Codes), damit es nach der Anmeldung dorthin zurückgeht
+  if (status !== "authenticated") return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   return children;
 }
 
@@ -93,6 +96,7 @@ export default function App() {
         <Route path="/time" element={<TimeTracking />} />
         <Route path="/orders/:id" element={<OrderDetail />} />
         <Route path="/stats" element={<Statistics />} />
+        <Route path="/q/:type/:id" element={<ScanItem />} />
         <Route path="/audit-log" element={<AuditLog />} />
         <Route path="/settings" element={<Settings />} />
       </Route>

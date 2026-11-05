@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { currentAppName } from "../theme/appearance";
 import { api } from "../api/client";
@@ -8,6 +8,7 @@ import { useAuthStore } from "../store/authStore";
 export default function Login() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const setUser = useAuthStore((s) => s.setUser);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,7 +25,8 @@ export default function Login() {
     try {
       const { data } = await api.post("/auth/login", { email, password, totpToken: totpToken || undefined });
       setUser(data.user);
-      navigate("/");
+      const from = (location.state as { from?: string } | null)?.from;
+      navigate(from && from.startsWith("/") && !from.startsWith("//") && from !== "/login" ? from : "/");
     } catch (err: any) {
       if (err.response?.data?.requiresTotp) {
         setNeedsTotp(true);

@@ -299,6 +299,7 @@ export default function Printers() {
                 )}
               </div>
               <div className="flex gap-3">
+                <a href={`/q/printer/${p.id}`} className="text-slate-500 hover:underline">QR</a>
                 <button onClick={() => startEdit(p)} className="text-brand hover:underline">Bearbeiten</button>
                 <button onClick={() => remove(p)} className="text-red-600 hover:underline">Entfernen</button>
               </div>

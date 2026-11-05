@@ -212,6 +212,7 @@ export default function Materials() {
               <button onClick={() => startRestock(m)} className="text-brand hover:underline whitespace-nowrap">Nachbestellen</button>
               <RowActionsMenu
                 actions={[
+                  { label: "QR-Etikett und Spulen", onClick: () => { window.location.href = `/q/material/${m.id}`; } },
                   { label: "Bearbeiten", onClick: () => startEdit(m) },
                   { label: "Archivieren", onClick: () => handleArchive(m), danger: true },
                 ]}

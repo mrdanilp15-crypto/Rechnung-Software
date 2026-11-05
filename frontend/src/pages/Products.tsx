@@ -552,6 +552,7 @@ export default function Products() {
               <button onClick={() => startEdit(p)} className="text-brand hover:underline">
                 {t("common.edit")}
               </button>
+              <a href={`/q/product/${p.id}`} className="text-slate-500 hover:underline">QR</a>
               <button onClick={() => handleDelete(p)} className="text-red-600 hover:underline">
                 {t("common.delete")}
               </button>
