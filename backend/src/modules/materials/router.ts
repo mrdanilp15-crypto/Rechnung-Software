@@ -20,14 +20,14 @@ materialsRouter.get("/sku-check", async (req, res) => {
   const sku = String(req.query.sku ?? "");
   const rows = await prisma.material.findMany({ where: { companyId: req.auth!.companyId, isArchived: false }, select: { id: true, sku: true, name: true } });
   const dup = sku.trim() ? findDuplicate(rows, sku, req.query.exceptId ? String(req.query.exceptId) : undefined) : undefined;
-  res.json({ taken: dup ? dup.name : null, next: nextSku(rows.map((r) => r.sku), "M-").sku });
+  res.json({ taken: dup ? dup.name : null, next: nextSku(rows.map((r) => r.sku), "M-", 4, sku).sku });
 });
 
 async function assertSkuFree(companyId: string, sku: string | null | undefined, selfId?: string) {
   if (!sku || !sku.trim()) return;
   const rows = await prisma.material.findMany({ where: { companyId, isArchived: false }, select: { id: true, sku: true, name: true } });
   const dup = findDuplicate(rows, sku, selfId);
-  if (dup) throw new HttpError(409, `Die Artikelnummer ${sku.trim()} ist schon vergeben (${dup.name}). Nächste freie: ${nextSku(rows.map((r) => r.sku), "M-").sku}`);
+  if (dup) throw new HttpError(409, `Die Artikelnummer ${sku.trim()} ist schon vergeben (${dup.name}). Nächste freie: ${nextSku(rows.map((r) => r.sku), "M-", 4, sku).sku}`);
 }
 
 materialsRouter.get("/", async (req, res) => {

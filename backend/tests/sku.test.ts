@@ -35,3 +35,26 @@ describe("Artikelnummern: reine Zahlen und Mischformen", () => {
     expect(nextSku(["7", "12", "P-0005"], "P-").sku).toBe("13");
   });
 });
+
+describe("Artikelnummern: Reihen je Präfix", () => {
+  const rows = ["HW-1", "HW-2", "T4-1", "T4-2", "T4-3"];
+  it("zählt die getippte Reihe weiter, unabhängig von anderen", () => {
+    expect(nextSku(rows, "P-", 4, "HW-").sku).toBe("HW-3");
+    expect(nextSku(rows, "P-", 4, "T4-").sku).toBe("T4-4");
+  });
+  it("findet die Reihe auch ohne Bindestrich und in anderer Schreibweise", () => {
+    expect(nextSku(rows, "P-", 4, "HW").sku).toBe("HW-3");
+    expect(nextSku(rows, "P-", 4, "hw-").sku).toBe("HW-3");
+    expect(nextSku(rows, "P-", 4, "T").sku).toBe("T4-4");
+  });
+  it("leitet die Reihe auch aus einer vollständig getippten Nummer ab", () => {
+    expect(nextSku(rows, "P-", 4, "HW-2").sku).toBe("HW-3");
+  });
+  it("beginnt eine neue Reihe bei 1 im Stil der übrigen", () => {
+    expect(nextSku(rows, "P-", 4, "XY-").sku).toBe("XY-1");
+    expect(nextSku([], "P-", 4, "XY-").sku).toBe("XY-1");
+  });
+  it("ohne getipptes Präfix gilt weiter das häufigste", () => {
+    expect(nextSku(rows, "P-", 4, "").sku).toBe("T4-4");
+  });
+});

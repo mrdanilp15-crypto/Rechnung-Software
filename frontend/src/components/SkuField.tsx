@@ -65,7 +65,9 @@ export function SkuField({ kind, value, onChange, selfId, prefill, label = "Arti
   }, [value, kind, selfId]);
 
   const hasValue = value.trim() !== "";
-  const border = taken ? "border-red-500" : checked && hasValue ? "border-green-500" : "border-slate-300 dark:border-slate-600";
+  // nur ein Präfix getippt (z.B. "HW-"): dann die nächste Nummer dieser Reihe vorschlagen statt "frei" zu melden
+  const prefixOnly = hasValue && !/\d$/.test(value.trim());
+  const border = taken ? "border-red-500" : checked && hasValue && !prefixOnly ? "border-green-500" : "border-slate-300 dark:border-slate-600";
 
   return (
     <div>
@@ -80,7 +82,7 @@ export function SkuField({ kind, value, onChange, selfId, prefill, label = "Arti
         <button
           type="button"
           onClick={async () => {
-            const r = await check("");
+            const r = await check(value);
             if (r) {
               setNext(r.next);
               onChange(r.next);
@@ -92,9 +94,14 @@ export function SkuField({ kind, value, onChange, selfId, prefill, label = "Arti
           Nächste frei
         </button>
       </div>
-      {taken ? (
+      {prefixOnly && next ? (
+        <p className="text-xs text-slate-500 mt-1">
+          Nächste in dieser Reihe:{" "}
+          <button type="button" onClick={() => onChange(next)} className="text-brand font-medium hover:underline">{next}</button> (anklicken zum Übernehmen)
+        </p>
+      ) : taken ? (
         <p className="text-xs text-red-600 mt-1">Schon vergeben an „{taken}“.{next ? ` Nächste freie: ${next}` : ""}</p>
-      ) : checked && hasValue ? (
+      ) : checked && hasValue && !prefixOnly ? (
         <p className="text-xs text-green-600 mt-1">Frei.</p>
       ) : (
         <p className="text-xs text-slate-500 mt-1">{next ? `Nächste freie Nummer: ${next}` : "Leer lassen, wenn du keine Nummer vergeben willst."}</p>

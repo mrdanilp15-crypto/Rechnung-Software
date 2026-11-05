@@ -23,7 +23,7 @@ productsRouter.get("/sku-check", async (req, res) => {
   const sku = String(req.query.sku ?? "");
   const rows = await prisma.product.findMany({ where: { companyId: req.auth!.companyId, isArchived: false }, select: { id: true, sku: true, name: true } });
   const dup = sku.trim() ? findDuplicate(rows, sku, req.query.exceptId ? String(req.query.exceptId) : undefined) : undefined;
-  res.json({ taken: dup ? dup.name : null, next: nextSku(rows.map((r) => r.sku), "P-").sku });
+  res.json({ taken: dup ? dup.name : null, next: nextSku(rows.map((r) => r.sku), "P-", 4, sku).sku });
 });
 
 /** Artikelnummer darf in der Firma nur einmal vorkommen (Groß-/Kleinschreibung egal); sonst Fehler mit Vorschlag. */
@@ -31,7 +31,7 @@ async function assertSkuFree(companyId: string, sku: string | undefined, selfId?
   if (!sku || !sku.trim()) return;
   const rows = await prisma.product.findMany({ where: { companyId, isArchived: false }, select: { id: true, sku: true, name: true } });
   const dup = findDuplicate(rows, sku, selfId);
-  if (dup) throw new HttpError(409, `Die Artikelnummer ${sku.trim()} ist schon vergeben (${dup.name}). Nächste freie: ${nextSku(rows.map((r) => r.sku), "P-").sku}`);
+  if (dup) throw new HttpError(409, `Die Artikelnummer ${sku.trim()} ist schon vergeben (${dup.name}). Nächste freie: ${nextSku(rows.map((r) => r.sku), "P-", 4, sku).sku}`);
 }
 
 productsRouter.get("/", async (req, res) => {
