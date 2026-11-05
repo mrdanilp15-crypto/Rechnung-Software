@@ -33,7 +33,7 @@ productionRouter.get("/", async (req, res) => {
       ...(includeShipped ? {} : { OR: [{ productionStatus: { not: "SHIPPED" } }, { shippedAt: { gte: cutoff } }, { shippedAt: null }] }),
     },
     include: { customer: { select: { name: true } }, items: { orderBy: { position: "asc" } } },
-    orderBy: [{ expectedDeliveryDate: { sort: "asc", nulls: "last" } }, { issueDate: "desc" }],
+    orderBy: [{ priority: "desc" }, { expectedDeliveryDate: { sort: "asc", nulls: "last" } }, { issueDate: "desc" }],
     take: 500,
   });
 
@@ -63,6 +63,7 @@ productionRouter.get("/", async (req, res) => {
       for (const it of o.items) printMinutes += (minutesByName.get(it.description.trim().toLowerCase()) ?? 0) * it.quantity;
       const prints = printsByOrder.get(o.id);
       return {
+        priority: o.priority,
         prints: prints ? { count: prints.count, minutes: Math.round(prints.minutes), grams: Math.round(prints.grams), materialCents: Math.round(prints.materialCents) } : null,
         id: o.id,
         number: o.confirmationNumber,

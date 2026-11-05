@@ -26,6 +26,7 @@ interface Order {
   itemCount: number;
   itemSummary: string[];
   printMinutes: number;
+  priority?: number;
   prints: { count: number; minutes: number; grams: number; materialCents: number } | null;
 }
 
@@ -183,7 +184,7 @@ export default function Production() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <div className="font-medium truncate">{o.number}</div>
+                            <div className="font-medium truncate"><Link to={`/orders/${o.id}`} className="hover:text-brand">{o.number}</Link>{(o.priority ?? 0) > 0 && <span className={`ml-2 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${o.priority === 2 ? "bg-red-500/15 text-red-500" : "bg-amber-500/15 text-amber-600"}`}>{o.priority === 2 ? "dringend" : "hoch"}</span>}</div>
                             <div className="text-xs text-slate-500 truncate">{o.customerName}</div>
                           </div>
                           <span className="font-medium shrink-0">{money(o.totalCents)}</span>
@@ -214,6 +215,7 @@ export default function Production() {
                             <button type="button" disabled={colIndex === COLUMNS.length - 1} onClick={() => move(o, COLUMNS[colIndex + 1].key)} className="w-8 h-8 rounded-lg bg-brand text-white disabled:opacity-30" aria-label="Eine Spalte weiter">→</button>
                           </div>
                           <div className="flex gap-3 text-xs">
+                            <Link to={`/orders/${o.id}`} className="text-brand hover:underline">Details</Link>
                             <button type="button" onClick={() => setCostOrderId(o.id)} className="text-brand hover:underline">Kosten</button>
                             <button type="button" onClick={() => editNote(o)} className="text-brand hover:underline">Notiz</button>
                             <Link to={o.documentStatus === "DRAFT" ? `/order-confirmations/${o.id}/edit` : "/documents?type=ORDER_CONFIRMATION"} className="text-brand hover:underline">Beleg</Link>

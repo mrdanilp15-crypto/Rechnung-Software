@@ -636,6 +636,10 @@ model OrderConfirmation {
   deliveryNotes DeliveryNote[]
   printerJobs   PrinterJob[]
   timeEntries   TimeEntry[]
+  // Priorität im Produktionsboard: 0 normal, 1 hoch, 2 dringend
+  priority      Int      @default(0)
+  comments      OrderComment[]
+  files         OrderFile[]
 
   @@unique([companyId, confirmationNumber])
   @@index([companyId])
@@ -824,6 +828,7 @@ model ArchiveDocument {
   updatedAt    DateTime @updatedAt
 
   productFiles ProductFile[]
+  orderFiles   OrderFile[]
 
   @@index([companyId, documentDate])
   @@index([companyId, sha256])
@@ -925,6 +930,34 @@ model AmsSlotMapping {
   @@unique([printerId, slot])
   @@index([materialId])
   @@index([companyId])
+}
+
+// ---------- Auftragsseite: Kommentare und Dateien ----------
+model OrderComment {
+  id                  String            @id @default(uuid())
+  companyId           String
+  orderConfirmation   OrderConfirmation @relation(fields: [orderConfirmationId], references: [id], onDelete: Cascade)
+  orderConfirmationId String
+  userId              String // bewusst ohne Fremdschlüssel (Kommentare bleiben, auch wenn ein Benutzer entfernt wird)
+  text                String
+  createdAt           DateTime          @default(now())
+
+  @@index([orderConfirmationId, createdAt])
+}
+
+// Datei aus dem Belegarchiv am Auftrag (Kundendatei, Foto, Freigabe ...)
+model OrderFile {
+  id                  String            @id @default(uuid())
+  companyId           String
+  orderConfirmation   OrderConfirmation @relation(fields: [orderConfirmationId], references: [id], onDelete: Cascade)
+  orderConfirmationId String
+  document            ArchiveDocument   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId          String
+  note                String?
+  createdAt           DateTime          @default(now())
+
+  @@unique([orderConfirmationId, documentId])
+  @@index([documentId])
 }
 
 // ---------- Zeiterfassung ----------
