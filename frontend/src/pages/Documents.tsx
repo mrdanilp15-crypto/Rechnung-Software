@@ -243,6 +243,9 @@ export default function Documents() {
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h1 className="text-2xl font-semibold">Belege</h1>
+        <div className="flex items-center gap-4">
+        <Link to="/recurring" className="text-sm text-brand hover:underline whitespace-nowrap">Wiederkehrende Rechnungen</Link>
+        <Link to="/invoices" className="text-sm text-brand hover:underline whitespace-nowrap hidden sm:inline">Rechnungen verwalten</Link>
         <div className="relative" ref={newRef}>
           <button onClick={() => setNewOpen((v) => !v)} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm w-full sm:w-auto">
             + Neuer Beleg ▾
@@ -256,6 +259,7 @@ export default function Documents() {
               ))}
             </div>
           )}
+        </div>
         </div>
       </div>
 

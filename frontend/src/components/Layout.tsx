@@ -6,6 +6,7 @@ import { useDarkMode } from "../theme/useDarkMode";
 import { setLocale } from "../i18n";
 import { api } from "../api/client";
 import { GlobalSearch } from "./GlobalSearch";
+import { NewMenu } from "./NewMenu";
 import { Icon, type IconName } from "./Icon";
 import { cachedAppearance, setAppearanceFromCompany } from "../theme/appearance";
 
@@ -326,6 +327,7 @@ export default function Layout() {
             <kbd className="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-600">Strg K</kbd>
           </button>
           <div className="ml-auto flex items-center gap-1">
+            <NewMenu />
             <button onClick={toggle} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t("settings.darkMode")} title={t("settings.darkMode")}>
               <Icon name={isDark ? "sun" : "moon"} className="w-5 h-5" />
             </button>

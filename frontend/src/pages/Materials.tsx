@@ -52,6 +52,18 @@ export default function Materials() {
     api.get("/suppliers").then((res) => setSuppliers(res.data)).catch(() => setSuppliers([]));
   }, []);
 
+  // ?new=1 (aus dem Schnellmenü): Formular zum Anlegen sofort öffnen
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("new") === "1") {
+      startCreate();
+      url.searchParams.delete("new"); // nicht erneut öffnen, wenn man den Reiter wechselt
+      window.history.replaceState(null, "", url);
+    }
+    // nur beim Öffnen der Seite
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function startCreate() {
     setEditingId(null);
     setForm(emptyForm);

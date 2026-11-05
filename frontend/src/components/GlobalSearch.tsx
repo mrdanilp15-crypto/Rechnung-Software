@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
+import { useAuthStore } from "../store/authStore";
+import { matchActions } from "../lib/quickActions";
 
 interface Hit {
   type: string;
@@ -18,6 +20,7 @@ const TYPE_LABEL: Record<string, string> = {
   delivery_note: "Lieferschein",
   product: "Produkt",
   archive: "Archiv",
+  action: "Aktion",
 };
 
 /**
@@ -31,6 +34,11 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
   const [active, setActive] = useState(0);
   const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isAdmin = useAuthStore((s) => s.user?.role) === "ADMIN";
+  // Aktionen ("Neue Rechnung", "Druck starten" ...) stehen vor den Suchtreffern; bei leerer Eingabe sieht man alle "Neu"-Aktionen
+  const actionHits: Hit[] = useMemo(() => matchActions(q, isAdmin).map((a) => ({ type: "action", id: a.id, title: a.label, subtitle: "Aktion", path: a.path })), [q, isAdmin]);
+  const all = [...actionHits, ...hits];
+  useEffect(() => setActive(0), [q]);
 
   useEffect(() => {
     if (open) {
@@ -86,17 +94,17 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
             if (e.key === "Escape") onClose();
             else if (e.key === "ArrowDown") {
               e.preventDefault();
-              setActive((a) => Math.min(hits.length - 1, a + 1));
+              setActive((a) => Math.min(all.length - 1, a + 1));
             } else if (e.key === "ArrowUp") {
               e.preventDefault();
               setActive((a) => Math.max(0, a - 1));
-            } else if (e.key === "Enter") choose(hits[active]);
+            } else if (e.key === "Enter") choose(all[active]);
           }}
-          placeholder="Kunde, Rechnung, Angebot oder Produkt suchen ..."
+          placeholder="Suchen oder Aktion starten (z.B. neue Rechnung) ..."
           className="w-full px-4 py-3 text-sm bg-transparent outline-none border-b border-slate-200 dark:border-slate-700"
         />
         <div className="max-h-80 overflow-auto">
-          {hits.map((h, i) => (
+          {all.map((h, i) => (
             <button
               key={`${h.type}-${h.id}`}
               type="button"
@@ -108,8 +116,8 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
               <span className="text-xs text-slate-500 shrink-0 truncate max-w-[50%]">{h.subtitle || TYPE_LABEL[h.type]}</span>
             </button>
           ))}
-          {q.trim().length >= 2 && hits.length === 0 && !searching && <p className="px-4 py-6 text-sm text-slate-500 text-center">Nichts gefunden.</p>}
-          {q.trim().length < 2 && <p className="px-4 py-6 text-sm text-slate-500 text-center">Mindestens 2 Zeichen eingeben.</p>}
+          {q.trim().length >= 2 && all.length === 0 && !searching && <p className="px-4 py-6 text-sm text-slate-500 text-center">Nichts gefunden.</p>}
+          {q.trim().length < 2 && <p className="px-4 py-3 text-xs text-slate-500 border-t border-slate-100 dark:border-slate-700">Oben stehen Aktionen. Ab 2 Zeichen suche ich auch in Kunden, Belegen und Produkten.</p>}
         </div>
         <div className="px-4 py-2 text-xs text-slate-400 border-t border-slate-100 dark:border-slate-700 flex gap-4">
           <span>↑↓ wählen</span>

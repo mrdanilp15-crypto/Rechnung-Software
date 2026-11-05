@@ -66,6 +66,18 @@ export default function Customers() {
   const fuse = useMemo(() => new Fuse(customers, { keys: ["name", "email", "city", "customerNumber"], threshold: 0.35 }), [customers]);
   const filtered = query ? fuse.search(query).map((r) => r.item) : customers;
 
+  // ?new=1 (aus dem Schnellmenü): Formular zum Anlegen sofort öffnen
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("new") === "1") {
+      startCreate();
+      url.searchParams.delete("new"); // nicht erneut öffnen, wenn man den Reiter wechselt
+      window.history.replaceState(null, "", url);
+    }
+    // nur beim Öffnen der Seite
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function startCreate() {
     setEditingId(null);
     setForm(emptyForm);

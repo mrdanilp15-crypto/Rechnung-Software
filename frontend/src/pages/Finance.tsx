@@ -6,6 +6,7 @@ import { useSaveStatus } from "../hooks/useSaveStatus";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { TaxPanel } from "../components/TaxPanel";
 import { DatevPanel } from "../components/DatevPanel";
+import { useSearchParams } from "react-router-dom";
 import { AssetsPanel } from "../components/AssetsPanel";
 import { ReceiptScanDialog } from "../components/ReceiptScanDialog";
 import { FinanceChart, FinanceLegend, type FinanceMonth } from "../components/FinanceChart";
@@ -46,7 +47,10 @@ const emptyExpense = { date: new Date().toISOString().slice(0, 10), vendor: "", 
 const RECEIPT_TYPES = ".pdf,.png,.jpg,.jpeg,.webp";
 
 export default function Finance() {
-  const [tab, setTab] = useState<"euer" | "expenses" | "assets" | "bank" | "tax">("euer");
+  // ?tab=... springt direkt zu einem Reiter (z.B. Neue Ausgabe aus dem Schnellmenü)
+  const [searchParams] = useSearchParams();
+  const startTab = searchParams.get("tab");
+  const [tab, setTab] = useState<"euer" | "expenses" | "assets" | "bank" | "tax">((startTab === "expenses" || startTab === "assets" || startTab === "bank" || startTab === "tax") ? startTab : "euer");
   const [year, setYear] = useState(new Date().getFullYear());
   const [summary, setSummary] = useState<EuerSummary | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);

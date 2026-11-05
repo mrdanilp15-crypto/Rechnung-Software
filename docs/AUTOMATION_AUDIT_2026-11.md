@@ -88,7 +88,7 @@ Vorschlag: eine Seite **Einstellungen -> Verbindungen** mit Ampel je Punkt (grü
 
 ## 6. Empfohlene Reihenfolge
 
-**Paket 1 - Überblick und nichts versteckt (klein bis mittel, größter Effekt)**
+**Paket 1 - Überblick und nichts versteckt (klein bis mittel, größter Effekt) - UMGESETZT (Punkte 1 bis 4, bis auf "Einstellungen in Gruppen" kurz; siehe USER_GUIDE)**
 1. Dashboard-Block "Heute zu tun" (alle Punkte aus B an einer Stelle, jeweils mit Klick zur Lösung).
 2. Einstellungen -> **Verbindungen** mit Ampel und Testknöpfen (Abschnitt 4).
 3. Menü aufräumen: Wiederkehrende Rechnungen, Import, Wartung sichtbar verlinken; "+ Neu"-Knopf oben; Suche um Aktionen erweitern; Einrichtungs-Checkliste.

@@ -122,6 +122,18 @@ export default function Products() {
   const fuse = useMemo(() => new Fuse(products, { keys: ["name", "sku", "description"], threshold: 0.35 }), [products]);
   const filtered = query ? fuse.search(query).map((r) => r.item) : products;
 
+  // ?new=1 (aus dem Schnellmenü): Formular zum Anlegen sofort öffnen
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("new") === "1") {
+      startCreate();
+      url.searchParams.delete("new"); // nicht erneut öffnen, wenn man den Reiter wechselt
+      window.history.replaceState(null, "", url);
+    }
+    // nur beim Öffnen der Seite
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function startCreate() {
     setEditingId(null);
     setForm(emptyForm);

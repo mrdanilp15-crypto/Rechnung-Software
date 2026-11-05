@@ -3,6 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 import { api } from "../api/client";
 import { StatusChip } from "../components/StatusChip";
 import { type LiveStatus } from "../components/PrinterLive";
+import { TodoPanel } from "../components/TodoPanel";
+import { SetupChecklist } from "../components/SetupChecklist";
 import { NotificationsCard } from "../components/NotificationsCard";
 import { useAuthStore } from "../store/authStore";
 import { Kpi, MaterialWidget, MonthChart, OrdersWidget, Panel, PrinterOverview, QuickActions, eur, isLow, stockKg, type DayPoint, type MaterialRow, type OrderRow } from "../components/dashboard/widgets";
@@ -127,12 +129,10 @@ export default function Dashboard() {
   const [series, setSeries] = useState<DayPoint[]>([]);
   const [chartRange, setChartRange] = useState<"month" | "year">("month");
   const [livePrinters, setLivePrinters] = useState<{ id: string; name: string; status: LiveStatus; imageDocumentId?: string | null }[]>([]);
-  const [dunning, setDunning] = useState<{ invoiceId: string; invoiceNumber: string; customerName: string; totalCents: number; daysOverdue: number; nextLevel: number }[]>([]);
 
   useEffect(() => {
     api.get("/documents").then((res) => setRows(res.data)).finally(() => setLoading(false));
     api.get("/companies/me/revenue-status").then((res) => setRevenue(res.data));
-    api.get("/dunning/suggestions").then((res) => setDunning(res.data)).catch(() => setDunning([]));
     api.get("/production").then((res) => setOrders(res.data.items)).catch(() => setOrders([]));
     api.get("/documents/stats").then((res) => setStats(res.data)).catch(() => setStats(null));
     api.get("/materials").then((res) => setMaterials(res.data)).catch(() => setMaterials([]));
@@ -231,19 +231,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {dunning.length > 0 && (
-        <div className="mb-6 rounded-xl border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 p-4">
-          <h2 className="text-sm font-medium mb-2">Zahlung überfällig - Erinnerung/Mahnung fällig</h2>
-          <div className="space-y-1.5 text-sm">
-            {dunning.slice(0, 5).map((d) => (
-              <Link key={d.invoiceId} to={`/invoices/${d.invoiceId}?dunning=1`} className="flex items-center justify-between gap-3 hover:underline">
-                <span className="truncate">{d.invoiceNumber} · {d.customerName} · {d.daysOverdue} Tage überfällig</span>
-                <span className="shrink-0">{eur(d.totalCents)} <span className="text-brand ml-2">{d.nextLevel === 1 ? "Erinnerung" : `${d.nextLevel - 1}. Mahnung`} →</span></span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+      <TodoPanel />
+      <SetupChecklist />
 
       {loading ? (
         <p>Wird geladen ...</p>

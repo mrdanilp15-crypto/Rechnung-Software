@@ -63,7 +63,7 @@ export function buildChecks(i: ChecksInput): Check[] {
     for (const p of i.printers) {
       const state: State = p.connection === "online" ? "ok" : p.connection === "connecting" ? "warn" : "error";
       const text = p.connection === "online" ? "verbunden" : p.connection === "connecting" ? "verbindet ..." : p.connection === "auth_failed" ? "Zugangscode wird abgelehnt" : p.connection === "offline" ? "nicht erreichbar (ausgeschaltet oder anderes Netz?)" : "Verbindungsfehler";
-      checks.push({ id: `printer-${p.name}`, label: `Drucker ${p.name}`, state, detail: p.message && state !== "ok" ? `${text} - ${p.message}` : text, to: "/catalog?tab=printers" });
+      checks.push({ id: `printer-${p.name}`, label: `Drucker ${p.name}`, state, detail: p.message && state !== "ok" && p.message.toLowerCase() !== text.toLowerCase() ? `${text} - ${p.message}` : text, to: "/catalog?tab=printers" });
     }
   }
 

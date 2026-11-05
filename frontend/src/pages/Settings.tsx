@@ -12,6 +12,8 @@ import { useToast } from "../components/Toast";
 import { PlaceholderHint } from "../components/DocumentTexts";
 import { TemplatesManager } from "../components/TemplatesManager";
 import { FailRateHint } from "../components/FailRateHint";
+import { ConnectionsPanel } from "../components/ConnectionsPanel";
+import { useSearchParams } from "react-router-dom";
 import AuditLog from "./AuditLog";
 import { ACCENTS, applyAppearance, cacheAppearance, DEFAULT_APP_NAME, DEFAULT_APPEARANCE } from "../theme/appearance";
 import { THEMES, themeById } from "../theme/themes";
@@ -87,18 +89,19 @@ interface RevenueStatus {
 const formatEuro = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
 
 const TABS = [
-  { key: "company", label: "Firma" },
-  { key: "password", label: "Passwort" },
-  { key: "users", label: "Benutzer" },
-  { key: "branding", label: "Logo & Stempel" },
-  { key: "appearance", label: "Darstellung" },
-  { key: "design", label: "Beleg-Design" },
-  { key: "dunning", label: "Mahnwesen" },
-  { key: "email", label: "E-Mail-Versand" },
-  { key: "templates", label: "Vorlagen" },
-  { key: "security", label: "Sicherheit" },
-  { key: "audit", label: "Protokoll" },
-  { key: "data", label: "Daten" },
+  { key: "company", label: "Firma", group: "Mein Betrieb" },
+  { key: "branding", label: "Logo & Stempel", group: "Mein Betrieb" },
+  { key: "design", label: "Beleg-Design", group: "Mein Betrieb" },
+  { key: "templates", label: "Vorlagen", group: "Mein Betrieb" },
+  { key: "dunning", label: "Mahnwesen", group: "Mein Betrieb" },
+  { key: "verbindungen", label: "Verbindungen", group: "Verbindungen" },
+  { key: "email", label: "E-Mail-Versand", group: "Verbindungen" },
+  { key: "users", label: "Benutzer", group: "Konto & System" },
+  { key: "password", label: "Passwort", group: "Konto & System" },
+  { key: "security", label: "Sicherheit", group: "Konto & System" },
+  { key: "appearance", label: "Darstellung", group: "Konto & System" },
+  { key: "audit", label: "Protokoll", group: "Konto & System" },
+  { key: "data", label: "Daten", group: "Konto & System" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -106,7 +109,10 @@ export default function Settings() {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const showToast = useToast();
-  const [tab, setTab] = useState<TabKey>("company");
+  // ?tab=... springt direkt zu einem Reiter (z.B. aus der Einrichtungs-Checkliste oder der Verbindungs-Seite)
+  const [searchParams] = useSearchParams();
+  const initialTab = TABS.find((x) => x.key === searchParams.get("tab"))?.key;
+  const [tab, setTab] = useState<TabKey>(initialTab ?? "company");
   const [company, setCompany] = useState<Company | null>(null);
   const [revenue, setRevenue] = useState<RevenueStatus | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -278,15 +284,20 @@ export default function Settings() {
         </div>
       )}
 
-      <div className="flex gap-2 mb-6 flex-wrap">
-        {visibleTabs.map((tb) => (
-          <button
-            key={tb.key}
-            onClick={() => setTab(tb.key)}
-            className={`px-4 py-2 rounded text-sm ${tab === tb.key ? "bg-brand text-white" : "bg-slate-200 dark:bg-slate-700"}`}
-          >
-            {tb.label}
-          </button>
+      <div className="mb-6 space-y-2">
+        {[...new Set(visibleTabs.map((tb) => tb.group))].map((group) => (
+          <div key={group} className="flex flex-wrap items-center gap-2">
+            {user?.role === "ADMIN" && <span className="w-full sm:w-32 text-xs font-medium uppercase tracking-wide text-slate-400 shrink-0">{group}</span>}
+            {visibleTabs.filter((tb) => tb.group === group).map((tb) => (
+              <button
+                key={tb.key}
+                onClick={() => setTab(tb.key)}
+                className={`px-4 py-2 rounded text-sm ${tab === tb.key ? "bg-brand text-white" : "bg-slate-200 dark:bg-slate-700"}`}
+              >
+                {tb.label}
+              </button>
+            ))}
+          </div>
         ))}
       </div>
 
@@ -543,6 +554,7 @@ export default function Settings() {
       {tab === "users" && user?.role === "ADMIN" && <Users />}
 
       {tab === "templates" && user?.role === "ADMIN" && <TemplatesManager />}
+      {tab === "verbindungen" && user?.role === "ADMIN" && <ConnectionsPanel />}
 
       {tab === "dunning" && user?.role === "ADMIN" && (
         <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-5">
