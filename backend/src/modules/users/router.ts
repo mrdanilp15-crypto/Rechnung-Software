@@ -32,7 +32,7 @@ const createUserSchema = z.object({
 usersRouter.post("/", requireRole("ADMIN"), async (req, res) => {
   const body = createUserSchema.parse(req.body);
   if (!isPasswordStrongEnough(body.password)) throw new HttpError(400, "Passwort zu schwach");
-  const existing = await prisma.user.findUnique({ where: { email: body.email } });
+  const existing = await prisma.user.findFirst({ where: { email: { equals: body.email.trim(), mode: "insensitive" } } });
   if (existing) throw new HttpError(409, "E-Mail bereits vergeben");
   const passwordHash = await hashPassword(body.password);
   const { password: _password, ...rest } = body;

@@ -18,8 +18,16 @@ import { logger } from "../../utils/logger";
 
 export const authRouter = Router();
 
-const MAX_FAILED_LOGINS = 5;
-const LOCKOUT_MINUTES = 15;
+// Nach MAX_FAILED_LOGINS Fehlversuchen kurz sperren; Fehlversuche verfallen nach FAILED_WINDOW_MINUTES ohne weiteren Fehlversuch
+// (sonst würde ein Vertipper pro Monat irgendwann sperren).
+const MAX_FAILED_LOGINS = 10;
+const LOCKOUT_MINUTES = 5;
+const FAILED_WINDOW_MINUTES = 15;
+
+/** E-Mail-Suche ohne Beachtung von Groß-/Kleinschreibung und Leerzeichen (Handy-Tastaturen schreiben den ersten Buchstaben oft groß). */
+async function findUserByEmail(email: string) {
+  return prisma.user.findFirst({ where: { email: { equals: email.trim(), mode: "insensitive" } } });
+}
 
 const registerSchema = z.object({
   companyName: z.string().min(2),
@@ -42,7 +50,7 @@ authRouter.post("/register", async (req, res) => {
   if (!isPasswordStrongEnough(body.password)) {
     throw new HttpError(400, "Passwort zu schwach (mind. 10 Zeichen, Buchstaben und Ziffern)");
   }
-  const existing = await prisma.user.findUnique({ where: { email: body.email } });
+  const existing = await findUserByEmail(body.email);
   if (existing) throw new HttpError(409, "E-Mail-Adresse ist bereits registriert");
 
   const passwordHash = await hashPassword(body.password);
@@ -90,14 +98,14 @@ authRouter.post("/register", async (req, res) => {
 });
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().email(),
   password: z.string(),
   totpToken: z.string().optional(),
 });
 
 authRouter.post("/login", async (req, res) => {
   const body = loginSchema.parse(req.body);
-  const user = await prisma.user.findUnique({ where: { email: body.email } });
+  const user = await findUserByEmail(body.email);
 
   // Bewusst generische Fehlermeldung (kein User-Enumeration-Leak).
   const genericError = () => new HttpError(401, "E-Mail oder Passwort ist falsch");
@@ -105,21 +113,26 @@ authRouter.post("/login", async (req, res) => {
   if (!user || !user.isActive) throw genericError();
 
   if (user.lockedUntil && user.lockedUntil > new Date()) {
-    throw new HttpError(423, "Konto vorübergehend gesperrt. Bitte später erneut versuchen.");
+    const minutes = Math.max(1, Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000));
+    throw new HttpError(423, `Zu viele Fehlversuche - das Konto ist noch ca. ${minutes} Min. gesperrt. Über "Passwort vergessen" lässt es sich sofort entsperren.`);
   }
 
   const passwordOk = await verifyPassword(user.passwordHash, body.password);
   if (!passwordOk) {
-    const failedLoginCount = user.failedLoginCount + 1;
+    // alte Fehlversuche verfallen: nur zählen, wenn der letzte weniger als FAILED_WINDOW_MINUTES her ist
+    const stale = !user.lastFailedLoginAt || Date.now() - user.lastFailedLoginAt.getTime() > FAILED_WINDOW_MINUTES * 60 * 1000;
+    const failedLoginCount = (stale ? 0 : user.failedLoginCount) + 1;
     const lockedUntil =
       failedLoginCount >= MAX_FAILED_LOGINS ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000) : null;
-    await prisma.user.update({ where: { id: user.id }, data: { failedLoginCount, lockedUntil } });
+    await prisma.user.update({ where: { id: user.id }, data: { failedLoginCount, lockedUntil, lastFailedLoginAt: new Date() } });
     await writeAuditLog({ req, companyId: user.companyId, userId: user.id, action: "auth.login_failed", entityType: "User", entityId: user.id });
     throw genericError();
   }
 
   if (user.totpEnabled) {
+    // der Zwischenschritt "2FA-Code fehlt noch" ist kein Fehlversuch (zählt nicht im Anmelde-Limit)
     if (!body.totpToken) {
+      res.locals.loginStep = true;
       return res.status(401).json({ error: "2FA-Code erforderlich", requiresTotp: true });
     }
     if (!user.totpSecret || !verifyTotpToken(user.totpSecret, body.totpToken)) {
@@ -129,7 +142,7 @@ authRouter.post("/login", async (req, res) => {
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() },
+    data: { failedLoginCount: 0, lockedUntil: null, lastFailedLoginAt: null, lastLoginAt: new Date() },
   });
 
   const accessToken = signAccessToken({ sub: user.id, companyId: user.companyId, role: user.role, email: user.email });
@@ -247,7 +260,7 @@ authRouter.post("/change-password", requireAuth, async (req, res) => {
 // ---------- Passwort vergessen (Link per E-Mail über das SMTP-Postfach der Firma) ----------
 
 const RESET_TTL_MINUTES = 60;
-const forgotSchema = z.object({ email: z.string().email() });
+const forgotSchema = z.object({ email: z.string().trim().email() });
 
 // Antwortet IMMER gleich (kein Hinweis, ob die Adresse existiert) und versendet im Hintergrund,
 // damit auch die Antwortzeit nichts verrät. Ohne eingerichtetes SMTP kann keine Mail gesendet werden -
@@ -258,7 +271,8 @@ authRouter.post("/forgot-password", forgotPasswordRateLimiter, async (req, res) 
 
   void (async () => {
     try {
-      const user = await prisma.user.findUnique({ where: { email: body.email }, include: { company: true } });
+      const found = await findUserByEmail(body.email);
+      const user = found ? await prisma.user.findUnique({ where: { id: found.id }, include: { company: true } }) : null;
       if (!user || !user.isActive) return;
       if (!isSmtpConfigured(user.company)) {
         logger.warn({ userId: user.id }, "Passwort-vergessen angefragt, aber kein SMTP eingerichtet");

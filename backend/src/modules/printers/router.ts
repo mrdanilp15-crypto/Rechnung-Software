@@ -13,6 +13,7 @@ import fs from "fs";
 import { buildPlanEntries, savePrintPlan } from "./bambu/slicedBooking";
 import { computeFailStats } from "./failStats";
 import { buildAmsMapping, buildStartPayload, inspect3mf, publishToPrinter, remoteFileName, uploadToPrinter } from "./bambu/printJob";
+import { absolutePath } from "../archive/service";
 
 /**
  * Drucker/Maschinen mit eigenen Kostenwerten (Anschaffungspreis + Lebensdauer -> Abschreibung je Stunde, Leistung -> Strom,
@@ -303,9 +304,11 @@ const MAX_PRINT_FILE = 150 * 1024 * 1024;
 async function printFile(companyId: string, documentId: string) {
   const doc = await prisma.archiveDocument.findFirst({ where: { id: documentId, companyId } });
   if (!doc || !/\.3mf$/i.test(doc.fileName)) throw new HttpError(404, "3MF-Datei nicht gefunden.");
-  if (!fs.existsSync(doc.filePath)) throw new HttpError(404, "Die Datei liegt nicht mehr im Archiv.");
-  if (fs.statSync(doc.filePath).size > MAX_PRINT_FILE) throw new HttpError(413, "Die Datei ist zu groß (maximal 150 MB).");
-  return { doc, data: fs.readFileSync(doc.filePath) };
+  // Im Archiv steht der Pfad relativ zum Upload-Ordner - erst in den echten Pfad umwandeln
+  const abs = absolutePath(doc.filePath);
+  if (!fs.existsSync(abs)) throw new HttpError(404, "Die Datei liegt nicht mehr im Archiv.");
+  if (fs.statSync(abs).size > MAX_PRINT_FILE) throw new HttpError(413, "Die Datei ist zu groß (maximal 150 MB).");
+  return { doc, data: fs.readFileSync(abs) };
 }
 
 printersRouter.get("/print/files", async (req, res) => {

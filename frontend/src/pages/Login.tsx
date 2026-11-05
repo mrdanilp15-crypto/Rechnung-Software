@@ -23,7 +23,7 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      const { data } = await api.post("/auth/login", { email, password, totpToken: totpToken || undefined });
+      const { data } = await api.post("/auth/login", { email: email.trim(), password, totpToken: totpToken || undefined });
       setUser(data.user);
       const from = (location.state as { from?: string } | null)?.from;
       navigate(from && from.startsWith("/") && !from.startsWith("//") && from !== "/login" ? from : "/");
@@ -49,6 +49,9 @@ export default function Login() {
           type="email"
           name="email"
           autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           autoFocus
           required
           value={email}
@@ -61,6 +64,9 @@ export default function Login() {
             type={showPassword ? "text" : "password"}
             name="password"
             autoComplete="current-password"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}

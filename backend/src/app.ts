@@ -103,7 +103,10 @@ export function createApp() {
   app.get("/health", (_req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
 
   app.use("/api/docs", openApiRouter);
-  app.use("/api/auth", authRateLimiter, authRouter);
+  // Das strenge Limit gilt nur für Anmelden und Registrieren - nicht für Sitzungsprüfung (/me) und Token-Erneuerung (/refresh),
+  // die beim Öffnen der Seite ohne Anmeldung ohnehin 401 liefern und sonst das Anmelde-Limit aufbrauchen.
+  app.use(["/api/auth/login", "/api/auth/register"], authRateLimiter);
+  app.use("/api/auth", authRouter);
   app.use("/api/users", usersRouter);
   app.use("/api/companies", companiesRouter);
   app.use("/api/customers", customersRouter);

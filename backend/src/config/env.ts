@@ -16,7 +16,7 @@ const envSchema = z.object({
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().default(1000),
-  LOGIN_RATE_LIMIT_MAX: z.coerce.number().default(10),
+  LOGIN_RATE_LIMIT_MAX: z.coerce.number().default(30),
 
   CORS_ORIGINS: z.string().default("http://localhost:5173"),
 

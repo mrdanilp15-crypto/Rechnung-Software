@@ -5,8 +5,8 @@
 - Hashing mit **Argon2id** (`backend/src/modules/auth/password.ts`), Parameter an die
   OWASP-Empfehlung 2026 angelehnt (19 MiB Speicher, 2 Iterationen).
 - Mindestanforderung: 10 Zeichen, Buchstaben und Ziffern (`isPasswordStrongEnough`).
-- Fehlgeschlagene Logins werden gezählt; nach 5 Fehlversuchen wird das Konto 15 Minuten
-  gesperrt (`account lockout`, siehe `modules/auth/router.ts`).
+- Fehlgeschlagene Logins werden gezählt; nach 10 Fehlversuchen innerhalb von 15 Minuten wird das Konto 5 Minuten
+  gesperrt (alte Fehlversuche verfallen; "Passwort vergessen" entsperrt sofort) (`account lockout`, siehe `modules/auth/router.ts`).
 
 ## Sitzungen (JWT)
 
@@ -115,8 +115,8 @@ die Einträge tatsächlich einzusehen.
 ## Rate-Limiting & Brute-Force-Schutz
 
 - Allgemeines API-Limit: 100 Anfragen / 15 Minuten je IP (`RATE_LIMIT_*`-Variablen).
-- Striktes Limit für `/api/auth/*`: 10 Anfragen / 15 Minuten je IP
-  (`LOGIN_RATE_LIMIT_MAX`), zusätzlich zur Account-Lockout-Logik oben.
+- Striktes Limit für Anmelden und Registrieren (`/api/auth/login`, `/register`): 30 fehlgeschlagene Versuche / 15 Minuten je IP
+  (`LOGIN_RATE_LIMIT_MAX`; erfolgreiche Anmeldungen, der 2FA-Zwischenschritt, Sitzungsprüfung und Token-Erneuerung zählen nicht), zusätzlich zur Account-Lockout-Logik oben.
 - Beide über `express-rate-limit` (`middleware/rateLimit.ts`), einfach erweiterbar auf
   einen verteilten Store (Redis) bei Mehrserverbetrieb.
 

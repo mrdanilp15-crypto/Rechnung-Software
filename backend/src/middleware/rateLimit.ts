@@ -45,5 +45,7 @@ export const authRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
+  // der Zwischenschritt "2FA-Code eingeben" (401) ist kein Fehlversuch
+  requestWasSuccessful: (_req, res) => res.statusCode < 400 || res.locals.loginStep === true,
   message: { error: "Zu viele Anmeldeversuche. Bitte später erneut versuchen." },
 });

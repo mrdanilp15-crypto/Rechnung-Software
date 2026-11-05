@@ -160,6 +160,8 @@ model User {
   totpEnabled       Boolean  @default(false)
   failedLoginCount  Int      @default(0)
   lockedUntil       DateTime?
+  // Zeitpunkt des letzten Fehlversuchs: alte Fehlversuche verfallen (siehe auth/router.ts)
+  lastFailedLoginAt DateTime?
   lastLoginAt       DateTime?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

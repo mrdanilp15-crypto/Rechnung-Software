@@ -8,8 +8,6 @@ interface Props {
   onChange: (v: string) => void;
   /** Beim Bearbeiten: der Artikel selbst zählt nicht als Dublette */
   selfId?: string | null;
-  /** Bei neuen Artikeln das Feld mit der nächsten freien Nummer vorbelegen */
-  prefill?: boolean;
   label?: string;
 }
 
@@ -17,7 +15,7 @@ interface Props {
  * Eingabefeld für Artikelnummern. Beim Tippen wird die Nummer live beim Server geprüft
  * (frei / schon vergeben an ...); gelöschte Artikel zählen nicht. "Nächste frei" trägt die nächste Nummer ein.
  */
-export function SkuField({ kind, value, onChange, selfId, prefill, label = "Artikelnummer (SKU)" }: Props) {
+export function SkuField({ kind, value, onChange, selfId, label = "Artikelnummer (SKU)" }: Props) {
   const [next, setNext] = useState<string | null>(null);
   const [taken, setTaken] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
@@ -31,17 +29,6 @@ export function SkuField({ kind, value, onChange, selfId, prefill, label = "Arti
       return null;
     }
   }
-
-  // beim Öffnen: Vorschlag holen und bei neuen Artikeln vorbelegen
-  useEffect(() => {
-    void check("").then((r) => {
-      if (!r) return;
-      setNext(r.next);
-      if (prefill && !value) onChange(r.next);
-    });
-    // nur beim Öffnen des Formulars
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // bei jeder Eingabe (kurz verzögert) live prüfen
   useEffect(() => {
@@ -76,7 +63,7 @@ export function SkuField({ kind, value, onChange, selfId, prefill, label = "Arti
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={next ?? ""}
+          placeholder="z.B. HW-"
           className={`w-full min-w-0 px-3 py-2 rounded border bg-white dark:bg-slate-800 ${border}`}
         />
         <button
@@ -104,7 +91,7 @@ export function SkuField({ kind, value, onChange, selfId, prefill, label = "Arti
       ) : checked && hasValue && !prefixOnly ? (
         <p className="text-xs text-green-600 mt-1">Frei.</p>
       ) : (
-        <p className="text-xs text-slate-500 mt-1">{next ? `Nächste freie Nummer: ${next}` : "Leer lassen, wenn du keine Nummer vergeben willst."}</p>
+        <p className="text-xs text-slate-500 mt-1">Optional. Tipp ein Präfix (z.B. HW-) für den Vorschlag der nächsten Nummer oder drück "Nächste frei".</p>
       )}
     </div>
   );

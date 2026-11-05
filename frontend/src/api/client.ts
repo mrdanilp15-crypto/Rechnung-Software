@@ -22,7 +22,11 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
+    // Bei Anmelde-Anfragen (/auth/..., außer der Sitzungsprüfung /auth/me) bedeutet 401 "falsche Eingabe", nicht "Sitzung abgelaufen":
+    // dort nichts erneuern und nichts wiederholen - sonst zählt ein falsches Passwort doppelt.
+    const url: string = original?.url ?? "";
+    const isAuthCall = url.startsWith("/auth/") && !url.startsWith("/auth/me");
+    if (error.response?.status === 401 && !original._retry && !isAuthCall) {
       original._retry = true;
       refreshPromise = refreshPromise ?? refreshAccessToken();
       const refreshed = await refreshPromise;
