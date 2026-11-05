@@ -8,6 +8,7 @@ import { isSmtpConfigured, sendMailForCompany } from "../email/mailer";
 import { BUILTIN_SHIPPED, CARRIERS, carrierLabel, dropEmptyShippingLines, loadPlaceholderValues, renderText, trackingLink } from "../templates/render";
 import { laborCents } from "../timetracking/calc";
 import { emitEvent } from "../plugins/hooks";
+import { avatarOf } from "../users/avatar";
 import { itemProductKey, machineCost, usageWithCosts, type MaterialPrice } from "./actuals";
 
 /**
@@ -38,6 +39,10 @@ productionRouter.get("/", async (req, res) => {
     take: 500,
   });
 
+  // Zuständige Mitarbeiter (für Avatar und Filter auf den Karten)
+  const staff = await prisma.user.findMany({ where: { companyId }, select: { id: true, name: true, avatarPath: true, avatarPreset: true, avatarColor: true, avatarUpdatedAt: true } });
+  const staffById = new Map(staff.map((u) => [u.id, u]));
+
   // Druckzeit je Auftrag schätzen: Positionen, deren Text genau einem Produktnamen entspricht, mal Stückzeit des Produkts
   const products = await prisma.product.findMany({ where: { companyId }, select: { name: true, printTimeMinutes: true, imageDocumentId: true } });
   const minutesByName = new Map(products.filter((p) => p.printTimeMinutes > 0).map((p) => [p.name.trim().toLowerCase(), p.printTimeMinutes]));
@@ -66,6 +71,7 @@ productionRouter.get("/", async (req, res) => {
       const prints = printsByOrder.get(o.id);
       return {
         priority: o.priority,
+        assignee: o.assigneeId ? (() => { const u = staffById.get(o.assigneeId); return u ? { id: u.id, name: u.name, avatar: avatarOf(u) } : { id: o.assigneeId, name: "Ehemaliger Benutzer", avatar: null }; })() : null,
         imageDocumentId: o.items.map((it) => imageByName.get(it.description.split(String.fromCharCode(10))[0].trim().toLowerCase())).find(Boolean) ?? null,
         prints: prints ? { count: prints.count, minutes: Math.round(prints.minutes), grams: Math.round(prints.grams), materialCents: Math.round(prints.materialCents) } : null,
         id: o.id,

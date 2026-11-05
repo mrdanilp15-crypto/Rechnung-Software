@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { AvatarInfo } from "../components/Avatar";
 
 export interface AuthUser {
   id: string;
@@ -6,6 +7,7 @@ export interface AuthUser {
   email: string;
   role: "ADMIN" | "MITARBEITER" | "BUCHHALTUNG";
   locale?: string;
+  avatar?: AvatarInfo | null;
 }
 
 interface AuthState {

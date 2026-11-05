@@ -7,6 +7,7 @@ import { setLocale } from "../i18n";
 import { api } from "../api/client";
 import { GlobalSearch } from "./GlobalSearch";
 import { NewMenu } from "./NewMenu";
+import { Avatar } from "./Avatar";
 import { Icon, type IconName } from "./Icon";
 import { cachedAppearance, setAppearanceFromCompany } from "../theme/appearance";
 
@@ -91,7 +92,7 @@ function UserMenu({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="relative" ref={ref}>
       <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" aria-haspopup="menu" aria-expanded={open}>
-        <span className="w-8 h-8 rounded-full bg-brand text-white text-xs font-semibold flex items-center justify-center">{initials(user?.name)}</span>
+        <Avatar id={user?.id ?? ""} name={user?.name ?? ""} avatar={user?.avatar} size="md" />
         <span className="hidden xl:block text-left leading-tight">
           <span className="block text-sm font-medium">{user?.name}</span>
           <span className="block text-xs text-slate-500">{ROLE_LABEL[user?.role ?? ""] ?? user?.role}</span>

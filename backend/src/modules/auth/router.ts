@@ -15,6 +15,7 @@ import { sha256Hex } from "../../utils/crypto";
 import { sendMailForCompany, isSmtpConfigured } from "../email/mailer";
 import { forgotPasswordRateLimiter, resetPasswordRateLimiter } from "../../middleware/rateLimit";
 import { logger } from "../../utils/logger";
+import { avatarOf } from "../users/avatar";
 
 export const authRouter = Router();
 
@@ -154,7 +155,7 @@ authRouter.post("/login", async (req, res) => {
   res.json({
     accessToken,
     refreshToken,
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, locale: user.locale },
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, locale: user.locale, avatar: avatarOf(user) },
   });
 });
 
@@ -189,6 +190,7 @@ authRouter.post("/logout", async (req, res) => {
 authRouter.get("/me", requireAuth, async (req, res) => {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.auth!.sub } });
   res.json({
+    avatar: avatarOf(user),
     id: user.id,
     name: user.name,
     email: user.email,

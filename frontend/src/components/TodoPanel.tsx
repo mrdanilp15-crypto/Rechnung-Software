@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { Panel } from "./dashboard/widgets";
 import { useToast } from "./Toast";
+import { useAuthStore } from "../store/authStore";
+import { useDirectory } from "../hooks/useDirectory";
 
 /** "Heute zu tun": alles, was Aufmerksamkeit braucht, an einer Stelle (überfällig, versandbereit, Angebote nachfassen, Material knapp ...). Nur Anzeige, jeder Eintrag führt zur Lösung. */
 
@@ -13,6 +15,7 @@ interface Item {
   title: string;
   detail?: string;
   link: string;
+  assigneeId?: string | null;
   action?: { label: string; method: "PATCH" | "POST"; url: string; body?: Record<string, unknown> };
 }
 
@@ -25,6 +28,10 @@ export function TodoPanel() {
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const showToast = useToast();
+  // "Nur meine": Aufträge anderer Mitarbeiter ausblenden (nur sinnvoll mit mehreren Konten)
+  const me = useAuthStore((s) => s.user);
+  const staff = useDirectory();
+  const [onlyMine, setOnlyMine] = useState(false);
 
   const load = () => api.get("/todo").then((r) => setItems(r.data.items)).catch(() => setFailed(true));
   useEffect(() => { void load(); }, []);
@@ -46,8 +53,9 @@ export function TodoPanel() {
   }
 
   if (failed) return null;
-  const list = items ?? [];
+  const list = (items ?? []).filter((i) => !onlyMine || !i.assigneeId || i.assigneeId === me?.id);
   const shown = all ? list : list.slice(0, SHOWN);
+  const mineToggle = staff.length > 1 ? <label className="flex items-center gap-1.5 text-xs text-slate-500"><input type="checkbox" checked={onlyMine} onChange={(e) => setOnlyMine(e.target.checked)} /> Nur meine</label> : null;
   const high = list.filter((i) => i.severity === "high").length;
 
   return (
@@ -55,10 +63,13 @@ export function TodoPanel() {
       {items === null ? (
         <p className="text-sm text-slate-500">Wird geladen ...</p>
       ) : list.length === 0 ? (
-        <p className="text-sm text-slate-500">Nichts offen - alles erledigt.</p>
+        <div className="flex items-center justify-between gap-3"><p className="text-sm text-slate-500">{onlyMine ? "Für dich ist nichts offen." : "Nichts offen - alles erledigt."}</p>{mineToggle}</div>
       ) : (
         <>
-          <p className="text-xs text-slate-500 mb-2">{list.length} {list.length === 1 ? "Punkt" : "Punkte"}{high > 0 ? `, davon ${high} dringend` : ""}</p>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <p className="text-xs text-slate-500">{list.length} {list.length === 1 ? "Punkt" : "Punkte"}{high > 0 ? `, davon ${high} dringend` : ""}</p>
+            {mineToggle}
+          </div>
           <ul className="divide-y divide-slate-100 dark:divide-slate-700/60">
             {shown.map((it) => (
               <li key={it.id} className="flex items-start gap-2">

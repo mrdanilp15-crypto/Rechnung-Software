@@ -5,6 +5,7 @@ import { OrderCostDialog } from "../components/OrderCostDialog";
 import { PdfLink } from "../components/PdfLink";
 import { Panel, eur } from "../components/dashboard/widgets";
 import { PrintStartButton } from "../components/PrintStartButton";
+import { AssigneeSelect } from "../components/AssigneeSelect";
 import { useAuthStore } from "../store/authStore";
 
 /** Auftragsseite: alles zu einem Auftrag an einem Ort - Positionen, Belege, Drucke, Zeiten, Dateien, Kommentare und Verlauf. */
@@ -15,6 +16,7 @@ interface Detail {
     id: string; number: string; documentStatus: string; productionStatus: string; priority: number; issueDate: string; expectedDeliveryDate: string | null;
     totalCents: number; subtotalCents: number; notes: string | null; productionNote: string | null; carrier: string | null; trackingNumber: string | null;
     shippedAt: string | null; shippedMailAt: string | null; voided: boolean;
+    assignee: { id: string; name: string; avatar: import("../components/Avatar").AvatarInfo | null } | null;
     customer: { id: string; name: string; contactName: string | null; email: string | null; phone: string | null };
     items: { description: string; quantity: number; unit: string; unitPriceCents: number; lineTotalCents: number }[];
   };
@@ -68,6 +70,9 @@ export default function OrderDetail() {
   async function setPriority(v: number) {
     try { await api.patch(`/orders/${id}`, { priority: v }); load(); } catch (e) { fail(e, "Priorität konnte nicht geändert werden."); }
   }
+  async function setAssignee(userId: string | null) {
+    try { await api.patch(`/orders/${id}`, { assigneeId: userId }); load(); } catch (e) { fail(e, "Zuständigkeit konnte nicht geändert werden."); }
+  }
   async function addComment() {
     if (!comment.trim()) return;
     try { await api.post(`/orders/${id}/comments`, { text: comment }); setComment(""); load(); } catch (e) { fail(e, "Kommentar konnte nicht gespeichert werden."); }
@@ -118,6 +123,7 @@ export default function OrderDetail() {
           <p className="text-sm text-slate-500 mt-1"><Link to={`/customers/${o.customer.id}`} className="hover:text-brand">{o.customer.name}</Link>{o.customer.contactName ? ` · ${o.customer.contactName}` : ""}{o.customer.email ? ` · ${o.customer.email}` : ""}{o.customer.phone ? ` · ${o.customer.phone}` : ""}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <AssigneeSelect value={o.assignee?.id ?? null} current={o.assignee} onChange={setAssignee} />
           <label className="text-sm text-slate-500 flex items-center gap-2">Priorität
             <select value={o.priority} onChange={(e) => setPriority(Number(e.target.value))} className={input}>{PRIORITIES.map((p) => <option key={p.v} value={p.v}>{p.l}</option>)}</select>
           </label>

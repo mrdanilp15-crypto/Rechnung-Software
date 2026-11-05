@@ -164,6 +164,11 @@ model User {
   // Zeitpunkt des letzten Fehlversuchs: alte Fehlversuche verfallen (siehe auth/router.ts)
   lastFailedLoginAt DateTime?
   lastLoginAt       DateTime?
+  // Profilbild: eigenes Foto (Datei unter uploads/avatars) oder ein Symbol auf Farbe; ohne beides gelten die Initialen
+  avatarPath        String?
+  avatarPreset      String?
+  avatarColor       String?
+  avatarUpdatedAt   DateTime?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -633,6 +638,8 @@ model OrderConfirmation {
   voidedAt      DateTime?
   // Produktionsboard: CREATED -> IN_PRODUCTION -> READY_TO_SHIP -> SHIPPED (siehe modules/production)
   productionStatus    String    @default("CREATED")
+  // Zuständiger Mitarbeiter (Benutzer-ID, bewusst ohne Fremdschlüssel: bleibt als Hinweis erhalten, auch wenn das Konto später fehlt)
+  assigneeId          String?
   productionNote      String?
   productionUpdatedAt DateTime?
   shippedAt           DateTime?
@@ -656,6 +663,7 @@ model OrderConfirmation {
 
   @@unique([companyId, confirmationNumber])
   @@index([companyId])
+  @@index([assigneeId])
 }
 
 model OrderConfirmationItem {

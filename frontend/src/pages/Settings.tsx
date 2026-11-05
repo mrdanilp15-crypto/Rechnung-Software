@@ -13,6 +13,7 @@ import { PlaceholderHint } from "../components/DocumentTexts";
 import { TemplatesManager } from "../components/TemplatesManager";
 import { FailRateHint } from "../components/FailRateHint";
 import { ConnectionsPanel } from "../components/ConnectionsPanel";
+import { ProfileCard } from "../components/ProfileCard";
 import { IntegrationsPanel } from "../components/IntegrationsPanel";
 import { useSearchParams } from "react-router-dom";
 import AuditLog from "./AuditLog";
@@ -99,7 +100,7 @@ const TABS = [
   { key: "email", label: "E-Mail-Versand", group: "Verbindungen" },
   { key: "schnittstellen", label: "Schnittstellen", group: "Verbindungen" },
   { key: "users", label: "Benutzer", group: "Konto & System" },
-  { key: "password", label: "Passwort", group: "Konto & System" },
+  { key: "password", label: "Mein Konto", group: "Konto & System" },
   { key: "security", label: "Sicherheit", group: "Konto & System" },
   { key: "appearance", label: "Darstellung", group: "Konto & System" },
   { key: "audit", label: "Protokoll", group: "Konto & System" },
@@ -496,6 +497,7 @@ export default function Settings() {
         </form>
       )}
 
+      {tab === "password" && <ProfileCard />}
       {tab === "password" && (
         <form onSubmit={handleChangePassword} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-4 max-w-md">
           <h2 className="font-medium">Passwort ändern</h2>

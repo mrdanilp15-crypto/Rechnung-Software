@@ -1,4 +1,8 @@
 import { DragEvent, useCallback, useEffect, useState } from "react";
+import { Avatar, type AvatarInfo } from "../components/Avatar";
+import { AssigneeSelect } from "../components/AssigneeSelect";
+import { useAuthStore } from "../store/authStore";
+import { useDirectory } from "../hooks/useDirectory";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { Icon } from "../components/Icon";
@@ -27,6 +31,7 @@ interface Order {
   itemSummary: string[];
   printMinutes: number;
   priority?: number;
+  assignee?: { id: string; name: string; avatar: AvatarInfo | null } | null;
   prints: { count: number; minutes: number; grams: number; materialCents: number } | null;
 }
 
@@ -53,6 +58,10 @@ export default function Production() {
   const [costOrderId, setCostOrderId] = useState<string | null>(null);
   const [shipDialog, setShipDialog] = useState<{ order: Order; markShipped: boolean } | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  // Filter nach Zuständigem: alle, meine, nicht zugeordnet oder eine bestimmte Person
+  const me = useAuthStore((s) => s.user);
+  const [who, setWho] = useState<string>("all");
+  const staff = useDirectory();
   const [overColumn, setOverColumn] = useState<ProductionStatus | null>(null);
 
   const load = useCallback(() => {
@@ -120,6 +129,19 @@ export default function Production() {
         </div>
       </div>
 
+      {staff.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2 mb-3 text-xs" role="group" aria-label="Nach Zuständigem filtern">
+          {([["all", "Alle"], ["mine", "Meine"], ["none", "Nicht zugeordnet"]] as const).map(([k, l]) => (
+            <button key={k} type="button" onClick={() => setWho(k)} aria-pressed={who === k} className={`px-3 py-1 rounded-full border ${who === k ? "bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900" : "border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>{l}</button>
+          ))}
+          {staff.filter((s) => s.id !== me?.id).map((s) => (
+            <button key={s.id} type="button" onClick={() => setWho(s.id)} aria-pressed={who === s.id} title={s.name} className={`flex items-center gap-1.5 pl-1 pr-3 py-0.5 rounded-full border ${who === s.id ? "bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900" : "border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
+              <Avatar id={s.id} name={s.name} avatar={s.avatar} size="xs" />{s.name.split(" ")[0]}
+            </button>
+          ))}
+        </div>
+      )}
+
       {costOrderId && <OrderCostDialog orderId={costOrderId} onClose={() => setCostOrderId(null)} />}
       {shipDialog && (
         <ShippedDialog
@@ -153,7 +175,7 @@ export default function Production() {
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-4 snap-x lg:grid lg:grid-cols-4 lg:overflow-visible">
           {COLUMNS.map((col, colIndex) => {
-            const items = orders.filter((o) => o.productionStatus === col.key);
+            const items = orders.filter((o) => o.productionStatus === col.key && (who === "all" || (who === "none" ? !o.assignee : o.assignee?.id === (who === "mine" ? me?.id : who))));
             const minutes = items.reduce((s, o) => s + o.printMinutes, 0);
             return (
               <section
@@ -195,6 +217,7 @@ export default function Production() {
                         </ul>
                         {o.notes && <p className="mt-2 text-xs rounded bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 px-2 py-1">{o.notes}</p>}
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          <AssigneeSelect compact className="order-last ml-auto" value={o.assignee?.id ?? null} current={o.assignee} onChange={async (uid) => { try { await api.patch(`/orders/${o.id}`, { assigneeId: uid }); load(); } catch (err: any) { showToast(err?.response?.data?.error ?? "Zuständigkeit konnte nicht geändert werden", "error"); } }} />
                           {o.printMinutes > 0 && <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" title="Geschätzte Druckzeit"><Icon name="clock" className="w-3 h-3" />{hours(o.printMinutes)}</span>}
                           {o.prints && <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" title="Zugeordnete Drucke: Anzahl, Druckzeit, Filament">{o.prints.count} {o.prints.count === 1 ? "Druck" : "Drucke"} · {hours(o.prints.minutes)}{o.prints.grams > 0 ? ` · ${o.prints.grams} g` : ""}</span>}
                           {o.expectedDeliveryDate && (

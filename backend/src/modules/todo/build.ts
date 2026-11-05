@@ -15,6 +15,8 @@ export interface TodoAction {
 }
 
 export interface TodoItem {
+  /** Zuständiger Mitarbeiter, wenn der Punkt zu einem Auftrag gehört (für "nur meine") */
+  assigneeId?: string | null;
   id: string;
   kind: string;
   severity: Severity;
@@ -33,6 +35,7 @@ export interface TodoOrder {
   expectedDeliveryDate: Date | null;
   shippedAt: Date | null;
   hasInvoice: boolean;
+  assigneeId?: string | null;
   /** Positionstexte (erste Zeile), zum Zuordnen von Drucken */
   itemNames: string[];
   runningJobs: number;
@@ -116,6 +119,13 @@ export function buildTodo(i: TodoInput): TodoItem[] {
         items.push({ id: `soon-${o.id}`, kind: "delivery-soon", severity: "normal", title: `Auftrag ${o.number}: Liefertermin ${left <= 0 ? "heute" : left === 1 ? "morgen" : `in ${left} Tagen`}`, detail: o.customer, link: `/orders/${o.id}` });
       }
     }
+  }
+
+  // auftragsbezogene Punkte tragen den Zuständigen
+  const byId = new Map(i.orders.map((o) => [o.id, o.assigneeId ?? null]));
+  for (const it of items) {
+    const oid = /^(?:noinv|ship|start|ready|late|soon)-(.+)$/.exec(it.id)?.[1];
+    if (oid && byId.has(oid)) it.assigneeId = byId.get(oid);
   }
 
   for (const q of i.openQuotes) {

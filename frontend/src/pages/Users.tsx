@@ -6,6 +6,8 @@ import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
 import { RowActionsMenu } from "../components/RowActionsMenu";
 import { MobileCard, MobileField } from "../components/MobileCard";
+import { Avatar, type AvatarInfo } from "../components/Avatar";
+import { AvatarPicker } from "../components/AvatarPicker";
 
 interface CompanyUser {
   id: string;
@@ -16,6 +18,7 @@ interface CompanyUser {
   locale: string;
   lastLoginAt?: string;
   totpEnabled: boolean;
+  avatar?: AvatarInfo;
 }
 
 const ROLE_PERMISSIONS: { role: "ADMIN" | "MITARBEITER" | "BUCHHALTUNG"; label: string; permissions: string[] }[] = [
@@ -66,6 +69,8 @@ export default function Users() {
   const [users, setUsers] = useState<CompanyUser[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [showRoleInfo, setShowRoleInfo] = useState(false);
+  const [avatarFor, setAvatarFor] = useState<CompanyUser | null>(null);
+  const setAuthUser = useAuthStore((s) => s.setUser);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const { status, run } = useSaveStatus();
@@ -208,20 +213,24 @@ export default function Users() {
               u.id !== currentUser?.id ? (
                 <RowActionsMenu
                   actions={[
+                    { label: "Profilbild ändern", onClick: () => setAvatarFor(u) },
                     { label: "Passwort zurücksetzen", onClick: () => handleResetPassword(u) },
                     { label: u.isActive ? "Deaktivieren" : "Aktivieren", onClick: () => handleToggleActive(u), danger: u.isActive },
                   ]}
                 />
               ) : (
-                <span className="text-xs text-slate-400">(Sie)</span>
+                <span className="flex items-center gap-2 text-xs text-slate-400"><button type="button" onClick={() => setAvatarFor(u)} className="text-brand hover:underline">Profilbild</button>(Sie)</span>
               );
             return (
               <div key={u.id}>
                 {/* Desktop */}
                 <div className="hidden xl:grid items-center gap-3 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{u.name}</div>
-                    <div className="text-xs text-slate-500 truncate">{u.email}</div>
+                  <div className="min-w-0 flex items-center gap-3">
+                    <Avatar id={u.id} name={u.name} avatar={u.avatar} size="md" />
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{u.name}</div>
+                      <div className="text-xs text-slate-500 truncate">{u.email}</div>
+                    </div>
                   </div>
                   {roleSelect}
                   {statusLabel}
@@ -242,6 +251,27 @@ export default function Users() {
           {users.length === 0 && <p className="py-6 text-center text-slate-500">Keine weiteren Benutzer.</p>}
         </div>
       </div>
+
+      {avatarFor && (
+        <div className="fixed inset-0 z-[55] bg-black/50 flex items-center justify-center p-4" role="dialog" aria-label="Profilbild ändern">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md max-h-[92vh] overflow-y-auto p-5 space-y-3">
+            <div className="flex items-center">
+              <h2 className="font-semibold flex-1">Profilbild: {avatarFor.name}</h2>
+              <button type="button" onClick={() => setAvatarFor(null)} className="px-3 py-1.5 rounded-lg text-sm bg-slate-100 dark:bg-slate-800" aria-label="Schließen">✕</button>
+            </div>
+            <AvatarPicker
+              userId={avatarFor.id === currentUser?.id ? "me" : avatarFor.id}
+              targetId={avatarFor.id}
+              name={avatarFor.name}
+              avatar={users.find((x) => x.id === avatarFor.id)?.avatar}
+              onChanged={(avatar) => {
+                setUsers((list) => list.map((x) => (x.id === avatarFor.id ? { ...x, avatar } : x)));
+                if (avatarFor.id === currentUser?.id && currentUser) setAuthUser({ ...currentUser, avatar });
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -61,6 +61,19 @@ describe("Heute zu tun", () => {
   });
 });
 
+describe("Zuständigkeit", () => {
+  it("auftragsbezogene Punkte tragen den Zuständigen, andere nicht", () => {
+    const items = buildTodo({
+      ...base,
+      lowStock: ["PLA"],
+      orders: [order("A", { productionStatus: "READY_TO_SHIP", assigneeId: "u1" }), order("B", { productionStatus: "CREATED", runningJobs: 1, assigneeId: null })],
+    });
+    expect(items.find((x) => x.id === "ship-A")?.assigneeId).toBe("u1");
+    expect(items.find((x) => x.id === "start-B")?.assigneeId).toBeNull();
+    expect(items.find((x) => x.kind === "low-stock")?.assigneeId).toBeUndefined();
+  });
+});
+
 describe("Bankzahlungen", () => {
   it("weist auf nicht zugeordnete Zahlungseingänge hin", () => {
     const items = buildTodo({ ...base, unmatchedPayments: 3 });

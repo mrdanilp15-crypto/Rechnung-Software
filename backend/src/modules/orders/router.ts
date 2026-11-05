@@ -6,6 +6,7 @@ import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { activityLabel, hm } from "../timetracking/calc";
 import { buildTimeline, type TimelineEvent } from "./timeline";
+import { avatarOf } from "../users/avatar";
 
 /**
  * Auftragsseite (Auftragsbestätigung als zentrales Objekt): Stammdaten, Positionen, verknüpfte Belege, Drucke, Zeiten, Dateien, Kommentare
@@ -39,8 +40,8 @@ ordersRouter.get("/:id", async (req, res) => {
     prisma.timeEntry.findMany({ where: { orderConfirmationId: order.id, endedAt: { not: null } }, orderBy: { startedAt: "asc" } }),
     prisma.orderFile.findMany({ where: { orderConfirmationId: order.id }, include: { document: { select: { id: true, title: true, fileName: true, sizeBytes: true, mimeType: true } } }, orderBy: { createdAt: "desc" } }),
     prisma.orderComment.findMany({ where: { orderConfirmationId: order.id }, orderBy: { createdAt: "desc" } }),
-    prisma.auditLog.findMany({ where: { companyId, entityType: "OrderConfirmation", entityId: order.id, action: { in: ["production.status", "production.shipped_mail"] } }, orderBy: { createdAt: "asc" } }),
-    prisma.user.findMany({ where: { companyId }, select: { id: true, name: true } }),
+    prisma.auditLog.findMany({ where: { companyId, entityType: "OrderConfirmation", entityId: order.id, action: { in: ["production.status", "production.shipped_mail", "order.assign"] } }, orderBy: { createdAt: "asc" } }),
+    prisma.user.findMany({ where: { companyId }, select: { id: true, name: true, avatarPath: true, avatarPreset: true, avatarColor: true, avatarUpdatedAt: true } }),
   ]);
   const names = new Map(users.map((u) => [u.id, u.name]));
   const nameOf = (id: string | null | undefined) => (id ? names.get(id) ?? "Ehemaliger Benutzer" : null);
@@ -50,7 +51,7 @@ ordersRouter.get("/:id", async (req, res) => {
   for (const a of audits) {
     let meta: { from?: string; to?: string; to_?: string } = {};
     try { meta = a.metadata ? JSON.parse(a.metadata) : {}; } catch { /* ohne Zusatzangaben */ }
-    events.push({ at: a.createdAt, kind: "status", text: a.action === "production.shipped_mail" ? "Versandmail gesendet" : `Status: ${meta.from ?? "?"} → ${meta.to ?? "?"}`, by: nameOf(a.userId), raw: meta });
+    events.push({ at: a.createdAt, kind: "status", text: a.action === "production.shipped_mail" ? "Versandmail gesendet" : a.action === "order.assign" ? ((meta as { toName?: string }).toName ? `Zuständig: ${(meta as { toName?: string }).toName}` : "Zuständigkeit aufgehoben") : `Status: ${meta.from ?? "?"} → ${meta.to ?? "?"}`, by: nameOf(a.userId), raw: meta });
   }
   for (const j of jobs) {
     events.push({ at: j.startedAt, kind: "print", text: `Druck gestartet: ${j.name ?? "Druckauftrag"} (${j.printer.name})`, by: null });
@@ -91,6 +92,7 @@ ordersRouter.get("/:id", async (req, res) => {
       shippedMailAt: order.shippedMailAt,
       voided: !!order.voidedAt,
       customer: order.customer,
+      assignee: order.assigneeId ? (() => { const u = users.find((x) => x.id === order.assigneeId); return u ? { id: u.id, name: u.name, avatar: avatarOf(u) } : { id: order.assigneeId, name: "Ehemaliger Benutzer", avatar: null }; })() : null,
       items: order.items.map((i) => ({ description: i.description, quantity: i.quantity, unit: i.unit, unitPriceCents: i.unitPriceCents, lineTotalCents: i.lineTotalCents })),
     },
     links: { quote, deliveryNotes, invoices },
@@ -103,13 +105,26 @@ ordersRouter.get("/:id", async (req, res) => {
   });
 });
 
-const patchSchema = z.object({ priority: z.number().int().min(0).max(2) });
+// Priorität und/oder Zuständigen ändern
+const patchSchema = z.object({ priority: z.number().int().min(0).max(2).optional(), assigneeId: z.string().min(1).nullable().optional() });
 ordersRouter.patch("/:id", async (req, res) => {
   const companyId = req.auth!.companyId;
   const body = patchSchema.parse(req.body);
   const order = await owned(req.params.id, companyId);
-  await prisma.orderConfirmation.update({ where: { id: order.id }, data: { priority: body.priority } });
-  await writeAuditLog({ req, companyId, userId: req.auth!.sub, action: "order.priority", entityType: "OrderConfirmation", entityId: order.id, metadata: { from: order.priority, to: body.priority } });
+  if (body.priority !== undefined) {
+    await prisma.orderConfirmation.update({ where: { id: order.id }, data: { priority: body.priority } });
+    await writeAuditLog({ req, companyId, userId: req.auth!.sub, action: "order.priority", entityType: "OrderConfirmation", entityId: order.id, metadata: { from: order.priority, to: body.priority } });
+  }
+  if (body.assigneeId !== undefined && body.assigneeId !== order.assigneeId) {
+    let toName: string | null = null;
+    if (body.assigneeId) {
+      const user = await prisma.user.findFirst({ where: { id: body.assigneeId, companyId, isActive: true }, select: { name: true } });
+      if (!user) throw new HttpError(400, "Mitarbeiter nicht gefunden oder deaktiviert.");
+      toName = user.name;
+    }
+    await prisma.orderConfirmation.update({ where: { id: order.id }, data: { assigneeId: body.assigneeId } });
+    await writeAuditLog({ req, companyId, userId: req.auth!.sub, action: "order.assign", entityType: "OrderConfirmation", entityId: order.id, metadata: { from: order.assigneeId, to: body.assigneeId, toName } });
+  }
   res.json({ ok: true });
 });
 
