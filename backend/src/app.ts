@@ -32,6 +32,7 @@ import { templatesRouter } from "./modules/templates/router";
 import { maintenanceRouter } from "./modules/maintenance/router";
 import { timeRouter } from "./modules/timetracking/router";
 import { ordersRouter } from "./modules/orders/router";
+import { statsRouter } from "./modules/stats/router";
 import { assetsRouter } from "./modules/assets/router";
 import { suppliersRouter } from "./modules/suppliers/router";
 import { orderImportRouter } from "./modules/orderImport/router";
@@ -132,6 +133,7 @@ export function createApp() {
   app.use("/api/maintenance", maintenanceRouter);
   app.use("/api/time", timeRouter);
   app.use("/api/orders", ordersRouter);
+  app.use("/api/stats", statsRouter);
   app.use("/api/assets", assetsRouter);
   app.use("/api/suppliers", suppliersRouter);
   app.use("/api/order-import", orderImportRouter);

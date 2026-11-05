@@ -23,6 +23,7 @@ import Archive from "./pages/Archive";
 import Production from "./pages/Production";
 import TimeTracking from "./pages/TimeTracking";
 import OrderDetail from "./pages/OrderDetail";
+import Statistics from "./pages/Statistics";
 import AuditLog from "./pages/AuditLog";
 import Settings from "./pages/Settings";
 
@@ -91,6 +92,7 @@ export default function App() {
         <Route path="/production" element={<Production />} />
         <Route path="/time" element={<TimeTracking />} />
         <Route path="/orders/:id" element={<OrderDetail />} />
+        <Route path="/stats" element={<Statistics />} />
         <Route path="/audit-log" element={<AuditLog />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
