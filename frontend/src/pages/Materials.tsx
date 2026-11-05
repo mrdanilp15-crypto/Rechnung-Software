@@ -148,7 +148,7 @@ export default function Materials() {
 
       {showForm && (
         <form onSubmit={handleCreate} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <SkuField kind="materials" value={form.sku} onChange={(v) => setForm((f) => ({ ...f, sku: v }))} others={materials} selfId={editingId} prefill={!editingId} />
+          <SkuField kind="materials" value={form.sku} onChange={(v) => setForm((f) => ({ ...f, sku: v }))} selfId={editingId} prefill={!editingId} />
           <div>
             <label className="block text-sm mb-1">Name *</label>
             <input required placeholder="z.B. PLA Filament schwarz" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />

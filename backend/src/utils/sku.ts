@@ -20,9 +20,15 @@ export function nextSku(existing: (string | null | undefined)[], defaultPrefix: 
   const counts = new Map<string, number>();
   for (const p of parsed) counts.set(p.prefix, (counts.get(p.prefix) ?? 0) + 1);
   const best = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-  // Präfix in der Schreibweise des Standards bzw. der ersten Verwendung zurückgeben
-  const prefixOriginal = best === undefined ? defaultPrefix : (existing.find((s) => s && normalizeSku(s).startsWith(best) && /^(.*?)(\d+)$/.test(s.trim()))?.trim().match(/^(.*?)\d+$/)?.[1] ?? best);
-  const prefix = best === undefined ? defaultPrefix : prefixOriginal;
+  // Präfix in der Schreibweise der ersten Verwendung zurückgeben (Groß-/Kleinschreibung wie eingegeben)
+  let prefix = defaultPrefix;
+  if (best !== undefined) {
+    prefix = best;
+    for (const e of existing) {
+      const mm = e ? /^(.*?)(\d+)$/.exec(e.trim()) : null;
+      if (mm && mm[1].toLowerCase() === best) { prefix = mm[1]; break; }
+    }
+  }
   const same = parsed.filter((p) => p.prefix === (best ?? defaultPrefix.toLowerCase()));
   const width = same.length > 0 ? Math.max(...same.map((p) => p.width)) : minDigits; // vorhandene Schreibweise beibehalten
   let n = Math.max(0, ...same.map((p) => p.num)) + 1;

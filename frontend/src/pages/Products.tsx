@@ -263,7 +263,7 @@ export default function Products() {
               <label className="block text-sm mb-1">{t("products.name")} *</label>
               <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
             </div>
-            <SkuField kind="products" value={form.sku} onChange={(v) => setForm((f) => ({ ...f, sku: v }))} others={products} selfId={editingId} prefill={!editingId} />
+            <SkuField kind="products" value={form.sku} onChange={(v) => setForm((f) => ({ ...f, sku: v }))} selfId={editingId} prefill={!editingId} />
           </div>
           <div>
             <label className="block text-sm mb-1">Beschreibung</label>

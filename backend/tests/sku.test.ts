@@ -26,3 +26,12 @@ describe("Artikelnummern", () => {
     expect(findDuplicate(rows, "P-9999")).toBeUndefined();
   });
 });
+
+describe("Artikelnummern: reine Zahlen und Mischformen", () => {
+  it("zählt reine Zahlen ohne Präfix weiter", () => {
+    expect(nextSku(["1", "2", "7"], "P-").sku).toBe("8");
+  });
+  it("mischt reine Zahlen nicht mit dem Standard-Präfix", () => {
+    expect(nextSku(["7", "12", "P-0005"], "P-").sku).toBe("13");
+  });
+});
