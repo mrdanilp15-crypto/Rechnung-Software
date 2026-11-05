@@ -14,7 +14,7 @@ todoRouter.get("/", async (req, res) => {
   const companyId = req.auth!.companyId;
   const now = new Date();
 
-  const [overdue, quotes, orders, draftCounts, materials, tasks, unassignedPrints] = await Promise.all([
+  const [overdue, quotes, orders, draftCounts, materials, tasks, unassignedPrints, trackedProducts, unmatchedPayments] = await Promise.all([
     prisma.invoice.findMany({ where: { companyId, status: "OVERDUE", isCancellationDocument: false }, include: { customer: { select: { name: true } } }, orderBy: { dueDate: "asc" } }),
     prisma.quote.findMany({ where: { companyId, status: { in: ["SENT", "EXPIRED"] } }, include: { customer: { select: { name: true } } }, orderBy: { issueDate: "asc" } }),
     prisma.orderConfirmation.findMany({
@@ -27,6 +27,8 @@ todoRouter.get("/", async (req, res) => {
     prisma.material.findMany({ where: { companyId, isArchived: false, minStock: { gt: 0 } }, select: { name: true, stockQuantity: true, minStock: true } }),
     prisma.maintenanceTask.findMany({ where: { companyId, printer: { isArchived: false } }, include: { printer: { select: { name: true } } } }),
     prisma.printerJob.findMany({ where: { companyId, orderConfirmationId: null, result: "FINISHED", endedAt: { gte: new Date(now.getTime() - 3 * DAY) } }, orderBy: { endedAt: "desc" }, take: 20, select: { id: true, name: true, printer: { select: { name: true } } } }),
+    prisma.product.findMany({ where: { companyId, isArchived: false, trackStock: true, stockMin: { not: null } }, select: { id: true, name: true, unit: true, stockQuantity: true, stockMin: true } }),
+    prisma.bankTransaction.count({ where: { companyId, amountCents: { gt: 0 }, matchedInvoiceId: null, ignored: false } }),
   ]);
 
   // Folgebelege: zu welchen Angeboten gibt es schon einen Auftrag/eine Rechnung, zu welchen Aufträgen schon eine Rechnung?
@@ -61,6 +63,8 @@ todoRouter.get("/", async (req, res) => {
     oldDrafts: draftCounts.reduce((a, b) => a + b, 0),
     lowStock: materials.filter((m) => m.minStock !== null && m.stockQuantity <= m.minStock).map((m) => m.name),
     maintenanceDue,
+    unmatchedPayments,
+    lowProducts: trackedProducts.filter((p) => p.stockMin !== null && p.stockQuantity <= p.stockMin).map((p) => ({ id: p.id, name: p.name, stock: p.stockQuantity, min: p.stockMin as number, unit: p.unit })),
     unassignedJobs: unassignedPrints.map((j) => ({ id: j.id, name: j.name, printerName: j.printer.name })),
   });
   res.json({ items });

@@ -49,6 +49,10 @@ export interface TodoInput {
   oldDrafts: number;
   lowStock: string[];
   maintenanceDue: string[];
+  /** Fertigteile mit Lagerführung, deren Bestand den Mindestbestand erreicht oder unterschritten hat */
+  /** Zahlungseingänge im Bankimport ohne Rechnung (nicht ausgeblendet) */
+  unmatchedPayments: number;
+  lowProducts: { id: string; name: string; stock: number; min: number; unit: string }[];
   /** Beendete, erfolgreiche Drucke der letzten Tage ohne Auftrag */
   unassignedJobs: { id: string; name: string | null; printerName: string }[];
 }
@@ -156,6 +160,13 @@ export function buildTodo(i: TodoInput): TodoItem[] {
   if (i.lowStock.length > 0) {
     const shown = i.lowStock.slice(0, 3).join(", ") + (i.lowStock.length > 3 ? ` und ${i.lowStock.length - 3} weitere` : "");
     items.push({ id: "low-stock", kind: "low-stock", severity: "normal", title: `${i.lowStock.length} ${plural(i.lowStock.length, "Material", "Materialien")} unter dem Mindestbestand`, detail: `${shown} - Nachbestellliste ansehen`, link: "/catalog?tab=materials&reorder=1" });
+  }
+  for (const p of i.lowProducts) {
+    const n = (x: number) => new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 }).format(x);
+    items.push({ id: `lowprod-${p.id}`, kind: "low-product-stock", severity: p.stock < 0 ? "high" : "normal", title: p.stock < 0 ? `Produkt ${p.name}: mehr verkauft als im Lager (${n(p.stock)} ${p.unit})` : `Produkt ${p.name}: Lager knapp (${n(p.stock)} ${p.unit}, Mindestbestand ${n(p.min)})`, detail: "nachproduzieren - Zugang beim Produkt buchen", link: "/catalog?tab=products" });
+  }
+  if (i.unmatchedPayments > 0) {
+    items.push({ id: "unmatched-payments", kind: "unmatched-payments", severity: "normal", title: `${i.unmatchedPayments} ${plural(i.unmatchedPayments, "Zahlungseingang", "Zahlungseingänge")} noch keiner Rechnung zugeordnet`, detail: "Vorschläge ansehen und mit einem Klick bestätigen", link: "/finance?tab=bank" });
   }
   if (leftover > 0) {
     items.push({ id: "unassigned-prints", kind: "unassigned-prints", severity: "info", title: `${leftover} ${plural(leftover, "Druck", "Drucke")} der letzten Tage ohne Auftrag`, detail: "Zeit und Material gehen so in keinen Auftrag ein - im Druckverlauf des Druckers zuordnen", link: "/catalog?tab=printers" });

@@ -70,6 +70,9 @@ const productSchema = z.object({
   // Staffelpreise: netto je Einheit ab der jeweiligen Menge (aufsteigend, Menge mindestens 2)
   piecesPerPlate: z.number().int().min(1).max(10000).optional(),
   imageDocumentId: z.string().nullish(),
+  // Fertigteil-Lager (der Bestand selbst wird nur über /:id/stock gebucht)
+  trackStock: z.boolean().optional(),
+  stockMin: z.number().min(0).max(1_000_000).nullish(),
   extraCosts: z.array(z.object({ label: z.string().trim().min(1).max(60), amountCents: z.number().int().min(0).max(100_000_000) })).max(10).nullish(),
   priceTiers: z
     .array(z.object({ minQuantity: z.number().min(2).max(1_000_000), unitPriceCents: z.number().int().min(0) }))
@@ -151,6 +154,20 @@ productsRouter.patch("/:id", async (req, res) => {
     include: { materials: { include: { material: true } } },
   });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "product.update", entityType: "Product", entityId: existing.id, metadata: body });
+  res.json(updated);
+});
+
+// Bestand von Fertigteilen buchen: Zugang (z.B. fertig gedruckt, + Menge), Abgang (- Menge) oder Inventur (Bestand ist genau ...)
+const stockSchema = z.object({ mode: z.enum(["add", "set"]), quantity: z.number().min(-1_000_000).max(1_000_000), note: z.string().trim().max(200).optional() });
+
+productsRouter.post("/:id/stock", async (req, res) => {
+  const body = stockSchema.parse(req.body);
+  const existing = await prisma.product.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
+  if (!existing) throw new HttpError(404, "Produkt nicht gefunden");
+  if (!existing.trackStock) throw new HttpError(400, "Für dieses Produkt ist keine Lagerführung eingeschaltet (beim Produkt unter Bearbeiten aktivierbar).");
+  const next = body.mode === "set" ? body.quantity : existing.stockQuantity + body.quantity;
+  const updated = await prisma.product.update({ where: { id: existing.id }, data: { stockQuantity: Math.round(next * 1000) / 1000 }, select: { id: true, stockQuantity: true } });
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: body.mode === "set" ? "product.stock.count" : "product.stock.move", entityType: "Product", entityId: existing.id, metadata: { from: existing.stockQuantity, to: updated.stockQuantity, note: body.note ?? null } });
   res.json(updated);
 });
 

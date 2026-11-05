@@ -8,6 +8,7 @@ import { TaxPanel } from "../components/TaxPanel";
 import { DatevPanel } from "../components/DatevPanel";
 import { useSearchParams } from "react-router-dom";
 import { AssetsPanel } from "../components/AssetsPanel";
+import { BankMatchPanel } from "../components/BankMatchPanel";
 import { ReceiptScanDialog } from "../components/ReceiptScanDialog";
 import { FinanceChart, FinanceLegend, type FinanceMonth } from "../components/FinanceChart";
 
@@ -61,6 +62,7 @@ export default function Finance() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [supplierNames, setSupplierNames] = useState<string[]>([]);
   const [bankMessage, setBankMessage] = useState<string | null>(null);
+  const [bankReload, setBankReload] = useState(0);
   const expenseSave = useSaveStatus();
 
   function loadSummary() {
@@ -114,8 +116,9 @@ export default function Finance() {
     formData.append("file", file);
     try {
       const { data } = await api.post("/bank/import", formData, { headers: { "Content-Type": "multipart/form-data" } });
-      setBankMessage(`${data.imported} Buchungen importiert, ${data.matched} automatisch offenen Rechnungen zugeordnet und als bezahlt markiert.${data.errors.length ? ` ${data.errors.length} Zeilen mit Fehlern.` : ""}`);
+      setBankMessage(`${data.imported} Buchungen importiert, ${data.matched} automatisch offenen Rechnungen zugeordnet und als bezahlt markiert.${data.duplicates ? ` ${data.duplicates} schon vorhandene übersprungen.` : ""}${data.toReview ? ` ${data.toReview} Zahlungseingänge warten unten auf deine Zuordnung.` : ""}${data.errors.length ? ` ${data.errors.length} Zeilen mit Fehlern (z.B. ${data.errors[0]}).` : ""}`);
       loadTransactions();
+      setBankReload((n) => n + 1);
     } catch (err: any) {
       setBankMessage(err.response?.data?.error || "Import fehlgeschlagen.");
     }
@@ -326,8 +329,8 @@ export default function Finance() {
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 space-y-3">
             <h2 className="font-medium">Kontoauszug importieren (CSV)</h2>
             <p className="text-sm text-slate-500">
-              Erwartete Spalten: <code>bookingDate, amount, purpose, counterparty</code> (Export aus Online-Banking, ggf. Spaltennamen vorher anpassen).
-              Zahlungseingänge werden automatisch offenen Rechnungen zugeordnet, wenn Betrag und Rechnungsnummer im Verwendungszweck übereinstimmen.
+              CSV-Export aus dem Online-Banking, die üblichen Spaltennamen (z.B. Buchungstag, Betrag, Verwendungszweck, Beguenstigter/Zahlungspflichtiger) werden erkannt.
+              Zahlungseingänge werden automatisch zugeordnet, wenn Betrag und Rechnungsnummer im Verwendungszweck übereinstimmen; sonst bekommst du unten einen Vorschlag zum Bestätigen. Dieselbe Datei kannst du gefahrlos erneut importieren - Vorhandenes wird übersprungen.
             </p>
             <input
               type="file"
@@ -341,6 +344,7 @@ export default function Finance() {
             />
             {bankMessage && <p className="text-sm">{bankMessage}</p>}
           </div>
+          <BankMatchPanel reloadKey={bankReload} onChanged={() => { loadTransactions(); loadSummary(); }} />
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
             {transactions.map((tx) => {
               const amount = <span className={tx.amountCents >= 0 ? "text-green-600" : "text-red-600"}>{formatEuro(tx.amountCents)}</span>;

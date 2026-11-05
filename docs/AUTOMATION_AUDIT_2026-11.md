@@ -100,7 +100,7 @@ Vorschlag: eine Seite **Einstellungen -> Verbindungen** mit Ampel je Punkt (grü
 7. Überfällig: Benachrichtigung plus vorbereiteter Erinnerungs-Entwurf (D).
 8. Nachbestellliste je Lieferant mit vorbereiteter E-Mail (G).
 
-**Paket 3 - Schnittstellen**
+**Paket 3 - Schnittstellen - UMGESETZT bis auf Etsy per Schnittstelle und weitere Druckertypen (Punkte 9 bis 11 und Bankabgleich aus 12; siehe USER_GUIDE und API.md)**
 9. Webhooks-Oberfläche, mehr Ereignisse (Auftrag, Druck fertig, Lager, Zahlung) und **API-Schlüssel** für n8n/Zapier/Skripte.
 10. Kalenderfeed (ICS) für Termine, Wartung, Fälligkeiten.
 11. Produktlager (F).

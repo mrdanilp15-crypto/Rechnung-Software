@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 
 /**
- * Passt den Materialbestand anhand der Rezepte (ProductMaterial) der Positionen einer
+ * Passt den Materialbestand anhand der Rezepte (und den Bestand von Fertigteilen mit Lagerführung) (ProductMaterial) der Positionen einer
  * Rechnung an. sign=-1 beim Erstellen/Ändern (neuen Verbrauch abziehen), sign=1 beim
  * Löschen bzw. vor dem Ändern eines Entwurfs (alten Verbrauch zurückbuchen - siehe
  * PATCH /invoices/:id, das erst die alten Positionen gutschreibt und dann die neuen
@@ -17,6 +17,14 @@ async function adjustMaterialStock(
 ) {
   const productIds = [...new Set(items.filter((i) => i.productId).map((i) => i.productId as string))];
   if (productIds.length === 0) return;
+
+  // Fertigteil-Lager: Produkte mit Lagerführung werden um die verkaufte Menge verringert (bzw. beim Zurückbuchen erhöht)
+  const tracked = new Set((await tx.product.findMany({ where: { id: { in: productIds }, trackStock: true }, select: { id: true } })).map((p) => p.id));
+  if (tracked.size > 0) {
+    const byProduct = new Map<string, number>();
+    for (const item of items) if (item.productId && tracked.has(item.productId)) byProduct.set(item.productId, (byProduct.get(item.productId) ?? 0) + sign * item.quantity);
+    for (const [id, delta] of byProduct) await tx.product.update({ where: { id }, data: { stockQuantity: { increment: delta } } });
+  }
 
   const recipes = await tx.productMaterial.findMany({ where: { productId: { in: productIds } } });
   if (recipes.length === 0) return;

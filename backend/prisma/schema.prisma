@@ -264,6 +264,10 @@ model Product {
   id            String   @id @default(uuid())
   company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   companyId     String
+  // Lager für Fertigteile: nur wenn trackStock. Rechnungen buchen ab (und Storno/Löschen zurück), Zugänge und Inventur werden von Hand gebucht.
+  trackStock    Boolean  @default(false)
+  stockQuantity Float    @default(0)
+  stockMin      Float?
   sku           String?
   name          String
   description   String?
@@ -763,6 +767,8 @@ model BankTransaction {
   purpose      String? // Verwendungszweck
   counterparty String?
   matchedInvoiceId String?
+  // Buchung gehört zu keiner Rechnung (z.B. private Einlage): taucht bei den Zuordnungsvorschlägen nicht mehr auf
+  ignored      Boolean  @default(false)
   importedAt   DateTime @default(now())
 
   @@index([companyId, bookingDate])

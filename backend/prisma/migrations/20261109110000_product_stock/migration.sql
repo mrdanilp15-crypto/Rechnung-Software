@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Product" ADD COLUMN     "trackStock" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "stockQuantity" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "stockMin" DOUBLE PRECISION;

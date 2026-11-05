@@ -4,7 +4,7 @@ import { buildTodo, jobMatchesOrder, type TodoInput, type TodoOrder } from "../s
 const now = new Date("2026-11-10T10:00:00Z");
 const day = 86_400_000;
 const ago = (d: number) => new Date(now.getTime() - d * day);
-const base: TodoInput = { now, overdueInvoices: [], openQuotes: [], orders: [], oldDrafts: 0, lowStock: [], maintenanceDue: [], unassignedJobs: [] };
+const base: TodoInput = { now, overdueInvoices: [], openQuotes: [], orders: [], oldDrafts: 0, lowStock: [], maintenanceDue: [], lowProducts: [], unmatchedPayments: 0, unassignedJobs: [] };
 const order = (id: string, p: Partial<TodoOrder> = {}): TodoOrder => ({ id, number: id, customer: "K", productionStatus: "IN_PRODUCTION", expectedDeliveryDate: null, shippedAt: null, hasInvoice: false, itemNames: [], runningJobs: 0, finishedJobs: 0, ...p });
 
 describe("Heute zu tun", () => {
@@ -58,6 +58,24 @@ describe("Heute zu tun", () => {
     expect(items.find((x) => x.kind === "old-drafts")?.title).toContain("2 Entwürfe liegen");
     expect(items.find((x) => x.kind === "unassigned-prints")?.title).toContain("1 Druck der");
     expect(items.find((x) => x.kind === "maintenance")?.title).toBe("Wartung fällig: P1S · Düse");
+  });
+});
+
+describe("Bankzahlungen", () => {
+  it("weist auf nicht zugeordnete Zahlungseingänge hin", () => {
+    const items = buildTodo({ ...base, unmatchedPayments: 3 });
+    expect(items[0].title).toBe("3 Zahlungseingänge noch keiner Rechnung zugeordnet");
+    expect(items[0].link).toBe("/finance?tab=bank");
+    expect(buildTodo({ ...base, unmatchedPayments: 1 })[0].title).toContain("1 Zahlungseingang noch");
+  });
+});
+
+describe("Fertigteil-Lager", () => {
+  it("meldet knappen Bestand und überverkaufte Produkte (dringend)", () => {
+    const items = buildTodo({ ...base, lowProducts: [{ id: "a", name: "Halter", stock: 2, min: 5, unit: "Stk." }, { id: "b", name: "Vase", stock: -3, min: 2, unit: "Stk." }] });
+    expect(items[0].severity).toBe("high");
+    expect(items[0].title).toContain("mehr verkauft als im Lager");
+    expect(items[1].title).toBe("Produkt Halter: Lager knapp (2 Stk., Mindestbestand 5)");
   });
 });
 

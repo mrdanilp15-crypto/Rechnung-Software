@@ -7,6 +7,7 @@ import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { SkuField } from "../components/SkuField";
+import { ProductStockDialog } from "../components/ProductStockDialog";
 import { ProductFiles, type Applied3mf } from "../components/ProductFiles";
 import { calcCost, feesAt, sollParts, type CostRates, type PriceTier, type PrinterCosts } from "../lib/cost";
 
@@ -46,6 +47,9 @@ interface Product {
   piecesPerPlate?: number;
   imageDocumentId?: string | null;
   extraCosts?: { label: string; amountCents: number }[] | null;
+  trackStock?: boolean;
+  stockQuantity?: number;
+  stockMin?: number | null;
   materials: ProductMaterial[];
 }
 /** Ist-Werte aus Drucken, die Aufträgen mit diesem Produkt zugeordnet sind (GET /production/product-actuals) */
@@ -74,11 +78,12 @@ const EXTRA_SUGGESTIONS = ["Lackieren / Bemalen", "Klarlack", "Schleifen / Spach
 /** Zahl für ein Eingabefeld: ohne Rechenrauschen (z.B. 0.30000000000000004) */
 const field = (n: number) => String(Math.round(n * 10000) / 10000);
 
-const emptyForm = { sku: "", name: "", description: "", unit: "Stk.", unitPriceEur: "0.00", vatRateBps: 1900, printTimeMinutes: "", laborMinutes: "", printerId: "", setupMinutes: "", packagingEur: "", extraMaterialPercent: "", piecesPerPlate: "1" };
+const emptyForm = { trackStock: false, stockMin: "", sku: "", name: "", description: "", unit: "Stk.", unitPriceEur: "0.00", vatRateBps: 1900, printTimeMinutes: "", laborMinutes: "", printerId: "", setupMinutes: "", packagingEur: "", extraMaterialPercent: "", piecesPerPlate: "1" };
 
 export default function Products() {
   const { t } = useTranslation();
   const [products, setProducts] = useState<Product[]>([]);
+  const [stockFor, setStockFor] = useState<Product | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [query, setQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -161,6 +166,8 @@ export default function Products() {
       packagingEur: p.packagingCents ? String(p.packagingCents / 100) : "",
       extraMaterialPercent: p.extraMaterialPercent ? String(p.extraMaterialPercent) : "",
       piecesPerPlate: String(n),
+      trackStock: !!p.trackStock,
+      stockMin: p.stockMin != null ? String(p.stockMin) : "",
     });
     setExtraRows((p.extraCosts ?? []).map((x) => ({ label: x.label, amountEur: (x.amountCents / 100).toFixed(2) })));
     setTierRows((p.priceTiers ?? []).map((t) => ({ minQuantity: String(t.minQuantity), priceEur: (t.unitPriceCents / 100).toFixed(2) })));
@@ -192,6 +199,8 @@ export default function Products() {
     const validMaterialRows = materialRows.filter((r) => r.materialId && parseFloat(r.quantityPerUnit) > 0);
     const n = pieces; // Zeit und Material sind je Druckplatte erfasst, gespeichert wird je Stück
     const payload = {
+      trackStock: form.trackStock,
+      stockMin: form.trackStock && parseFloat(form.stockMin.replace(",", ".")) > 0 ? parseFloat(form.stockMin.replace(",", ".")) : null,
       sku: form.sku || undefined,
       name: form.name,
       description: form.description || undefined,
@@ -266,6 +275,7 @@ export default function Products() {
         </button>
       </div>
 
+      {stockFor && <ProductStockDialog product={{ id: stockFor.id, name: stockFor.name, unit: stockFor.unit, stockQuantity: stockFor.stockQuantity ?? 0 }} onClose={() => setStockFor(null)} onSaved={() => { setStockFor(null); load(); }} />}
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
       {showForm && (
@@ -276,6 +286,15 @@ export default function Products() {
               <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
             </div>
             <SkuField kind="products" value={form.sku} onChange={(v) => setForm((f) => ({ ...f, sku: v }))} selfId={editingId} />
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={form.trackStock} onChange={(e) => setForm((f) => ({ ...f, trackStock: e.target.checked }))} /> Lagerbestand führen (Fertigteile auf Vorrat)</label>
+            {form.trackStock && (
+              <label className="flex items-center gap-2">Mindestbestand
+                <input type="number" min="0" step="any" inputMode="decimal" value={form.stockMin} onChange={(e) => setForm((f) => ({ ...f, stockMin: e.target.value }))} placeholder="optional" className="w-24 px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              </label>
+            )}
+            {form.trackStock && <span className="text-xs text-slate-500 w-full">Verkäufe über Rechnungen buchen den Bestand ab, Zugänge (z.B. fertig gedruckt) buchst du in der Liste über "Bestand".</span>}
           </div>
           <div>
             <label className="block text-sm mb-1">Beschreibung</label>
@@ -562,6 +581,7 @@ export default function Products() {
               <button onClick={() => startEdit(p)} className="text-brand hover:underline">
                 {t("common.edit")}
               </button>
+              {p.trackStock && <button onClick={() => setStockFor(p)} className="text-brand hover:underline" title="Zugang, Abgang oder Inventur buchen">Bestand</button>}
               <a href={`/q/product/${p.id}`} className="text-slate-500 hover:underline">QR</a>
               <button onClick={() => handleDelete(p)} className="text-red-600 hover:underline">
                 {t("common.delete")}
@@ -574,6 +594,11 @@ export default function Products() {
               <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 140px 90px auto" }}>
                 <div className="min-w-0">
                   <div className="font-medium truncate flex items-center gap-2">{p.imageDocumentId && <img src={`/api/archive/${p.imageDocumentId}/file`} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" loading="lazy" />}<span className="truncate">{p.name}</span></div>
+                  {p.trackStock && (
+                    <div className={`text-xs ${(p.stockQuantity ?? 0) < 0 || (p.stockMin != null && (p.stockQuantity ?? 0) <= p.stockMin) ? "text-red-600" : "text-slate-500"}`}>
+                      Lager: {p.stockQuantity ?? 0} {p.unit}{p.stockMin != null ? ` (Mindestbestand ${p.stockMin})` : ""}{(p.stockQuantity ?? 0) < 0 ? " - mehr verkauft als vorrätig" : ""}
+                    </div>
+                  )}
                   {(p.sku || p.description) && (
                     <div className="text-xs text-slate-500 truncate">{[p.sku, p.description].filter(Boolean).join(" · ")}</div>
                   )}
@@ -632,6 +657,7 @@ export default function Products() {
               >
                 <MobileField label="Preis" value={`${formatPrice(p.unitPriceCents)} / ${p.unit}`} />
                 <MobileField label="USt." value={`${(p.vatRateBps / 100).toFixed(0)}%`} />
+                {p.trackStock && <MobileField label="Lager" value={`${p.stockQuantity ?? 0} ${p.unit}`} />}
                 {p.materials.length > 0 && (
                   <MobileField label="Verbraucht" value={p.materials.map((m) => `${m.quantityPerUnit}${m.material.unit} ${m.material.name}`).join(", ")} />
                 )}
