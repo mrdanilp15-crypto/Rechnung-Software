@@ -6,10 +6,25 @@ import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { productFilesRouter } from "./files";
+import { findDuplicate, nextSku } from "../../utils/sku";
 
 export const productsRouter = Router();
 productsRouter.use(requireAuth);
 productsRouter.use("/:id/files", productFilesRouter);
+
+// Nächste freie Artikelnummer (aus den vorhandenen abgeleitet)
+productsRouter.get("/next-sku", async (req, res) => {
+  const rows = await prisma.product.findMany({ where: { companyId: req.auth!.companyId }, select: { sku: true } });
+  res.json(nextSku(rows.map((r) => r.sku), "P-"));
+});
+
+/** Artikelnummer darf in der Firma nur einmal vorkommen (Groß-/Kleinschreibung egal); sonst Fehler mit Vorschlag. */
+async function assertSkuFree(companyId: string, sku: string | undefined, selfId?: string) {
+  if (!sku || !sku.trim()) return;
+  const rows = await prisma.product.findMany({ where: { companyId }, select: { id: true, sku: true, name: true } });
+  const dup = findDuplicate(rows, sku, selfId);
+  if (dup) throw new HttpError(409, `Die Artikelnummer ${sku.trim()} ist schon vergeben (${dup.name}). Nächste freie: ${nextSku(rows.map((r) => r.sku), "P-").sku}`);
+}
 
 productsRouter.get("/", async (req, res) => {
   const q = (req.query.q as string | undefined)?.trim();
@@ -89,6 +104,7 @@ function extraCostsForDb(list: { label: string; amountCents: number }[] | null |
 productsRouter.post("/", async (req, res) => {
   const body = productSchema.parse(req.body);
   const { materials, priceTiers, extraCosts, ...productData } = body;
+  await assertSkuFree(req.auth!.companyId, productData.sku);
   const product = await prisma.product.create({
     data: {
       ...productData,
@@ -110,6 +126,7 @@ productsRouter.patch("/:id", async (req, res) => {
   const { materials, priceTiers, extraCosts, ...productData } = body;
   const existing = await prisma.product.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!existing) throw new HttpError(404, "Produkt nicht gefunden");
+  await assertSkuFree(req.auth!.companyId, productData.sku, existing.id);
   const updated = await prisma.product.update({
     where: { id: existing.id },
     data: {

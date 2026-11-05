@@ -317,7 +317,7 @@ export default function Printers() {
                 </div>
                 {p.notes && <div className="text-xs text-amber-600 dark:text-amber-400">{p.notes}</div>}
                 <div className="flex items-center gap-3 mt-2">
-                  {p.imageDocumentId && <img src={`/api/archive/${p.imageDocumentId}/file`} alt={`Foto ${p.name}`} className="h-16 w-24 rounded-lg object-cover" loading="lazy" />}
+                  {p.imageDocumentId && <img src={`/api/archive/${p.imageDocumentId}/file`} alt={`Foto ${p.name}`} className="h-20 w-28 rounded-lg bg-white object-contain p-1 ring-1 ring-slate-200 dark:ring-slate-700" loading="lazy" />}
                   <label className="text-xs text-brand hover:underline cursor-pointer">{p.imageDocumentId ? "Bild ändern" : "Bild hinzufügen"}<input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) setImage(p, f); }} /></label>
                   {p.imageDocumentId && <button type="button" onClick={() => setImage(p, null)} className="text-xs text-slate-500 hover:underline">entfernen</button>}
                 </div>

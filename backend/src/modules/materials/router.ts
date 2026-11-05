@@ -6,9 +6,22 @@ import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { weightedAverageCost } from "../../utils/materialCost";
 import { checkLowStock } from "../notifications/lowStock";
+import { findDuplicate, nextSku } from "../../utils/sku";
 
 export const materialsRouter = Router();
 materialsRouter.use(requireAuth);
+
+materialsRouter.get("/next-sku", async (req, res) => {
+  const rows = await prisma.material.findMany({ where: { companyId: req.auth!.companyId }, select: { sku: true } });
+  res.json(nextSku(rows.map((r) => r.sku), "M-"));
+});
+
+async function assertSkuFree(companyId: string, sku: string | null | undefined, selfId?: string) {
+  if (!sku || !sku.trim()) return;
+  const rows = await prisma.material.findMany({ where: { companyId }, select: { id: true, sku: true, name: true } });
+  const dup = findDuplicate(rows, sku, selfId);
+  if (dup) throw new HttpError(409, `Die Artikelnummer ${sku.trim()} ist schon vergeben (${dup.name}). Nächste freie: ${nextSku(rows.map((r) => r.sku), "M-").sku}`);
+}
 
 materialsRouter.get("/", async (req, res) => {
   const materials = await prisma.material.findMany({
@@ -32,6 +45,7 @@ const materialSchema = z.object({
   supplierId: z.string().nullish(),
   // Mindestbestand in der Einheit des Materials; null/0 = keine Meldung bei knappem Bestand
   minStock: z.number().min(0).nullish(),
+  sku: z.string().trim().max(40).nullish(),
 });
 
 // Nur beim Anlegen: Gesamtpreis für den angegebenen Anfangsbestand - daraus wird der
@@ -51,6 +65,8 @@ async function supplierOf(companyId: string, supplierId: string | null | undefin
 materialsRouter.post("/", async (req, res) => {
   const { initialCostCents, ...body } = createSchema.parse(req.body);
   const supplier = await supplierOf(req.auth!.companyId, body.supplierId);
+  body.sku = body.sku || null;
+  await assertSkuFree(req.auth!.companyId, body.sku);
   body.supplierId = supplier?.id ?? null;
   const hasInitialPurchase = !!initialCostCents && (body.stockQuantity ?? 0) > 0;
   const costPerUnitCents = hasInitialPurchase ? initialCostCents! / body.stockQuantity! : body.costPerUnitCents;
@@ -83,6 +99,10 @@ materialsRouter.patch("/:id", async (req, res) => {
   const body = materialSchema.partial().parse(req.body);
   const existing = await prisma.material.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!existing) throw new HttpError(404, "Material nicht gefunden");
+  if (body.sku !== undefined) {
+    body.sku = body.sku || null;
+    await assertSkuFree(req.auth!.companyId, body.sku, existing.id);
+  }
   if (body.supplierId !== undefined) body.supplierId = (await supplierOf(req.auth!.companyId, body.supplierId))?.id ?? null;
   const updated = await prisma.material.update({ where: { id: existing.id }, data: { ...body, minStock: body.minStock === undefined ? undefined : body.minStock || null } });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "material.update", entityType: "Material", entityId: existing.id, metadata: body });

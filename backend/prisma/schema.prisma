@@ -321,6 +321,8 @@ model Material {
   // Mindestbestand in Material.unit: fällt der Bestand darauf oder darunter, kommt einmal eine Meldung (lowStockNotifiedAt merkt sich das,
   // bis der Bestand wieder über der Grenze liegt). null/0 = keine Überwachung.
   minStock         Float?
+  // Artikelnummer (eindeutig je Firma, siehe utils/sku.ts)
+  sku              String?
   lowStockNotifiedAt DateTime?
   isArchived       Boolean  @default(false)
   // Bevorzugter Lieferant (wird bei Nachbestellungen als Händler der Ausgabe verwendet)

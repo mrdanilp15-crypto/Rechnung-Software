@@ -95,8 +95,8 @@ export function PrinterOverview({ printers }: { printers: LivePrinter[] }) {
               <span className="font-medium truncate">{name}</span>
               <span className={`flex items-center gap-1.5 text-xs shrink-0 ${tone.text}`}><span className={`w-2 h-2 rounded-full ${tone.dot}`} />{tone.label}</span>
             </div>
-            <div className="my-3 h-20 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
-              {imageDocumentId ? <img src={`/api/archive/${imageDocumentId}/file`} alt={`Foto ${name}`} className="w-full h-full object-cover" loading="lazy" /> : <Icon name="printer" className={`w-10 h-10 ${tone.kind === "error" ? "text-red-500" : tone.kind === "active" ? "text-brand" : "text-slate-400"}`} />}
+            <div className={`my-3 h-28 rounded-lg flex items-center justify-center overflow-hidden ${imageDocumentId ? "bg-white ring-1 ring-slate-200 dark:ring-slate-700" : "bg-slate-100 dark:bg-slate-800"}`}>
+              {imageDocumentId ? <img src={`/api/archive/${imageDocumentId}/file`} alt={`Foto ${name}`} className="w-full h-full object-contain p-2" loading="lazy" /> : <Icon name="printer" className={`w-10 h-10 ${tone.kind === "error" ? "text-red-500" : tone.kind === "active" ? "text-brand" : "text-slate-400"}`} />}
             </div>
             {tone.kind === "active" && (
               <>

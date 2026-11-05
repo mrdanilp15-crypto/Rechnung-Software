@@ -5,6 +5,7 @@ import { useSaveStatus } from "../hooks/useSaveStatus";
 import { InfoBox } from "../components/InfoBox";
 import { useToast } from "../components/Toast";
 import { MobileCard, MobileField } from "../components/MobileCard";
+import { SkuField } from "../components/SkuField";
 import { RowActionsMenu } from "../components/RowActionsMenu";
 
 interface Material {
@@ -17,9 +18,10 @@ interface Material {
   costPerUnitCents: number;
   supplierId?: string | null;
   minStock?: number | null;
+  sku?: string | null;
 }
 
-const emptyForm = { name: "", unit: "g", stockQuantity: "0", initialCostEur: "", costPerUnitEur: "", supplierId: "", minStock: "" };
+const emptyForm = { sku: "", name: "", unit: "g", stockQuantity: "0", initialCostEur: "", costPerUnitEur: "", supplierId: "", minStock: "" };
 const emptyRestock = { quantity: "", totalCostEur: "", vendor: "" };
 
 const formatEuro = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
@@ -59,6 +61,7 @@ export default function Materials() {
   function startEdit(m: Material) {
     setEditingId(m.id);
     setForm({
+      sku: m.sku ?? "",
       name: m.name,
       unit: m.unit,
       stockQuantity: String(m.stockQuantity),
@@ -74,7 +77,7 @@ export default function Materials() {
     e.preventDefault();
     setError(null);
     const stockQuantity = parseFloat(form.stockQuantity) || 0;
-    const payload: Record<string, unknown> = { name: form.name, unit: form.unit, stockQuantity, supplierId: form.supplierId || null, minStock: parseFloat(form.minStock) > 0 ? parseFloat(form.minStock) : null };
+    const payload: Record<string, unknown> = { sku: form.sku.trim() || null, name: form.name, unit: form.unit, stockQuantity, supplierId: form.supplierId || null, minStock: parseFloat(form.minStock) > 0 ? parseFloat(form.minStock) : null };
     if (editingId) {
       if (form.costPerUnitEur) payload.costPerUnitCents = parseFloat(form.costPerUnitEur) * 100;
     } else {
@@ -145,6 +148,7 @@ export default function Materials() {
 
       {showForm && (
         <form onSubmit={handleCreate} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <SkuField kind="materials" value={form.sku} onChange={(v) => setForm((f) => ({ ...f, sku: v }))} others={materials} selfId={editingId} prefill={!editingId} />
           <div>
             <label className="block text-sm mb-1">Name *</label>
             <input required placeholder="z.B. PLA Filament schwarz" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
@@ -224,13 +228,13 @@ export default function Materials() {
           <div key={m.id}>
             {/* Desktop */}
             <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
-              <span className="min-w-0"><span className="block font-medium truncate">{m.name}{m.amsMeasured && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-normal" title={(m.amsSources ?? []).join(", ") + " - der Verbrauch wird aus dem AMS gemessen und automatisch abgebucht, nicht über Rechnungs-Rezepte"}>AMS-gemessen</span>}</span>{m.supplierId && <span className="block text-xs text-slate-500 truncate">{suppliers.find((s) => s.id === m.supplierId)?.name}</span>}</span>
+              <span className="min-w-0"><span className="block font-medium truncate">{m.name}{m.amsMeasured && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-normal" title={(m.amsSources ?? []).join(", ") + " - der Verbrauch wird aus dem AMS gemessen und automatisch abgebucht, nicht über Rechnungs-Rezepte"}>AMS-gemessen</span>}</span>{(m.sku || m.supplierId) && <span className="block text-xs text-slate-500 truncate">{[m.sku, suppliers.find((s) => s.id === m.supplierId)?.name].filter(Boolean).join(" · ")}</span>}</span>
               <span className="text-right">{stockValue}</span>
               <span className="text-right text-slate-500">{formatUnitPrice(m.costPerUnitCents)}/{m.unit}</span>
               {actions}
             </div>
             {/* Mobile */}
-            <MobileCard title={m.name} actions={actions}>
+            <MobileCard title={m.name} subtitle={m.sku || undefined} actions={actions}>
               <MobileField label="Bestand" value={stockValue} />
               <MobileField label="Preis/Einheit" value={`${formatUnitPrice(m.costPerUnitCents)}/${m.unit}`} />
             </MobileCard>
