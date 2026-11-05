@@ -348,6 +348,7 @@ model Printer {
   powerWatts         Float    @default(120) // durchschnittliche Leistungsaufnahme beim Drucken -> Stromkosten
   wearCentsPerHour   Float    @default(10) // Verschleiß/Wartung (Düse, Bett, Riemen, Lager ...) je Druckstunde in Cent
   notes              String?
+  imageDocumentId    String? // Foto des Druckers (Bild aus dem Belegarchiv)
   // Live-Anbindung (nur lesend): NONE oder BAMBU_LAN (Bambu Lab im LAN-Modus). Der Zugangscode wird verschlüsselt gespeichert
   // und nie an den Browser ausgeliefert.
   connectionType     String   @default("NONE")

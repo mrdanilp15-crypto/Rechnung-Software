@@ -209,6 +209,7 @@ export default function Materials() {
           );
           const actions = (
             <div className="flex gap-2 justify-end items-center">
+              <a href={`/q/material/${m.id}`} className="text-slate-500 hover:underline whitespace-nowrap" title="QR-Etikett drucken und einzelne Spulen verwalten">QR / Spulen</a>
               <button onClick={() => startRestock(m)} className="text-brand hover:underline whitespace-nowrap">Nachbestellen</button>
               <RowActionsMenu
                 actions={[

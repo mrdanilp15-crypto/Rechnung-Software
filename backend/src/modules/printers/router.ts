@@ -98,7 +98,16 @@ const printerSchema = z.object({
   powerWatts: z.number().min(0).max(100_000),
   wearCentsPerHour: z.number().min(0).max(1_000_000),
   notes: z.string().max(1000).nullish(),
+  imageDocumentId: z.string().nullish(),
 });
+
+// Als Druckerbild geht nur ein Bild aus dem eigenen Archiv
+async function checkImage(companyId: string, id: string | null | undefined) {
+  if (!id) return null;
+  const d = await prisma.archiveDocument.findFirst({ where: { id, companyId }, select: { id: true, mimeType: true } });
+  if (!d || !d.mimeType.startsWith("image/")) throw new HttpError(400, "Als Druckerbild geht nur ein Bild aus dem Belegarchiv.");
+  return d.id;
+}
 const connectionSchema = z.object({
   connectionType: z.enum(["NONE", "BAMBU_LAN"]),
   model: z.enum(PRINTER_MODELS).nullish(),
@@ -158,6 +167,7 @@ printersRouter.patch("/:id", async (req, res) => {
   const existing = await prisma.printer.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!existing) throw new HttpError(404, "Drucker nicht gefunden");
   const { connectionType, model, host, serial, accessCode, clearAccessCode, liveEnabled, ...basics } = body;
+  if (basics.imageDocumentId !== undefined) basics.imageDocumentId = await checkImage(req.auth!.companyId, basics.imageDocumentId);
   const updated = await prisma.printer.update({ where: { id: existing.id }, data: { ...basics, ...connectionData(body, existing) } as any });
   await syncMonitor(existing.id);
   // Den Zugangscode nie ins Protokoll schreiben

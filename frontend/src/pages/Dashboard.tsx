@@ -126,7 +126,7 @@ export default function Dashboard() {
   const [materials, setMaterials] = useState<MaterialRow[]>([]);
   const [series, setSeries] = useState<DayPoint[]>([]);
   const [chartRange, setChartRange] = useState<"month" | "year">("month");
-  const [livePrinters, setLivePrinters] = useState<{ id: string; name: string; status: LiveStatus }[]>([]);
+  const [livePrinters, setLivePrinters] = useState<{ id: string; name: string; status: LiveStatus; imageDocumentId?: string | null }[]>([]);
   const [dunning, setDunning] = useState<{ invoiceId: string; invoiceNumber: string; customerName: string; totalCents: number; daysOverdue: number; nextLevel: number }[]>([]);
 
   useEffect(() => {
@@ -146,7 +146,7 @@ export default function Dashboard() {
       try {
         const [list, live] = await Promise.all([api.get("/printers"), api.get("/printers/live")]);
         if (cancelled) return;
-        setLivePrinters(list.data.filter((p: { id: string; liveEnabled: boolean }) => p.liveEnabled && live.data[p.id]).map((p: { id: string; name: string }) => ({ id: p.id, name: p.name, status: live.data[p.id] })));
+        setLivePrinters(list.data.filter((p: { id: string; liveEnabled: boolean }) => p.liveEnabled && live.data[p.id]).map((p: { id: string; name: string; imageDocumentId?: string | null }) => ({ id: p.id, name: p.name, imageDocumentId: p.imageDocumentId, status: live.data[p.id] })));
       } catch {
         if (!cancelled) setLivePrinters([]);
       }

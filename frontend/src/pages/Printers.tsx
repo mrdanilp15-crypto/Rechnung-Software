@@ -13,6 +13,7 @@ interface Printer {
   purchasePriceCents: number;
   lifetimeHours: number;
   usedHoursBefore?: number;
+  imageDocumentId?: string | null;
   powerWatts: number;
   wearCentsPerHour: number;
   notes?: string | null;
@@ -123,6 +124,28 @@ export default function Printers() {
       setError(err.response?.data?.error || "Speichern fehlgeschlagen.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Foto des Druckers: Bild ins Belegarchiv legen und am Drucker eintragen (erscheint auch auf der Startseite)
+  async function setImage(p: Printer, file: File | null) {
+    try {
+      let docId: string | null = null;
+      if (file) {
+        const fd = new FormData();
+        fd.append("files", file);
+        fd.append("category", "DESIGN");
+        fd.append("title", `Drucker ${p.name}`);
+        fd.append("tags", "drucker");
+        const { data } = await api.post("/archive", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        if (data.created.length) docId = data.created[0].id;
+        else if (data.skipped.length) return showToast("Dieses Bild liegt schon im Belegarchiv - bitte ein anderes wählen oder dort löschen.", "error");
+        else return showToast(data.rejected[0]?.reason ?? "Bild wurde nicht angenommen.", "error");
+      }
+      await api.patch(`/printers/${p.id}`, { imageDocumentId: docId });
+      load();
+    } catch (err: any) {
+      showToast(err?.response?.data?.error ?? "Bild konnte nicht gespeichert werden.", "error");
     }
   }
 
@@ -293,6 +316,11 @@ export default function Printers() {
                   {p._count?.products ? ` · von ${p._count.products} Produkt(en) genutzt` : ""}
                 </div>
                 {p.notes && <div className="text-xs text-amber-600 dark:text-amber-400">{p.notes}</div>}
+                <div className="flex items-center gap-3 mt-2">
+                  {p.imageDocumentId && <img src={`/api/archive/${p.imageDocumentId}/file`} alt={`Foto ${p.name}`} className="h-16 w-24 rounded-lg object-cover" loading="lazy" />}
+                  <label className="text-xs text-brand hover:underline cursor-pointer">{p.imageDocumentId ? "Bild ändern" : "Bild hinzufügen"}<input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) setImage(p, f); }} /></label>
+                  {p.imageDocumentId && <button type="button" onClick={() => setImage(p, null)} className="text-xs text-slate-500 hover:underline">entfernen</button>}
+                </div>
                 <MaintenancePanel printerId={p.id} tasks={maintenance.filter((t) => t.printerId === p.id)} isAdmin={isAdmin} onChange={loadMaintenance} />
                 {p.connectionType === "BAMBU_LAN" && p.liveEnabled && liveMap[p.id] && (
                   <PrinterLiveCard printerName={p.name} printerId={p.id} status={liveMap[p.id]} model={p.model} trackedMinutes={p.trackedMinutes} lifetimeHours={p.lifetimeHours} usedHoursBefore={p.usedHoursBefore ?? 0} />

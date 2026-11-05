@@ -26,6 +26,7 @@ const navItems: readonly NavItem[] = [
   { to: "/catalog?tab=products", key: "products", icon: "cube", match: ["/products"], tab: "products" },
   { to: "/catalog?tab=materials", key: "materials", icon: "filament", match: ["/materials"], tab: "materials" },
   { to: "/catalog?tab=printers", key: "printers", icon: "printer", match: [], tab: "printers" },
+  { to: "/catalog?tab=suppliers", key: "suppliers", icon: "archive", match: [], tab: "suppliers" },
   { to: "/time", key: "time", icon: "clock", match: ["/time"] },
   { to: "/finance", key: "finance", icon: "money", match: ["/finance"] },
   { to: "/stats", key: "stats", icon: "chart", match: ["/stats"] },
