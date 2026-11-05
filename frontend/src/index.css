@@ -74,3 +74,24 @@ body {
 .animate-in {
   animation: toast-in 0.2s ease-out;
 }
+
+/* Einheitliche Bedienelemente in allen Designs: Fokusrahmen in der Akzentfarbe, Eckenradius vom Design */
+@layer base {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  select,
+  textarea {
+    border-radius: var(--radius-lg);
+  }
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  button:focus-visible,
+  a:focus-visible {
+    outline: 2px solid rgb(var(--brand) / 0.6);
+    outline-offset: 2px;
+  }
+}
+/* Zweittext im dunklen Modus etwas heller (bessere Lesbarkeit bei kleiner Schrift) */
+html.dark .text-slate-500 {
+  color: rgb(var(--slate-400));
+}

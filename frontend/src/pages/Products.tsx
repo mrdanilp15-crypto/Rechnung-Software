@@ -43,6 +43,7 @@ interface Product {
   extraMaterialPercent?: number;
   priceTiers?: PriceTier[] | null;
   piecesPerPlate?: number;
+  imageDocumentId?: string | null;
   extraCosts?: { label: string; amountCents: number }[] | null;
   materials: ProductMaterial[];
 }
@@ -297,7 +298,7 @@ export default function Products() {
           </div>
 
           {editingId ? (
-            <ProductFiles productId={editingId} productName={form.name} materials={materials} onApply={applyFrom3mf} />
+            <ProductFiles productId={editingId} productName={form.name} materials={materials} onApply={applyFrom3mf} imageDocumentId={products.find((p) => p.id === editingId)?.imageDocumentId} onSetImage={async (docId) => { try { await api.patch(`/products/${editingId}`, { imageDocumentId: docId }); load(); } catch (e: any) { setError(e?.response?.data?.error || "Produktbild konnte nicht gesetzt werden"); } }} />
           ) : (
             <p className="text-xs text-slate-500">Dateien (STL, 3MF, STEP) mit Versionen lassen sich zuordnen, sobald das Produkt einmal gespeichert ist. Aus einer 3MF kannst du dann Druckzeit und Materialverbrauch übernehmen.</p>
           )}
@@ -561,7 +562,7 @@ export default function Products() {
               {/* Desktop */}
               <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 140px 90px auto" }}>
                 <div className="min-w-0">
-                  <div className="font-medium truncate">{p.name}</div>
+                  <div className="font-medium truncate flex items-center gap-2">{p.imageDocumentId && <img src={`/api/archive/${p.imageDocumentId}/file`} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" loading="lazy" />}<span className="truncate">{p.name}</span></div>
                   {(p.sku || p.description) && (
                     <div className="text-xs text-slate-500 truncate">{[p.sku, p.description].filter(Boolean).join(" · ")}</div>
                   )}

@@ -16,6 +16,7 @@ interface PFile {
   documentId: string;
   title: string;
   fileName: string;
+  mimeType?: string;
   sizeBytes: number;
 }
 interface Candidate {
@@ -73,7 +74,7 @@ export function guessMaterial(type: string | null, materials: Material[]): strin
 
 const sel = "px-2 py-1.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm";
 
-export function ProductFiles({ productId, productName, materials, onApply }: { productId: string; productName: string; materials: Material[]; onApply: (r: Applied3mf) => void }) {
+export function ProductFiles({ productId, productName, materials, onApply, imageDocumentId, onSetImage }: { productId: string; productName: string; materials: Material[]; onApply: (r: Applied3mf) => void; imageDocumentId?: string | null; onSetImage?: (docId: string | null) => void }) {
   const [files, setFiles] = useState<PFile[] | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -241,6 +242,7 @@ export function ProductFiles({ productId, productName, materials, onApply }: { p
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700">Rev {f.revision}</span>
                 {f.isCurrent && <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">aktuell</span>}
+                {f.mimeType?.startsWith("image/") && <img src={`/api/archive/${f.documentId}/file`} alt="" className="w-8 h-8 rounded object-cover" loading="lazy" />}
                 <span className="font-medium truncate min-w-0">{f.fileName}</span>
                 <span className="text-xs text-slate-500">{fmtSize(f.sizeBytes)} · {fmtDate(f.addedAt)}</span>
               </div>
@@ -248,6 +250,7 @@ export function ProductFiles({ productId, productName, materials, onApply }: { p
               <div className="flex flex-wrap gap-3 text-xs">
                 <PdfLink url={`/archive/${f.documentId}/file?download=1`} filename={f.fileName} download className="text-brand hover:underline">Herunterladen</PdfLink>
                 {is3mf(f.fileName) && <button type="button" onClick={() => analyse(f)} className="text-brand hover:underline">Werte aus 3MF übernehmen</button>}
+                {onSetImage && f.mimeType?.startsWith("image/") && (imageDocumentId === f.documentId ? <button type="button" onClick={() => onSetImage(null)} className="text-green-600 hover:underline">Produktbild (entfernen)</button> : <button type="button" onClick={() => onSetImage(f.documentId)} className="text-brand hover:underline">Als Produktbild</button>)}
                 {!f.isCurrent && <button type="button" onClick={() => setCurrent(f)} className="text-brand hover:underline">Als aktuell setzen</button>}
                 <button type="button" onClick={() => editNote(f)} className="text-brand hover:underline">Notiz</button>
                 <button type="button" onClick={() => unlink(f)} className="text-red-600 hover:underline">Lösen</button>

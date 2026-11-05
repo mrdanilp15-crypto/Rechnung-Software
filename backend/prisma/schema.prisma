@@ -283,6 +283,8 @@ model Product {
   // Druckplatte: Stück pro Platte (Zeit und Materialverbrauch werden auf der Platte erfasst und durch diese Zahl geteilt gespeichert)
   // und weitere Kosten je Stück als [{ label, amountCents }] (z.B. Lackieren, Klarlack, Magnete)
   piecesPerPlate       Int   @default(1)
+  // Produktbild: Dokument aus dem Belegarchiv (Bild), meist eine der Produktdateien
+  imageDocumentId      String?
   extraCosts           Json?
   isArchived    Boolean  @default(false)
   createdAt     DateTime @default(now())

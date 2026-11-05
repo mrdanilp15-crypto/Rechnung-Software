@@ -139,6 +139,7 @@ export interface OrderRow {
   expectedDeliveryDate: string | null;
   itemSummary: string[];
   issueDate?: string;
+  imageDocumentId?: string | null;
 }
 
 const ORDER_CHIP: Record<string, { label: string; cls: string }> = {
@@ -161,7 +162,7 @@ export function OrdersWidget({ orders }: { orders: OrderRow[] }) {
         return (
           <li key={o.id}>
             <Link to={`/orders/${o.id}`} className="flex items-center gap-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/40 -mx-2 px-2 rounded-lg">
-              <span className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0"><Icon name="cube" className="w-5 h-5 text-slate-400" /></span>
+              <span className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center shrink-0 overflow-hidden">{o.imageDocumentId ? <img src={`/api/archive/${o.imageDocumentId}/file`} alt="" className="w-full h-full object-cover" loading="lazy" /> : <Icon name="cube" className="w-5 h-5 text-slate-400" />}</span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium truncate">{o.number} · {o.customerName}</span>
                 <span className="block text-xs text-slate-500 truncate">{o.itemSummary[0] ?? "Keine Positionen"}</span>

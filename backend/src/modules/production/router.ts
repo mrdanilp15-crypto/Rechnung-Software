@@ -38,8 +38,9 @@ productionRouter.get("/", async (req, res) => {
   });
 
   // Druckzeit je Auftrag schätzen: Positionen, deren Text genau einem Produktnamen entspricht, mal Stückzeit des Produkts
-  const products = await prisma.product.findMany({ where: { companyId, printTimeMinutes: { gt: 0 } }, select: { name: true, printTimeMinutes: true } });
-  const minutesByName = new Map(products.map((p) => [p.name.trim().toLowerCase(), p.printTimeMinutes]));
+  const products = await prisma.product.findMany({ where: { companyId }, select: { name: true, printTimeMinutes: true, imageDocumentId: true } });
+  const minutesByName = new Map(products.filter((p) => p.printTimeMinutes > 0).map((p) => [p.name.trim().toLowerCase(), p.printTimeMinutes]));
+  const imageByName = new Map(products.filter((p) => p.imageDocumentId).map((p) => [p.name.trim().toLowerCase(), p.imageDocumentId as string]));
 
   // Zugeordnete Drucke je Auftrag (Anzahl, Zeit, Verbrauch) für die Anzeige auf der Karte
   const prices = await materialPrices(companyId);
@@ -64,6 +65,7 @@ productionRouter.get("/", async (req, res) => {
       const prints = printsByOrder.get(o.id);
       return {
         priority: o.priority,
+        imageDocumentId: o.items.map((it) => imageByName.get(it.description.split(String.fromCharCode(10))[0].trim().toLowerCase())).find(Boolean) ?? null,
         prints: prints ? { count: prints.count, minutes: Math.round(prints.minutes), grams: Math.round(prints.grams), materialCents: Math.round(prints.materialCents) } : null,
         id: o.id,
         number: o.confirmationNumber,

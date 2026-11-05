@@ -46,6 +46,7 @@ const productSchema = z.object({
   extraMaterialPercent: z.number().min(0).max(500).optional(),
   // Staffelpreise: netto je Einheit ab der jeweiligen Menge (aufsteigend, Menge mindestens 2)
   piecesPerPlate: z.number().int().min(1).max(10000).optional(),
+  imageDocumentId: z.string().nullish(),
   extraCosts: z.array(z.object({ label: z.string().trim().min(1).max(60), amountCents: z.number().int().min(0).max(100_000_000) })).max(10).nullish(),
   priceTiers: z
     .array(z.object({ minQuantity: z.number().min(2).max(1_000_000), unitPriceCents: z.number().int().min(0) }))
@@ -62,6 +63,13 @@ async function validPrinterId(companyId: string, printerId: string) {
   const p = await prisma.printer.findFirst({ where: { id: printerId, companyId, isArchived: false }, select: { id: true } });
   if (!p) throw new HttpError(400, "Drucker nicht gefunden");
   return p.id;
+}
+
+async function validImage(companyId: string, id: string | null | undefined) {
+  if (!id) return null;
+  const d = await prisma.archiveDocument.findFirst({ where: { id, companyId }, select: { id: true, mimeType: true } });
+  if (!d || !d.mimeType.startsWith("image/")) throw new HttpError(400, "Als Produktbild geht nur ein Bild aus dem Belegarchiv.");
+  return d.id;
 }
 
 // Staffelpreise sortiert speichern; leere Liste/null löscht sie (bei Json-Feldern braucht Prisma dafür DbNull)
@@ -84,6 +92,7 @@ productsRouter.post("/", async (req, res) => {
   const product = await prisma.product.create({
     data: {
       ...productData,
+      imageDocumentId: await validImage(req.auth!.companyId, productData.imageDocumentId),
       priceTiers: tiersForDb(priceTiers),
       extraCosts: extraCostsForDb(extraCosts),
       companyId: req.auth!.companyId,
@@ -105,6 +114,7 @@ productsRouter.patch("/:id", async (req, res) => {
     where: { id: existing.id },
     data: {
       ...productData,
+      ...(productData.imageDocumentId !== undefined ? { imageDocumentId: await validImage(req.auth!.companyId, productData.imageDocumentId) } : {}),
       priceTiers: tiersForDb(priceTiers),
       extraCosts: extraCostsForDb(extraCosts),
       ...(productData.printerId !== undefined ? { printerId: productData.printerId ? await validPrinterId(req.auth!.companyId, productData.printerId) : null } : {}),
