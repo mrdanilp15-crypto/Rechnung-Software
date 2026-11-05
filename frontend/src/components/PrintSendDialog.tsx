@@ -31,6 +31,22 @@ interface Plate {
 }
 
 const EXTERNAL = 254;
+
+/** Grober deutscher Farbname aus dem Hex-Wert (damit man im AMS-Fach die Farbe auch ohne Farbpunkt erkennt). */
+export function colorName(hex: string | null): string {
+  const m = hex ? /^#?([0-9a-f]{6})/i.exec(hex) : null;
+  if (!m) return "";
+  const n = parseInt(m[1], 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min, l = (max + min) / 2;
+  if (d < 0.08) return l > 0.85 ? "Weiß" : l < 0.18 ? "Schwarz" : l < 0.4 ? "Dunkelgrau" : "Grau";
+  let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  h = (h * 60 + 360) % 360;
+  const light = l > 0.75 ? "Hell" : l < 0.3 ? "Dunkel" : "";
+  const name = h < 15 || h >= 345 ? "rot" : h < 40 ? "orange" : h < 65 ? "gelb" : h < 160 ? "grün" : h < 200 ? "türkis" : h < 255 ? "blau" : h < 310 ? "lila" : "pink";
+  if (light === "Hell" && name === "rot") return "Rosa";
+  return light ? `${light}${name}` : name[0].toUpperCase() + name.slice(1);
+}
 const minutes = (s: number) => {
   const m = Math.round(s / 60);
   return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min` : `${m} min`;
@@ -47,15 +63,22 @@ export function PrintSendDialog({ printerId, printerName, status, onClose, initi
   const [orderId, setOrderId] = useState(initialOrderId ?? "");
   const [q, setQ] = useState("");
   const [noThumb, setNoThumb] = useState(false);
+  const [mappings, setMappings] = useState<{ slot: number; material: { name: string } }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
 
-  const slots = status.ams.units.flatMap((u) => u.trays.filter((t) => t.type).map((t) => ({ value: t.amsSlot ?? u.id * 4 + t.slot, label: `AMS ${u.id + 1} · Fach ${t.slot + 1}: ${t.brand ?? t.type}`, type: t.type, color: t.color })));
-  if (status.ams.external) slots.push({ value: EXTERNAL, label: `Externe Spule: ${status.ams.external.brand ?? status.ams.external.type}`, type: status.ams.external.type, color: status.ams.external.color });
+  type Slot = { value: number; label: string; type: string | null; color: string | null };
+  const describe = (where: string, t: { brand: string | null; type: string | null; color: string | null; remainPercent?: number | null }, slotNo?: number) => {
+    const mat = slotNo !== undefined ? mappings.find((m) => m.slot === slotNo)?.material.name : undefined;
+    return `${where}: ${[t.brand ?? t.type, colorName(t.color), t.remainPercent !== null && t.remainPercent !== undefined ? `${Math.round(t.remainPercent)} %` : ""].filter(Boolean).join(" · ")}${mat ? ` → ${mat}` : ""}`;
+  };
+  const slots: Slot[] = status.ams.units.flatMap((u) => u.trays.filter((t) => t.type).map((t) => { const no = t.amsSlot ?? u.id * 4 + t.slot; return { value: no, label: describe(`AMS ${u.id + 1} · Fach ${t.slot + 1}`, t, no), type: t.type, color: t.color }; }));
+  if (status.ams.external) slots.push({ value: EXTERNAL, label: describe("Externe Spule", status.ams.external), type: status.ams.external.type, color: status.ams.external.color });
   const ready = ["IDLE", "FINISH", "FAILED"].includes(status.state);
 
   useEffect(() => {
+    api.get(`/printers/${printerId}/ams-slots`).then((r) => setMappings(r.data)).catch(() => {});
     api.get("/printers/print/files").then((r) => { setFiles(r.data); if (initialDocId) void choose(initialDocId); }).catch((e) => setError(e?.response?.data?.error ?? "Dateiliste nicht verfügbar."));
   }, []);
 
@@ -178,7 +201,8 @@ export function PrintSendDialog({ printerId, printerName, status, onClose, initi
                       {plate.filaments.map((f) => (
                         <div key={f.id} className="flex items-center gap-2">
                           <span className="w-5 h-5 rounded-full border border-slate-300 shrink-0" style={f.color ? { background: f.color } : undefined} />
-                          <span className="w-28 shrink-0 text-xs">{f.type ?? "Filament"} {f.id}{f.usedGrams ? ` · ${Math.round(f.usedGrams)} g` : ""}</span>
+                          <span className="w-28 shrink-0 text-xs">{f.type ?? "Filament"} {f.id}{f.color ? ` · ${colorName(f.color)}` : ""}{f.usedGrams ? ` · ${Math.round(f.usedGrams)} g` : ""}</span>
+                          <span className="w-5 h-5 rounded-full border border-slate-300 shrink-0" title={colorName(slots.find((x) => x.value === assignment[f.id])?.color ?? null) || "Fach wählen"} style={slots.find((x) => x.value === assignment[f.id])?.color ? { background: slots.find((x) => x.value === assignment[f.id])!.color! } : undefined} />
                           <select value={assignment[f.id] ?? ""} onChange={(e) => setAssignment((a) => ({ ...a, [f.id]: Number(e.target.value) }))} className={sel}>
                             <option value="">- Fach wählen -</option>
                             {slots.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
