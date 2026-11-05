@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 
@@ -111,6 +111,33 @@ export function NotificationsCard() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // Die Karte lässt sich einklappen (merkt sich der Browser), gleiche Meldungen werden zusammengefasst
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("meldungen_collapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
+  function toggleCollapsed() {
+    setCollapsed((v) => {
+      try {
+        localStorage.setItem("meldungen_collapsed", v ? "0" : "1");
+      } catch {
+        // Speicher gesperrt - gilt dann nur bis zum Neuladen
+      }
+      return !v;
+    });
+  }
+  const grouped = useMemo(() => {
+    const out: (Item & { count: number })[] = [];
+    for (const n of items) {
+      const hit = out.find((g) => g.title === n.title && g.body === n.body);
+      if (hit) hit.count += 1;
+      else out.push({ ...n, count: 1 });
+    }
+    return out;
+  }, [items]);
 
   function load() {
     api.get("/notifications").then((r) => { setItems(r.data.items); setUnread(r.data.unread); }).catch(() => {});
@@ -141,16 +168,17 @@ export function NotificationsCard() {
   const set = (patch: Partial<Settings>) => setSettings((s) => (s ? { ...s, ...patch } : s));
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6">
-      <div className="flex items-center gap-3 mb-2">
-        <h2 className="font-medium">Meldungen{unread > 0 && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-brand text-white">{unread} neu</span>}</h2>
+    <div id="meldungen" className="bg-white dark:bg-slate-800 rounded-xl shadow p-4 mb-6 scroll-mt-24">
+      <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${collapsed ? "" : "mb-2"}`}>
+        <h2 className="font-medium">Meldungen{unread > 0 && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-brand text-white whitespace-nowrap">{unread} neu</span>}</h2>
         {unread > 0 && <button onClick={markRead} className="text-xs text-brand hover:underline">Alle gelesen</button>}
+        <button onClick={toggleCollapsed} className="text-xs text-slate-500 hover:underline" aria-expanded={!collapsed}>{collapsed ? "Ausklappen" : "Einklappen"}</button>
         {isAdmin && <button onClick={() => setOpen((v) => !v)} className="text-xs text-slate-500 hover:underline ml-auto">{open ? "Einstellungen schließen" : "Einstellungen"}</button>}
       </div>
 
-      <div className="mb-3"><PushControl /></div>
+      {!collapsed && <div className="mb-3"><PushControl /></div>}
 
-      {open && settings && (
+      {open && settings && !collapsed && (
         <div className="rounded-lg bg-slate-50 dark:bg-slate-900/40 p-3 mb-3 text-sm space-y-2">
           <p className="text-xs text-slate-500">Meldungen erscheinen immer hier. Zusätzlich per E-Mail (über das in den Einstellungen eingerichtete Postfach):</p>
           <label className="flex items-center gap-2"><input type="checkbox" checked={settings.byMail} onChange={(e) => set({ byMail: e.target.checked })} /> Per E-Mail benachrichtigen</label>
@@ -169,15 +197,15 @@ export function NotificationsCard() {
         </div>
       )}
 
-      {items.length === 0 ? (
+      {collapsed ? null : items.length === 0 ? (
         <p className="text-sm text-slate-500">Noch keine Meldungen. Sie erscheinen, wenn ein Druck fertig oder fehlgeschlagen ist oder ein Drucker einen Fehler meldet (Drucker mit Live-Verbindung).</p>
       ) : (
         <ul className="divide-y divide-slate-100 dark:divide-slate-700 text-sm">
-          {items.slice(0, 8).map((n) => (
+          {grouped.slice(0, 3).map((n) => (
             <li key={n.id} className="py-2 flex gap-3">
               <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${TONE[n.type] ?? "bg-slate-400"}`} />
               <div className="min-w-0">
-                <div className={n.readAt ? "text-slate-600 dark:text-slate-300" : "font-medium"}>{n.title}</div>
+                <div className={n.readAt ? "text-slate-600 dark:text-slate-300" : "font-medium"}>{n.title}{n.count > 1 && <span className="ml-2 text-xs text-slate-500 font-normal">×{n.count}</span>}</div>
                 <div className="text-xs text-slate-500">{n.body}</div>
                 <div className="text-xs text-slate-400">{new Date(n.createdAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
               </div>
@@ -185,6 +213,7 @@ export function NotificationsCard() {
           ))}
         </ul>
       )}
+      {!collapsed && grouped.length > 3 && <p className="text-xs text-slate-500 mt-2">+ {grouped.length - 3} ältere Meldungen</p>}
     </div>
   );
 }

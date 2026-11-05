@@ -13,7 +13,8 @@ import { PlaceholderHint } from "../components/DocumentTexts";
 import { TemplatesManager } from "../components/TemplatesManager";
 import { FailRateHint } from "../components/FailRateHint";
 import AuditLog from "./AuditLog";
-import { ACCENTS, applyAppearance, cacheAppearance, DEFAULT_APPEARANCE, type DarkStyle } from "../theme/appearance";
+import { ACCENTS, applyAppearance, cacheAppearance, DEFAULT_APP_NAME, DEFAULT_APPEARANCE } from "../theme/appearance";
+import { THEMES, themeById } from "../theme/themes";
 
 interface Company {
   name: string;
@@ -47,6 +48,7 @@ interface Company {
   overheadPercent?: number;
   uiAccent?: string;
   uiDarkStyle?: string;
+  uiAppName?: string | null;
   failRatePercent?: number;
   platformFeePercent?: number;
   priceRounding?: string;
@@ -135,11 +137,11 @@ export default function Settings() {
   }, [user?.role]);
 
   // Vorschau: Auswahl sofort anwenden (gespeichert wird erst mit "Speichern")
-  function pickAppearance(patch: { uiAccent?: string; uiDarkStyle?: DarkStyle }) {
+  function pickAppearance(patch: { uiAccent?: string; uiDarkStyle?: string; uiAppName?: string | null }) {
     if (!company) return;
     const next = { ...company, ...patch };
     setCompany(next);
-    const a = { accent: next.uiAccent ?? DEFAULT_APPEARANCE.accent, darkStyle: (next.uiDarkStyle === "cool" ? "cool" : "warm") as DarkStyle };
+    const a = { accent: next.uiAccent ?? DEFAULT_APPEARANCE.accent, theme: themeById(next.uiDarkStyle).id, appName: next.uiAppName?.trim() || DEFAULT_APP_NAME };
     applyAppearance(a);
     cacheAppearance(a);
   }
@@ -624,29 +626,37 @@ export default function Settings() {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold mb-2">Dunkles Design</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
-              {(
-                [
-                  ["warm", "Warm", "Braune, weiche Töne - wirkt wie eine Werkstatt, schont die Augen.", "#1d1611", "#2a2118"],
-                  ["cool", "Kühl", "Klassisches Blau-Schwarz.", "#0f172a", "#1e293b"],
-                ] as const
-              ).map(([key, title, text, bg, card]) => {
-                const selected = (company.uiDarkStyle ?? DEFAULT_APPEARANCE.darkStyle) === key;
+            <h3 className="text-sm font-semibold mb-2">Design</h3>
+            <p className="text-xs text-slate-500 mb-3">Die Farbwelt der Oberfläche - gilt im hellen und im dunklen Modus. Mit dem Design wird die dazu passende Akzentfarbe vorgeschlagen, die du oben jederzeit ändern kannst.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {THEMES.map((th) => {
+                const selected = themeById(company.uiDarkStyle).id === th.id;
                 return (
-                  <button key={key} type="button" onClick={() => pickAppearance({ uiDarkStyle: key })} className={`text-left rounded-lg border p-3 ${selected ? "border-brand ring-2 ring-brand/40" : "border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`} aria-pressed={selected}>
-                    <span className="flex gap-1 mb-2 rounded-md p-2" style={{ background: bg }}>
-                      <span className="h-6 w-1/3 rounded" style={{ background: card }} />
-                      <span className="h-6 flex-1 rounded" style={{ background: card }} />
-                      <span className="h-6 w-6 rounded" style={{ background: "rgb(var(--brand))" }} />
+                  <button key={th.id} type="button" onClick={() => pickAppearance({ uiDarkStyle: th.id, uiAccent: th.accent })} aria-pressed={selected} className={`text-left rounded-lg border p-3 ${selected ? "border-brand ring-2 ring-brand/40" : "border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
+                    <span className="flex gap-1.5 mb-2 rounded-md p-2" style={{ background: th.swatch[1] }}>
+                      <span className="w-5 rounded" style={{ background: th.swatch[0] }} />
+                      <span className="flex-1 flex flex-col gap-1">
+                        <span className="h-2 w-2/3 rounded" style={{ background: th.swatch[2] }} />
+                        <span className="flex gap-1">
+                          <span className="h-6 flex-1 rounded" style={{ background: th.swatch[2] }} />
+                          <span className="h-6 flex-1 rounded" style={{ background: th.swatch[2] }} />
+                          <span className="h-6 w-5 rounded" style={{ background: th.accent }} />
+                        </span>
+                      </span>
                     </span>
-                    <span className="block font-medium text-sm">{title}</span>
-                    <span className="block text-xs text-slate-500">{text}</span>
+                    <span className="block font-medium text-sm">{th.label}</span>
+                    <span className="block text-xs text-slate-500">{th.description}</span>
                   </button>
                 );
               })}
             </div>
-            <p className="text-xs text-slate-500 mt-2">Den Wechsel zwischen hell und dunkel finden Sie unten im Menü (Mond/Sonne) - er gilt je Gerät.</p>
+            <p className="text-xs text-slate-500 mt-2">Den Wechsel zwischen hell und dunkel findest du oben rechts (Sonne/Mond) - er gilt je Gerät.</p>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold mb-2">Programmname</h3>
+            <input value={company.uiAppName ?? ""} maxLength={40} placeholder={DEFAULT_APP_NAME} onChange={(e) => pickAppearance({ uiAppName: e.target.value })} className="w-full sm:max-w-sm px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
+            <p className="text-xs text-slate-500 mt-1">Erscheint in der Seitenleiste, auf der Anmeldeseite und als Titel des Browser-Tabs. Leer lassen für den Standardnamen. Das Firmenlogo für Belege stellst du unter "Logo &amp; Stempel" ein.</p>
           </div>
 
           {companyError && <p className="text-red-600 text-sm">{companyError}</p>}

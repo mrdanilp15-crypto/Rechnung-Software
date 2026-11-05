@@ -76,6 +76,30 @@ documentsRouter.get("/", async (req, res) => {
  * stornierte Originale und ihre Korrekturbelege werden beide ausgeklammert) und die umsatzstärksten Kunden
  * des laufenden Jahres.
  */
+/**
+ * Tagesverlauf eines Monats für das Dashboard: Netto-Umsatz aus gestellten Rechnungen (nach Rechnungsdatum) und Ausgaben (nach Belegdatum) je Tag.
+ * ?month=JJJJ-MM (Standard: aktueller Monat). Die Rechnungen zählen wie in /stats (ohne Korrekturbelege, nur versendet/bezahlt/überfällig).
+ */
+documentsRouter.get("/month-series", async (req, res) => {
+  const companyId = req.auth!.companyId;
+  const now = new Date();
+  const m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(typeof req.query.month === "string" ? req.query.month : "");
+  const year = m ? Number(m[1]) : now.getFullYear();
+  const mon = m ? Number(m[2]) - 1 : now.getMonth();
+  const from = new Date(year, mon, 1);
+  const to = new Date(year, mon + 1, 1);
+  const daysInMonth = new Date(year, mon + 1, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, i) => ({ day: i + 1, revenueCents: 0, expenseCents: 0 }));
+  const invoices = await prisma.invoice.findMany({
+    where: { companyId, isCancellationDocument: false, status: { in: ["SENT", "PAID", "OVERDUE"] }, issueDate: { gte: from, lt: to } },
+    select: { issueDate: true, subtotalCents: true },
+  });
+  for (const inv of invoices) days[inv.issueDate.getDate() - 1].revenueCents += inv.subtotalCents;
+  const expenses = await prisma.expense.findMany({ where: { companyId, date: { gte: from, lt: to } }, select: { date: true, amountCents: true } });
+  for (const e of expenses) days[e.date.getDate() - 1].expenseCents += e.amountCents;
+  res.json({ month: `${year}-${String(mon + 1).padStart(2, "0")}`, days });
+});
+
 documentsRouter.get("/stats", async (req, res) => {
   const companyId = req.auth!.companyId;
   const now = new Date();

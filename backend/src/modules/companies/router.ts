@@ -58,7 +58,10 @@ const updateCompanySchema = z.object({
   electricityCentsPerKwh: z.number().min(0).max(10_000).optional(),
   overheadPercent: z.number().min(0).max(1000).optional(),
   uiAccent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-  uiDarkStyle: z.enum(["warm", "cool"]).optional(),
+  // Design (Farbwelt) der Oberfläche; "warm" und "cool" sind die älteren Werte (Werkstatt, Klassisch)
+  uiDarkStyle: z.enum(["warm", "cool", "graphit", "mitternacht", "wald", "aurora"]).optional(),
+  // Programmname in Seitenleiste und Browser-Titel; leer = Standardname
+  uiAppName: z.string().trim().max(40).nullish(),
   failRatePercent: z.number().min(0).max(500).optional(),
   platformFeePercent: z.number().min(0).max(90).optional(),
   priceRounding: z.enum(["NONE", "5", "10", "50", "100", "90", "99"]).optional(),
@@ -88,6 +91,7 @@ const updateCompanySchema = z.object({
 
 companiesRouter.patch("/me", requireRole("ADMIN"), async (req, res) => {
   const body = updateCompanySchema.parse(req.body);
+  if (body.uiAppName !== undefined) body.uiAppName = body.uiAppName?.trim() || null; // leer = Standardname
   const updated = await prisma.company.update({ where: { id: req.auth!.companyId }, data: body });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "company.update", entityType: "Company", entityId: req.auth!.companyId, metadata: body });
   const { smtpPasswordEncrypted, ...rest } = updated;

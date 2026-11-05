@@ -1,10 +1,11 @@
-import { ReactNode, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { api } from "../api/client";
-import { Icon, type IconName } from "../components/Icon";
 import { StatusChip } from "../components/StatusChip";
-import { formatMinutes, type LiveStatus } from "../components/PrinterLive";
+import { type LiveStatus } from "../components/PrinterLive";
 import { NotificationsCard } from "../components/NotificationsCard";
+import { useAuthStore } from "../store/authStore";
+import { Kpi, MaterialWidget, MonthChart, OrdersWidget, Panel, PrinterOverview, QuickActions, eur, isLow, stockKg, type DayPoint, type MaterialRow, type OrderRow } from "../components/dashboard/widgets";
 
 interface DocRow {
   kind: "INVOICE" | "QUOTE" | "ORDER_CONFIRMATION" | "DELIVERY_NOTE";
@@ -109,45 +110,22 @@ function StatusRing({ parts }: { parts: { label: string; count: number; color: s
 
 const KIND_LABEL = { INVOICE: "Rechnung", QUOTE: "Angebot", ORDER_CONFIRMATION: "Auftrag", DELIVERY_NOTE: "Lieferschein" } as const;
 const KIND_BASE = { INVOICE: "/invoices", QUOTE: "/quotes", ORDER_CONFIRMATION: "/order-confirmations", DELIVERY_NOTE: "/delivery-notes" } as const;
-const format = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
 
-const TONES = {
-  brand: "bg-brand/10 text-brand",
-  green: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
-  amber: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  red: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-  slate: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
-} as const;
+const greeting = (hour: number) => (hour < 11 ? "Guten Morgen" : hour < 18 ? "Guten Tag" : "Guten Abend");
+const WEEKDAY_DATE = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
-/** Kennzahl-Kachel: Symbol, Wert, Zusatzzeile; optional als Link. */
-function Tile({ icon, tone, label, value, valueClass = "", sub, to }: { icon: IconName; tone: keyof typeof TONES; label: string; value: ReactNode; valueClass?: string; sub?: ReactNode; to?: string }) {
-  const body = (
-    <>
-      <div className="flex items-center justify-between gap-1 mb-2 sm:mb-3">
-        <p className="text-xs sm:text-sm text-slate-500 truncate">{label}</p>
-        <span className={`w-7 h-7 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0 ${TONES[tone]}`}>
-          <Icon name={icon} className="w-4 h-4 sm:w-5 sm:h-5" />
-        </span>
-      </div>
-      <p className={`text-base sm:text-2xl font-semibold tracking-tight ${valueClass}`}>{value}</p>
-      {sub && <p className="hidden sm:block text-xs text-slate-500 mt-1">{sub}</p>}
-    </>
-  );
-  const cls = "bg-white dark:bg-slate-800 rounded-lg p-3 sm:p-4 shadow min-w-0";
-  return to ? (
-    <Link to={to} className={`${cls} hover:shadow-md transition-shadow block`}>{body}</Link>
-  ) : (
-    <div className={cls}>{body}</div>
-  );
-}
-
-/** Startseite: Schnellaktionen, Kennzahlen (Monat und offene Posten), Diagramme und letzte Belege. */
+/** Startseite: Begrüßung, Kennzahlen, Druckerübersicht, Aufträge, Umsatz und Gewinn, Materiallager, Schnellaktionen und letzte Belege. */
 export default function Dashboard() {
+  const user = useAuthStore((s) => s.user);
+  const location = useLocation();
   const [rows, setRows] = useState<DocRow[]>([]);
   const [revenue, setRevenue] = useState<RevenueStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [production, setProduction] = useState<{ productionStatus: string }[]>([]);
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [materials, setMaterials] = useState<MaterialRow[]>([]);
+  const [series, setSeries] = useState<DayPoint[]>([]);
+  const [chartRange, setChartRange] = useState<"month" | "year">("month");
   const [livePrinters, setLivePrinters] = useState<{ id: string; name: string; status: LiveStatus }[]>([]);
   const [dunning, setDunning] = useState<{ invoiceId: string; invoiceNumber: string; customerName: string; totalCents: number; daysOverdue: number; nextLevel: number }[]>([]);
 
@@ -155,8 +133,10 @@ export default function Dashboard() {
     api.get("/documents").then((res) => setRows(res.data)).finally(() => setLoading(false));
     api.get("/companies/me/revenue-status").then((res) => setRevenue(res.data));
     api.get("/dunning/suggestions").then((res) => setDunning(res.data)).catch(() => setDunning([]));
-    api.get("/production").then((res) => setProduction(res.data.items)).catch(() => setProduction([]));
+    api.get("/production").then((res) => setOrders(res.data.items)).catch(() => setOrders([]));
     api.get("/documents/stats").then((res) => setStats(res.data)).catch(() => setStats(null));
+    api.get("/materials").then((res) => setMaterials(res.data)).catch(() => setMaterials([]));
+    api.get("/documents/month-series").then((res) => setSeries(res.data.days)).catch(() => setSeries([]));
   }, []);
 
   // Drucker mit Live-Anbindung: alle 10 Sekunden aktualisieren, solange die Seite sichtbar ist
@@ -176,6 +156,11 @@ export default function Dashboard() {
     return () => { cancelled = true; clearInterval(timer); };
   }, []);
 
+  // Sprung von der Glocke oben: zur Karte "Meldungen" scrollen
+  useEffect(() => {
+    if (location.hash === "#meldungen" && !loading) document.getElementById("meldungen")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [location.hash, loading]);
+
   // Korrekturbelege (Storno/Gutschrift) tragen negative Beträge und stehen neben dem stornierten Original -
   // in den offenen Posten haben sie nichts verloren.
   const invoices = rows.filter((r) => r.kind === "INVOICE" && !r.isCancellationDocument);
@@ -187,9 +172,27 @@ export default function Dashboard() {
 
   const now = new Date();
   const monthRevenue = stats?.months[stats.months.length - 1]?.revenueCents ?? 0;
+  const prevRevenue = stats?.months[stats.months.length - 2]?.revenueCents ?? 0;
   const monthExpenses = stats?.expenseMonths?.[stats.expenseMonths.length - 1]?.expenseCents ?? 0;
   const monthResult = monthRevenue - monthExpenses;
   const hasChartData = !!stats && (stats.months.some((m) => m.revenueCents > 0) || !!stats.expenseMonths?.some((m) => m.expenseCents > 0));
+  const revenueDelta = prevRevenue > 0 ? Math.round(((monthRevenue - prevRevenue) / prevRevenue) * 100) : null;
+
+  // Aufträge
+  const activeOrders = orders.filter((o) => o.productionStatus !== "SHIPPED");
+  const waitingOrders = activeOrders.filter((o) => o.productionStatus === "CREATED").length;
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const newOrders = activeOrders.filter((o) => o.issueDate && new Date(o.issueDate) >= yesterday).length;
+  const openOrders = [...activeOrders].sort((a, b) => (a.expectedDeliveryDate ?? "9999").localeCompare(b.expectedDeliveryDate ?? "9999"));
+
+  // Drucker
+  const onlinePrinters = livePrinters.filter((p) => p.status.connection === "online");
+  const printingNow = onlinePrinters.filter((p) => ["RUNNING", "PREPARE", "PAUSE"].includes(p.status.state)).length;
+  const printerErrors = onlinePrinters.filter((p) => p.status.errorCode !== null && p.status.state !== "IDLE").length;
+
+  // Material
+  const kgTotal = materials.reduce((s, m) => s + (stockKg(m) ?? 0), 0);
+  const lowCount = materials.filter(isLow).length;
 
   const ringParts = [
     { label: "Entwurf", count: invoices.filter((r) => r.status === "DRAFT").length, color: "#f59e0b" },
@@ -198,33 +201,47 @@ export default function Dashboard() {
     { label: "Bezahlt", count: invoices.filter((r) => r.status === "PAID").length, color: "#22c55e" },
   ];
 
-  const card = "bg-white dark:bg-slate-800 rounded-lg p-4 shadow";
+  const firstName = user?.name?.split(/\s+/)[0] ?? "";
+  const summary = [
+    onlinePrinters.length > 0 ? (printerErrors > 0 ? `${printerErrors} Drucker mit Fehler` : printingNow > 0 ? `${printingNow} Drucker ${printingNow === 1 ? "druckt" : "drucken"}` : "Deine Drucker sind bereit") : null,
+    waitingOrders > 0 ? `${waitingOrders} Auftr${waitingOrders === 1 ? "ag wartet" : "äge warten"} auf Bearbeitung` : activeOrders.length > 0 ? "Alle Aufträge sind in Arbeit" : "Keine offenen Aufträge",
+  ].filter(Boolean).join(" · ");
 
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Start</h1>
-          <p className="text-sm text-slate-500">{MONTH_LONG[now.getMonth()]} {now.getFullYear()} · Überblick über Ihre Werkstatt</p>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{greeting(now.getHours())}{firstName ? `, ${firstName}` : ""}!</h1>
+          <p className="text-sm text-slate-500 mt-1">{summary}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link to="/invoices/new" className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-lg text-sm font-medium">+ Neue Rechnung</Link>
-          <Link to="/quotes/new" className="px-4 py-2 rounded-lg text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">Neues Angebot</Link>
-          <Link to="/customers" className="px-4 py-2 rounded-lg text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">Kunden</Link>
-        </div>
+        <p className="text-sm text-slate-500">{WEEKDAY_DATE.format(now)}</p>
       </div>
 
       <NotificationsCard />
 
       {revenue?.isSmallBusiness && (revenue.isApproaching || revenue.currentYearExceeded || revenue.priorYearExceeded) && (
-        <div className={`rounded-lg p-4 mb-6 text-sm ${revenue.currentYearExceeded || revenue.priorYearExceeded ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"}`}>
+        <div className={`rounded-xl p-4 mb-6 text-sm ${revenue.currentYearExceeded || revenue.priorYearExceeded ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"}`}>
           {revenue.priorYearExceeded ? (
-            <>Vorjahresgrenze für die Kleinunternehmerregelung überschritten ({format(revenue.priorYearRevenueCents)} von {format(revenue.thresholdCents)}). Details unter Einstellungen.</>
+            <>Vorjahresgrenze für die Kleinunternehmerregelung überschritten ({eur(revenue.priorYearRevenueCents)} von {eur(revenue.thresholdCents)}). Details unter Einstellungen.</>
           ) : revenue.currentYearExceeded ? (
-            <>Laufende Umsatzgrenze für die Kleinunternehmerregelung überschritten ({format(revenue.yearRevenueCents)} von {format(revenue.currentYearThresholdCents)}). Details unter Einstellungen.</>
+            <>Laufende Umsatzgrenze für die Kleinunternehmerregelung überschritten ({eur(revenue.yearRevenueCents)} von {eur(revenue.currentYearThresholdCents)}). Details unter Einstellungen.</>
           ) : (
-            <>Kleinunternehmer-Umsatzgrenze zu {revenue.percentUsed}% erreicht ({format(revenue.yearRevenueCents)} von {format(revenue.currentYearThresholdCents)}).</>
+            <>Kleinunternehmer-Umsatzgrenze zu {revenue.percentUsed}% erreicht ({eur(revenue.yearRevenueCents)} von {eur(revenue.currentYearThresholdCents)}).</>
           )}
+        </div>
+      )}
+
+      {dunning.length > 0 && (
+        <div className="mb-6 rounded-xl border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 p-4">
+          <h2 className="text-sm font-medium mb-2">Zahlung überfällig - Erinnerung/Mahnung fällig</h2>
+          <div className="space-y-1.5 text-sm">
+            {dunning.slice(0, 5).map((d) => (
+              <Link key={d.invoiceId} to={`/invoices/${d.invoiceId}?dunning=1`} className="flex items-center justify-between gap-3 hover:underline">
+                <span className="truncate">{d.invoiceNumber} · {d.customerName} · {d.daysOverdue} Tage überfällig</span>
+                <span className="shrink-0">{eur(d.totalCents)} <span className="text-brand ml-2">{d.nextLevel === 1 ? "Erinnerung" : `${d.nextLevel - 1}. Mahnung`} →</span></span>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 
@@ -232,133 +249,92 @@ export default function Dashboard() {
         <p>Wird geladen ...</p>
       ) : (
         <>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Dieser Monat</h2>
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
-            <Tile icon="money" tone="green" label="Umsatz" value={format(monthRevenue)} valueClass="text-green-600 dark:text-green-400" sub="netto, aus gestellten Rechnungen" to="/finance" />
-            <Tile icon="receipt" tone="amber" label="Ausgaben" value={format(monthExpenses)} valueClass="text-amber-600 dark:text-amber-400" sub="laut Ausgabenliste" to="/finance" />
-            <Tile icon="scale" tone="brand" label="Ergebnis" value={format(monthResult)} valueClass={monthResult < 0 ? "text-red-600 dark:text-red-400" : ""} sub="Umsatz minus Ausgaben, vor Steuern" to="/finance" />
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6 [&>*:last-child]:col-span-2 md:[&>*:last-child]:col-span-1">
+            <Kpi icon="board" tone="brand" label="Aktive Aufträge" value={activeOrders.length} sub={newOrders > 0 ? `+${newOrders} seit gestern` : "keine neuen seit gestern"} subTone={newOrders > 0 ? "good" : "muted"} to="/production" />
+            <Kpi icon="printer" tone="green" label="Drucker online" value={livePrinters.length > 0 ? `${onlinePrinters.length} / ${livePrinters.length}` : "-"} sub={livePrinters.length > 0 ? `${Math.round((onlinePrinters.length / livePrinters.length) * 100)} % online` : "keine Live-Verbindung"} subTone={livePrinters.length > 0 && onlinePrinters.length < livePrinters.length ? "warn" : "muted"} to="/catalog?tab=printers" />
+            <Kpi icon="money" tone="violet" label="Umsatz (dieser Monat)" value={eur(monthRevenue)} sub={revenueDelta === null ? `Vormonat ${eur(prevRevenue)}` : `${revenueDelta >= 0 ? "+" : ""}${revenueDelta} % zum Vormonat`} subTone={revenueDelta === null ? "muted" : revenueDelta >= 0 ? "good" : "bad"} to="/finance" />
+            <Kpi icon="filament" tone="amber" label="Materialbestand" value={`${kgTotal.toLocaleString("de-DE", { maximumFractionDigits: 1 })} kg`} sub={materials.length === 0 ? "noch kein Material" : lowCount > 0 ? `${lowCount} Artikel knapp` : "alles ausreichend"} subTone={lowCount > 0 ? "bad" : "good"} to="/catalog?tab=materials" />
+            <Kpi icon="receipt" tone={overdue.length > 0 ? "red" : "slate"} label="Offene Rechnungen" value={eur(openTotal)} sub={`${open.length} Rechnung${open.length === 1 ? "" : "en"}${overdue.length > 0 ? ` · ${overdue.length} überfällig` : ""}`} subTone={overdue.length > 0 ? "bad" : "muted"} to="/documents?type=INVOICE" />
           </div>
 
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Offene Posten</h2>
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
-            <Tile icon="clock" tone="brand" label="Offen" value={format(openTotal)} sub={`${open.length} Rechnung${open.length === 1 ? "" : "en"}`} to="/documents?type=INVOICE" />
-            <Tile icon="alert" tone={overdue.length ? "red" : "slate"} label="Überfällig" value={overdue.length} valueClass={overdue.length ? "text-red-600 dark:text-red-400" : ""} sub={overdue.length ? format(overdue.reduce((s, r) => s + (r.totalCents ?? 0), 0)) : "alles im Rahmen"} to="/documents?type=INVOICE" />
-            <Tile icon="pencil" tone="amber" label="Entwürfe" value={drafts.length} sub="noch nicht fertiggestellt" to="/documents?type=DRAFT" />
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-3">
+            <Panel title="Druckerübersicht" action={{ to: "/catalog?tab=printers", label: "Alle anzeigen" }} className="xl:col-span-2">
+              <PrinterOverview printers={livePrinters} />
+            </Panel>
+            <Panel title="Aktuelle Aufträge" action={{ to: "/production", label: "Alle anzeigen" }}>
+              <OrdersWidget orders={openOrders} />
+            </Panel>
           </div>
 
-          {dunning.length > 0 && (
-            <div className="mb-6 rounded-lg border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 p-4">
-              <h2 className="text-sm font-medium mb-2">Zahlung überfällig - Erinnerung/Mahnung fällig</h2>
-              <div className="space-y-1.5 text-sm">
-                {dunning.slice(0, 5).map((d) => (
-                  <Link key={d.invoiceId} to={`/invoices/${d.invoiceId}?dunning=1`} className="flex items-center justify-between gap-3 hover:underline">
-                    <span className="truncate">{d.invoiceNumber} · {d.customerName} · {d.daysOverdue} Tage überfällig</span>
-                    <span className="shrink-0">{format(d.totalCents)} <span className="text-brand ml-2">{d.nextLevel === 1 ? "Erinnerung" : `${d.nextLevel - 1}. Mahnung`} →</span></span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6">
-            {hasChartData && stats && (
-              <div className={`${card} lg:col-span-2`}>
-                <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
-                  <h2 className="text-sm font-medium">Umsatz und Ausgaben der letzten 12 Monate</h2>
-                  <span className="flex items-center gap-3 text-xs text-slate-500">
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-brand" />Umsatz (netto)</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500" />Ausgaben</span>
-                  </span>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-3">
+            <Panel className="xl:col-span-2">
+              <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                <h2 className="text-base font-semibold tracking-tight">Umsatz &amp; Gewinn</h2>
+                <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden text-xs" role="group" aria-label="Zeitraum">
+                  {([["month", "Dieser Monat"], ["year", "12 Monate"]] as const).map(([key, label]) => (
+                    <button key={key} type="button" onClick={() => setChartRange(key)} aria-pressed={chartRange === key} className={`px-3 py-1.5 ${chartRange === key ? "bg-brand text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>{label}</button>
+                  ))}
                 </div>
-                <IncomeExpenseChart months={stats.months} expenses={stats.expenseMonths} />
-                <p className="text-xs text-slate-500 mt-1">{now.getFullYear()}: Umsatz {format(stats.yearRevenueCents)} netto</p>
               </div>
-            )}
-            <div className={`${card} ${hasChartData ? "" : "lg:col-span-3"}`}>
-              <h2 className="text-sm font-medium mb-3">Rechnungen nach Status</h2>
-              <StatusRing parts={ringParts} />
-            </div>
+              <div className="flex flex-wrap gap-x-8 gap-y-2 mb-3">
+                <div><p className="text-2xl font-semibold tracking-tight">{eur(monthRevenue)}</p><p className="text-xs text-slate-500 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-brand" />Umsatz (netto)</p></div>
+                <div><p className="text-2xl font-semibold tracking-tight">{eur(monthExpenses)}</p><p className="text-xs text-slate-500 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500" />Ausgaben</p></div>
+                <div><p className={`text-2xl font-semibold tracking-tight ${monthResult < 0 ? "text-red-500" : ""}`}>{eur(monthResult)}</p><p className="text-xs text-slate-500 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-500" />Ergebnis (vor Steuern)</p></div>
+              </div>
+              {chartRange === "month" ? (
+                series.length > 0 ? <MonthChart days={series} today={now.getDate()} /> : <p className="text-sm text-slate-500">Noch keine Daten für diesen Monat.</p>
+              ) : hasChartData && stats ? (
+                <>
+                  <IncomeExpenseChart months={stats.months} expenses={stats.expenseMonths} />
+                  <p className="text-xs text-slate-500 mt-1">{now.getFullYear()}: Umsatz {eur(stats.yearRevenueCents)} netto</p>
+                </>
+              ) : (
+                <p className="text-sm text-slate-500">Noch keine Daten.</p>
+              )}
+              <p className="text-xs text-slate-500 mt-2">Monatsansicht: aufgelaufene Werte seit dem 1. des Monats. Umsatz aus gestellten Rechnungen netto, Ausgaben laut Ausgabenliste.</p>
+            </Panel>
+            <Panel title="Materiallager" action={{ to: "/catalog?tab=materials", label: "Alle anzeigen" }}>
+              <MaterialWidget materials={materials} />
+            </Panel>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6">
-            <div className="lg:col-span-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Letzte Aktivität</h2>
-              <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-6">
+            <Panel title="Letzte Aktivität" action={{ to: "/documents", label: "Alle Belege" }} className="xl:col-span-2">
+              <div className="-mx-2 divide-y divide-slate-100 dark:divide-slate-700">
                 {recent.map((r) => (
-                  <Link key={`${r.kind}-${r.id}`} to={r.kind === "INVOICE" ? `/invoices/${r.id}` : `/documents?type=${r.kind}`} className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/60">
+                  <Link key={`${r.kind}-${r.id}`} to={r.kind === "INVOICE" ? `/invoices/${r.id}` : `/documents?type=${r.kind}`} className="flex items-center justify-between gap-3 px-2 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/40 rounded-lg">
                     <span className="min-w-0">
                       <span className="block truncate"><span className="font-medium">{r.isCancellationDocument ? "Korrekturbeleg" : KIND_LABEL[r.kind]} {r.number}</span></span>
                       <span className="block truncate text-xs text-slate-500">{r.customerName}</span>
                     </span>
                     <span className="shrink-0 flex items-center gap-3">
                       <StatusChip status={r.status} kind={r.kind} isCancellationDocument={r.isCancellationDocument} emailed={!!r.emailSentAt} />
-                      <span className="w-24 text-right font-medium">{r.totalCents === null ? "" : format(r.totalCents)}</span>
+                      <span className="w-24 text-right font-medium">{r.totalCents === null ? "" : eur(r.totalCents)}</span>
                     </span>
                   </Link>
                 ))}
-                {recent.length === 0 && <p className="px-4 py-6 text-center text-slate-500 text-sm">Noch nichts ausgestellt. Starten Sie mit "Neue Rechnung".</p>}
+                {recent.length === 0 && <p className="px-2 py-6 text-center text-slate-500 text-sm">Noch nichts ausgestellt. Starte mit "Rechnung erstellen".</p>}
               </div>
-              <p className="text-sm mt-3"><Link to="/documents" className="text-brand hover:underline">Alle Belege ansehen →</Link></p>
-            </div>
+            </Panel>
 
-            <div className="space-y-3">
-              {livePrinters.length > 0 && (
-                <Link to="/catalog?tab=printers" className={`${card} block hover:shadow-md transition-shadow`}>
-                  <h2 className="text-sm font-medium mb-2">Drucker live</h2>
-                  <div className="space-y-3 text-sm">
-                    {livePrinters.map(({ id, name, status }) => {
-                      const online = status.connection === "online";
-                      const active = online && (status.state === "RUNNING" || status.state === "PREPARE" || status.state === "PAUSE");
-                      return (
-                        <div key={id}>
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="truncate font-medium">{name}</span>
-                            <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${active ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : online ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300"}`}>{online ? status.stateLabel : "Offline"}</span>
-                          </div>
-                          {active && (
-                            <>
-                              <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden mt-1.5"><div className="h-full bg-brand" style={{ width: `${status.progressPercent ?? 0}%` }} /></div>
-                              <div className="text-xs text-slate-500 mt-1 truncate">{status.jobName ?? "Druck"} · {status.progressPercent ?? 0} %{status.remainingMinutes !== null ? ` · noch ${formatMinutes(status.remainingMinutes)}` : ""}</div>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Link>
-              )}
-              {production.length > 0 && (
-                <Link to="/production" className={`${card} block hover:shadow-md transition-shadow`}>
-                  <h2 className="text-sm font-medium mb-2">Produktion</h2>
-                  <div className="space-y-1.5 text-sm">
-                    {([["CREATED", "Erstellt", "bg-slate-400"], ["IN_PRODUCTION", "In Produktion", "bg-amber-500"], ["READY_TO_SHIP", "Versandbereit", "bg-blue-500"]] as const).map(([key, label, dot]) => (
-                      <div key={key} className="flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${dot}`} />
-                        <span className="text-slate-600 dark:text-slate-300">{label}</span>
-                        <span className="ml-auto font-medium">{production.filter((p) => p.productionStatus === key).length}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-brand mt-2">Zum Produktionsboard →</p>
-                </Link>
-              )}
+            <div className="space-y-3 min-w-0">
+              <Panel title="Schnellaktionen"><QuickActions /></Panel>
+              <Panel title="Rechnungen nach Status"><StatusRing parts={ringParts} /></Panel>
               {stats && (
-                <div className={card}>
-                  <h2 className="text-sm font-medium mb-2">Beste Kunden {now.getFullYear()}</h2>
+                <Panel title={`Beste Kunden ${now.getFullYear()}`}>
                   {stats.topCustomers.length === 0 && <p className="text-sm text-slate-500">Noch kein Umsatz.</p>}
                   <ol className="space-y-1.5 text-sm">
                     {stats.topCustomers.slice(0, 5).map((c, i) => (
                       <li key={c.name + i} className="flex justify-between gap-3">
                         <span className="truncate"><span className="text-slate-400 mr-1.5">{i + 1}.</span>{c.name}</span>
-                        <span className="shrink-0">{format(c.revenueCents)}</span>
+                        <span className="shrink-0">{eur(c.revenueCents)}</span>
                       </li>
                     ))}
                   </ol>
-                </div>
+                </Panel>
               )}
               {drafts.length > 0 && (
-                <div className={card}>
-                  <h2 className="text-sm font-medium mb-2">Zuletzt angefangen</h2>
+                <Panel title="Zuletzt angefangen">
                   <div className="space-y-1.5 text-sm">
                     {drafts.slice(0, 4).map((r) => (
                       <Link key={`${r.kind}-${r.id}`} to={`${KIND_BASE[r.kind]}/${r.id}/edit`} className="flex items-center justify-between gap-3 hover:underline">
@@ -367,7 +343,7 @@ export default function Dashboard() {
                       </Link>
                     ))}
                   </div>
-                </div>
+                </Panel>
               )}
             </div>
           </div>

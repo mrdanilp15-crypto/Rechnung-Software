@@ -18,8 +18,10 @@ export default {
         },
         slate,
       },
+      // Eckenradius kommt vom gewählten Design (siehe src/theme/themes.ts)
       borderRadius: {
-        lg: "0.75rem",
+        lg: "var(--radius-lg, 0.75rem)",
+        xl: "var(--radius-xl, 1rem)",
       },
     },
   },

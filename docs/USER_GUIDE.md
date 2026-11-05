@@ -220,11 +220,22 @@ In der Rechnungsdetailansicht:
   über die Nutzungsdauer (im Anschaffungsjahr zeitanteilig ab dem Kaufmonat). Eine bereits erfasste Ausgabe lässt sich verknüpfen - dann zählt die EÜR statt des vollen Betrags nur
   die Abschreibung des Jahres (kein doppeltes Absetzen). Kleinunternehmer tragen den Bruttobetrag ein. Das Steuerberater-Paket enthält ein Anlagenverzeichnis (CSV).
   Nutzungsdauer und GWG-Grenze bitte mit dem Steuerberater abstimmen (Hinweis: für 3D-Drucker ist die Einordnung nicht eindeutig).
-- **Darstellung** (*Einstellungen → Darstellung*, nur Admin): **Akzentfarbe** für Knöpfe, Menü, Links und Diagramme (acht Vorschläge oder eigene Farbe)
-  und **Stil des dunklen Designs** (warm = braune Töne, kühl = Blau-Schwarz). Gilt für alle Benutzer und Geräte; die PDF-Belege haben ihre eigene
-  Farbe unter "Logo & Stempel". Hell/Dunkel wechseln Sie unten im Menü (Mond/Sonne, je Gerät). Am Handy gibt es eine Leiste unten mit Start, Belege,
-  Kunden, Katalog und "Mehr" (öffnet das ganze Menü). Die **Startseite** zeigt Umsatz, Ausgaben und Ergebnis des Monats, offene Posten, ein
-  Diagramm Umsatz/Ausgaben der letzten 12 Monate, die Rechnungen nach Status und die letzte Aktivität.
+- **Darstellung** (*Einstellungen → Darstellung*, nur Admin): **Akzentfarbe** für Knöpfe, Menü, Links und Diagramme (acht Vorschläge oder eigene Farbe),
+  **Design** (Farbwelt, gilt im hellen und im dunklen Modus) und **Programmname**. Es gibt sechs Designs: *Klassisch* (kühles Blaugrau), *Werkstatt* (warme Braun-
+  und Steintöne), *Graphit* (neutrales Anthrazit), *Mitternacht* (tiefes Nachtblau mit leuchtenden Karten), *Wald* (dunkles Tannengrün) und *Aurora* (Blauviolett).
+  Mit dem Design wird die dazu passende Akzentfarbe vorgeschlagen, die du jederzeit ändern kannst; die Auswahl wirkt sofort und gilt nach "Speichern" für alle
+  Benutzer und Geräte. Der **Programmname** erscheint in der Seitenleiste, auf der Anmeldeseite und im Browser-Tab (leer = "Rechnungssoftware"); das Logo für Belege stellst
+  du unter "Logo & Stempel" ein. Die PDF-Belege haben ihre eigene Farbe. Hell/Dunkel wechselst du oben rechts (Sonne/Mond, je Gerät).
+- **Seitenleiste und obere Leiste:** Die Seitenleiste führt flach zu Start, Aufträge, Belege, Kunden, Produkte, Material, Drucker, Zeit, Finanzen, Belegarchiv und Einstellungen
+  (Produkte, Material und Drucker sind die Reiter des Katalogs, direkt erreichbar). Oben (ab Tablet quer) stehen die Suche (Strg K), Hell/Dunkel, die **Glocke** mit der Zahl der
+  ungelesenen Meldungen (führt zur Karte "Meldungen" auf der Startseite) und das **Benutzermenü** (Einstellungen, Sprache, Abmelden). Am Handy gibt es eine Leiste unten mit Start,
+  Belege, Aufträge, Kunden und "Mehr" (öffnet das ganze Menü mit Hell/Dunkel, Sprache und Abmelden).
+- **Startseite (Dashboard):** Begrüßung mit Kurzlage ("2 Aufträge warten auf Bearbeitung"), darunter die Meldungen (einklappbar; gleiche Meldungen werden zusammengefasst), Hinweise
+  zur Kleinunternehmergrenze und fällige Mahnungen. Fünf Kennzahlen: **Aktive Aufträge** (mit "seit gestern"), **Drucker online** (nur Drucker mit Live-Verbindung), **Umsatz des Monats**
+  (netto, mit Vergleich zum Vormonat), **Materialbestand** (Summe in kg bei Material in g/kg, mit Zahl der Artikel unter dem Mindestbestand) und **Offene Rechnungen**. Darunter die
+  **Druckerübersicht** (Status, Fortschritt, Restzeit, aktives Material, Temperaturen, Fehlercode), die **aktuellen Aufträge** (nach Liefertermin, mit Status), **Umsatz & Gewinn**
+  (aufgelaufen seit dem 1. des Monats oder die letzten 12 Monate; Gewinn ist hier das Ergebnis vor Steuern), das **Materiallager** (knappe zuerst, Balken im Verhältnis zum Mindestbestand),
+  Schnellaktionen, Rechnungen nach Status, beste Kunden und die letzte Aktivität. **Nicht enthalten**, weil es dafür keine Daten gibt: Kundenzufriedenheit, Bewertungen, ein KI-Assistent.
 - **Belegarchiv** (Menüpunkt *Belegarchiv*): Ablage für alle Unterlagen, die nicht in der Software entstehen - Eingangsrechnungen,
   Quittungen, Kontoauszüge, Verträge, Versicherungen, Bescheide, Schriftverkehr. Hochladen per Klick oder Drag & Drop (bis zu 20 Dateien
   gleichzeitig; PDF, Fotos, Word/Excel/LibreOffice, CSV, Text, XML, ZIP sowie 3D-Dateien wie STL, 3MF, STEP, OBJ und G-Code; je Datei max. 25 MB). Je Dokument: Titel, Kategorie, Belegdatum,

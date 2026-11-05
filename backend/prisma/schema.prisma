@@ -58,6 +58,7 @@ model Company {
   // Darstellung der Oberfläche: Akzentfarbe (#rrggbb) und Stil des dunklen Designs ("warm" oder "cool")
   uiAccent                String @default("#2563eb")
   uiDarkStyle             String @default("warm")
+  uiAppName               String?
   failRatePercent         Float  @default(5)
   platformFeePercent      Float  @default(0)
   priceRounding           String @default("NONE")

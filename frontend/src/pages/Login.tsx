@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { currentAppName } from "../theme/appearance";
 import { api } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 
@@ -38,6 +39,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
       <form onSubmit={handleSubmit} className="w-full max-w-sm bg-white dark:bg-slate-800 p-8 rounded-lg shadow">
+        <div className="text-sm font-medium text-slate-500 mb-1">{currentAppName()}</div>
         <h1 className="text-xl font-semibold mb-6 text-brand">{t("auth.login")}</h1>
         {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
         <label className="block text-sm mb-1">{t("auth.email")}</label>
