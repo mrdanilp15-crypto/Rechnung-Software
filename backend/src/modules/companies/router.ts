@@ -44,6 +44,7 @@ const updateCompanySchema = z.object({
   iban: z.string().nullish(),
   bic: z.string().nullish(),
   bankName: z.string().nullish(),
+  accountHolder: z.string().trim().max(70).nullish(),
   phone: z.string().nullish(),
   email: z.string().nullish(),
   website: z.string().nullish(),

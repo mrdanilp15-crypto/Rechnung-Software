@@ -188,7 +188,7 @@ ${isNotSubject ? "" : percentXml(item.vatRateBps, "        ")}        <cac:TaxSc
     <cbc:PaymentMeansCode>58</cbc:PaymentMeansCode>
     <cac:PayeeFinancialAccount>
       <cbc:ID>${esc(company.iban.replace(/\s+/g, ""))}</cbc:ID>
-      <cbc:Name>${esc(company.name)}</cbc:Name>
+      <cbc:Name>${esc(company.accountHolder?.trim() || company.name)}</cbc:Name>
 ${company.bic ? `      <cac:FinancialInstitutionBranch>\n        <cbc:ID>${esc(company.bic)}</cbc:ID>\n      </cac:FinancialInstitutionBranch>\n` : ""}    </cac:PayeeFinancialAccount>
   </cac:PaymentMeans>\n`
     : "";

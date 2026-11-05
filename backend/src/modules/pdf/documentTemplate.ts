@@ -18,6 +18,7 @@ export interface BrandingInput {
   iban?: string | null;
   bic?: string | null;
   bankName?: string | null;
+  accountHolder?: string | null;
   phone?: string | null;
   email?: string | null;
   website?: string | null;
@@ -609,7 +610,7 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
   const canShowQr = !!(input.showSepaQr && input.branding.iban && input.totalCents);
   if (canShowQr) {
     const payload = buildSepaQrPayload({
-      name: input.branding.name,
+      name: payeeName(input.branding),
       iban: input.branding.iban!,
       bic: input.branding.bic ?? undefined,
       amountCents: input.totalCents!,
@@ -635,7 +636,7 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
       ty = doc.y + 3;
     }
     const lines: [string, string][] = [
-      [t.recipient, input.branding.name],
+      [t.recipient, payeeName(input.branding)],
       ["IBAN", input.branding.iban!],
       ...(input.branding.bic ? ([["BIC", input.branding.bic]] as [string, string][]) : []),
       [t.reference, input.documentNumber],
@@ -711,7 +712,7 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
       b.email ? `${t.email} ${b.email}` : "",
       b.website ?? "",
     ].filter(Boolean),
-    [b.bankName ?? "", b.iban ? `IBAN ${formatIban(b.iban)}` : "", b.bic ? `BIC ${b.bic}` : ""].filter(Boolean),
+    [b.bankName ?? "", b.accountHolder?.trim() && b.accountHolder.trim() !== b.name ? `Kontoinhaber ${b.accountHolder.trim()}` : "", b.iban ? `IBAN ${formatIban(b.iban)}` : "", b.bic ? `BIC ${b.bic}` : ""].filter(Boolean),
     [
       [b.registerCourt, b.registerNumber].filter(Boolean).join(", "),
       b.managingDirector ? `${t.managing}: ${b.managingDirector}` : "",
@@ -793,6 +794,11 @@ function formatDate(date: Date, intl: string): string {
 
 /** IBAN in Vierergruppen ("DE89 3704 0044 ...") - leichter lesbar, entspricht der
  * Papierform-Schreibweise nach DIN 5008. */
+/** Zahlungsempfänger für QR-Code und Zahlungsangaben: der Kontoinhaber laut Bank, sonst der Firmenname. */
+export function payeeName(b: { name: string; accountHolder?: string | null }): string {
+  return b.accountHolder?.trim() || b.name;
+}
+
 function formatIban(iban: string): string {
   return iban.replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
 }

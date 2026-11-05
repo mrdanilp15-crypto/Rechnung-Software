@@ -132,7 +132,7 @@ ${p.email ? `        <ram:URIUniversalCommunication>\n          <ram:URIID schem
         <ram:TypeCode>58</ram:TypeCode>
         <ram:PayeePartyCreditorFinancialAccount>
           <ram:IBANID>${esc(company.iban.replace(/\s+/g, ""))}</ram:IBANID>
-          <ram:AccountName>${esc(company.name)}</ram:AccountName>
+          <ram:AccountName>${esc(company.accountHolder?.trim() || company.name)}</ram:AccountName>
         </ram:PayeePartyCreditorFinancialAccount>
 ${company.bic ? `        <ram:PayeeSpecifiedCreditorFinancialInstitution>\n          <ram:BICID>${esc(company.bic)}</ram:BICID>\n        </ram:PayeeSpecifiedCreditorFinancialInstitution>\n` : ""}      </ram:SpecifiedTradeSettlementPaymentMeans>\n`
     : "";

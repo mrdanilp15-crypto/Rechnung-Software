@@ -31,6 +31,9 @@ model Company {
   iban          String?
   bic           String?
   bankName      String?
+  // Kontoinhaber, wie ihn die Bank führt (bei Einzelunternehmern oft der Privatname statt des Firmennamens): erscheint als Empfänger im
+  // Zahlungs-QR-Code und in den E-Rechnungen; leer = Firmenname
+  accountHolder String?
   // Kontakt- und Registerangaben für Briefkopf/Fußzeile der PDFs. Für Kapitalgesellschaften
   // sind Rechtsform, Sitz, Registergericht, Handelsregisternummer und Geschäftsführer auf
   // Geschäftsbriefen und Rechnungen Pflicht (§35a GmbHG, §80 AktG, §37a HGB für e.K.).

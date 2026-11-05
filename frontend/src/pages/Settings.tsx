@@ -36,6 +36,7 @@ interface Company {
   registerNumber?: string;
   managingDirector?: string;
   bankName?: string;
+  accountHolder?: string | null;
   paymentTermDays?: number;
   dunningFee2Cents?: number;
   dunningFee3Cents?: number;
@@ -447,6 +448,11 @@ export default function Settings() {
             <label className="block text-sm">
               Bank
               <input type="text" value={company.bankName || ""} onChange={(e) => setCompany({ ...company, bankName: e.target.value })} placeholder="z.B. Commerzbank" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+            </label>
+            <label className="block text-sm sm:col-span-2">
+              Kontoinhaber (Name auf dem Konto)
+              <input type="text" value={company.accountHolder || ""} onChange={(e) => setCompany({ ...company, accountHolder: e.target.value })} placeholder={`z.B. ${company.name || "Vor- und Nachname"} - leer lassen, wenn er dem Firmennamen entspricht`} maxLength={70} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">So, wie die Bank den Kontoinhaber führt - bei Einzelunternehmern oft der Privatname statt des Firmennamens. Erscheint als Empfänger im Zahlungs-QR-Code (GiroCode) und bei den Zahlungsangaben; Banking-Apps vergleichen ihn mit dem Konto und warnen, wenn die Namen nicht zusammenpassen.</span>
             </label>
             <label className="block text-sm">
               IBAN
