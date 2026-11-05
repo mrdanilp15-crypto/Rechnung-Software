@@ -14,6 +14,7 @@ import { renderSimplePreview, simplePreviewSchema } from "../pdf/docPreview";
 import { buildInvoiceFinancials, defaultDueDate } from "../invoices/build";
 import { createDownPaymentInvoice, deductionLinesFor } from "../invoices/downPayments";
 import { previewRateLimiter } from "../../middleware/rateLimit";
+import { checkQuoteLink } from "./link";
 
 export const orderConfirmationsRouter = Router();
 orderConfirmationsRouter.use(requireAuth);
@@ -215,6 +216,35 @@ orderConfirmationsRouter.post("/:id/finalize", async (req, res) => {
   const updated = existing.status === "DRAFT" ? await prisma.orderConfirmation.update({ where: { id: existing.id }, data: { status: "SENT" } }) : existing;
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "order_confirmation.finalize", entityType: "OrderConfirmation", entityId: existing.id });
   res.json(updated);
+});
+
+// Bestehenden Auftrag nachträglich mit einem Angebot verknüpfen (z.B. weil der Auftrag separat angelegt wurde); das Angebot gilt dann als angenommen
+orderConfirmationsRouter.post("/:id/link-quote", async (req, res) => {
+  const companyId = req.auth!.companyId;
+  const { quoteId } = z.object({ quoteId: z.string().min(1) }).parse(req.body);
+  const order = await prisma.orderConfirmation.findFirst({ where: { id: req.params.id, companyId } });
+  if (!order) throw new HttpError(404, "Auftragsbestätigung nicht gefunden");
+  const quote = await prisma.quote.findFirst({ where: { id: quoteId, companyId } });
+  if (!quote) throw new HttpError(404, "Angebot nicht gefunden");
+  const other = await prisma.orderConfirmation.count({ where: { companyId, sourceQuoteId: quote.id, voidedAt: null, id: { not: order.id } } });
+  const check = checkQuoteLink({ customerId: order.customerId, sourceQuoteId: order.sourceQuoteId, voided: !!order.voidedAt }, { customerId: quote.customerId, status: quote.status, alreadyHasOrder: other > 0 });
+  if (!check.ok) throw new HttpError(check.status, check.error);
+  await prisma.$transaction([
+    prisma.orderConfirmation.update({ where: { id: order.id }, data: { sourceQuoteId: quote.id } }),
+    ...(check.markAccepted ? [prisma.quote.update({ where: { id: quote.id }, data: { status: "ACCEPTED" } })] : []),
+  ]);
+  await writeAuditLog({ req, companyId, userId: req.auth!.sub, action: "order_confirmation.link_quote", entityType: "OrderConfirmation", entityId: order.id, metadata: { quoteId: quote.id, quoteNumber: quote.quoteNumber, markedAccepted: check.markAccepted } });
+  res.json({ ok: true, quoteNumber: quote.quoteNumber, markedAccepted: check.markAccepted });
+});
+
+// Verknüpfung wieder lösen (falls das falsche Angebot gewählt wurde); der Status des Angebots bleibt unverändert
+orderConfirmationsRouter.post("/:id/unlink-quote", async (req, res) => {
+  const order = await prisma.orderConfirmation.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
+  if (!order) throw new HttpError(404, "Auftragsbestätigung nicht gefunden");
+  if (!order.sourceQuoteId) throw new HttpError(409, "Dieser Auftrag ist mit keinem Angebot verknüpft.");
+  await prisma.orderConfirmation.update({ where: { id: order.id }, data: { sourceQuoteId: null } });
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "order_confirmation.unlink_quote", entityType: "OrderConfirmation", entityId: order.id, metadata: { quoteId: order.sourceQuoteId } });
+  res.json({ ok: true });
 });
 
 // Weiter im Ablauf: Auftragsbestätigung -> Lieferschein (Entwurf, ohne Preise)

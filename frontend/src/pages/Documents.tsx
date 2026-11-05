@@ -9,6 +9,7 @@ import { useToast } from "../components/Toast";
 import { RecurringDialog } from "../components/RecurringDialog";
 import { StatusChip } from "../components/StatusChip";
 import { SendDocumentDialog } from "../components/SendDocumentDialog";
+import { LinkDocsDialog, type LinkCandidate } from "../components/LinkDocsDialog";
 
 type Kind = "INVOICE" | "QUOTE" | "ORDER_CONFIRMATION" | "DELIVERY_NOTE";
 
@@ -23,6 +24,8 @@ interface DocRow {
   status: string;
   isCancellationDocument: boolean;
   hasNext: boolean;
+  customerId: string;
+  hasSource: boolean;
   invoiceKind?: string;
   emailSentAt: string | null;
 }
@@ -62,6 +65,9 @@ export default function Documents() {
   // Nach "Fertigstellen" im Editor: Versand-Dialog gleich öffnen
   const pendingSend = (location.state as { sendEmail?: { kind: Kind; id: string } } | null)?.sendEmail;
   const [followUp, setFollowUp] = useState(false);
+  // Angebot und Auftrag verknüpfen: mode "quote" = zu diesem Angebot einen vorhandenen Auftrag wählen, "order" = zu diesem Auftrag ein Angebot wählen
+  const [linkDlg, setLinkDlg] = useState<{ mode: "quote" | "order"; row: DocRow; candidates: DocRow[]; onCreate?: () => void } | null>(null);
+  const [linkBusy, setLinkBusy] = useState(false);
   const [recurringRow, setRecurringRow] = useState<DocRow | null>(null);
   const [dpPercent, setDpPercent] = useState("30");
   const newRef = useRef<HTMLDivElement>(null);
@@ -127,16 +133,39 @@ export default function Documents() {
     setParams(next, { replace: true });
   }
 
-  /** Gibt es für denselben Kunden und Betrag schon einen Auftrag, der nicht aus diesem Angebot stammt? Dann vor dem Anlegen eines weiteren nachfragen. */
-  function confirmNoDuplicateOrder(row: DocRow): boolean {
-    if (row.kind !== "QUOTE") return true;
-    const dup = rows.find((r) => r.kind === "ORDER_CONFIRMATION" && r.customerName === row.customerName && r.totalCents === row.totalCents && r.status !== "CANCELLED");
-    if (!dup) return true;
-    return window.confirm(`Für ${row.customerName} gibt es schon einen Auftrag über denselben Betrag (${dup.number ?? "Entwurf"}). Trotzdem einen weiteren Auftrag aus diesem Angebot anlegen?`);
+  /** Aufträge desselben Kunden, die nicht aus einem Angebot stammen (Kandidaten zum Verknüpfen mit diesem Angebot). */
+  const orderCandidates = (quote: DocRow) => rows.filter((r) => r.kind === "ORDER_CONFIRMATION" && r.customerId === quote.customerId && !r.hasSource && r.status !== "CANCELLED");
+  /** Angebote desselben Kunden, aus denen noch kein Auftrag entstanden ist (Kandidaten zum Verknüpfen mit diesem Auftrag). */
+  const quoteCandidates = (order: DocRow) => rows.filter((r) => r.kind === "QUOTE" && r.customerId === order.customerId && !r.hasNext && ["SENT", "ACCEPTED", "EXPIRED"].includes(r.status));
+
+  async function linkOrderToQuote(orderId: string, quoteId: string) {
+    setLinkBusy(true);
+    try {
+      const { data } = await api.post(`/order-confirmations/${orderId}/link-quote`, { quoteId });
+      showToast(`Verknüpft mit Angebot ${data.quoteNumber}${data.markedAccepted ? " (als angenommen markiert)" : ""}`, "success");
+      setLinkDlg(null);
+      load();
+    } catch (err: any) {
+      showToast(err.response?.data?.error || "Verknüpfen hat nicht geklappt", "error");
+    } finally {
+      setLinkBusy(false);
+    }
+  }
+
+  /**
+   * Gibt es für denselben Kunden und Betrag schon einen Auftrag, der nicht aus einem Angebot stammt? Dann statt eines zweiten Auftrags
+   * die Auswahl "mit vorhandenem Auftrag verknüpfen" zeigen (mit der Möglichkeit, trotzdem neu anzulegen). Gibt true zurück, wenn der Dialog geöffnet wurde.
+   */
+  function guardOrderCreate(row: DocRow, proceed: () => void): boolean {
+    if (row.kind !== "QUOTE") return false;
+    const cands = orderCandidates(row);
+    if (!cands.some((c) => c.totalCents === row.totalCents)) return false;
+    setLinkDlg({ mode: "quote", row, candidates: cands, onCreate: proceed });
+    return true;
   }
 
   async function convert(row: DocRow, path: string, targetBase: string, message: string, alreadyChecked = false) {
-    if (!alreadyChecked && path === "convert-to-order-confirmation" && !confirmNoDuplicateOrder(row)) return;
+    if (!alreadyChecked && path === "convert-to-order-confirmation" && guardOrderCreate(row, () => void convert(row, path, targetBase, message, true))) return;
     try {
       const { data } = await api.post(`${KIND_INFO[row.kind].base}/${row.id}/${path}`);
       showToast(message, "success");
@@ -214,6 +243,16 @@ export default function Documents() {
     }
     if (row.kind !== "QUOTE" && row.status !== "DRAFT") list.push({ label: "Versandetikett", onClick: () => setLabelRow(row) });
     if (row.kind === "INVOICE" && !row.isCancellationDocument && row.invoiceKind !== "DOWN_PAYMENT") list.push({ label: "Wiederkehrend einrichten", onClick: () => setRecurringRow(row) });
+    // nachträglich verknüpfen (z.B. wenn der Auftrag separat angelegt wurde) oder eine falsche Verknüpfung lösen
+    if (row.kind === "QUOTE" && !row.hasNext && ["SENT", "ACCEPTED", "EXPIRED"].includes(row.status) && orderCandidates(row).length > 0) {
+      list.push({ label: "Mit vorhandenem Auftrag verknüpfen", onClick: () => setLinkDlg({ mode: "quote", row, candidates: orderCandidates(row) }) });
+    }
+    if (row.kind === "ORDER_CONFIRMATION" && !row.hasSource && quoteCandidates(row).length > 0) {
+      list.push({ label: "Mit Angebot verknüpfen", onClick: () => setLinkDlg({ mode: "order", row, candidates: quoteCandidates(row) }) });
+    }
+    if (row.kind === "ORDER_CONFIRMATION" && row.hasSource) {
+      list.push({ label: "Verknüpfung mit Angebot lösen", onClick: async () => { if (!window.confirm("Verknüpfung dieses Auftrags mit seinem Angebot lösen? Das Angebot wird dadurch wieder als nicht weitergeführt angezeigt.")) return; try { await api.post(`/order-confirmations/${row.id}/unlink-quote`); showToast("Verknüpfung gelöst", "success"); load(); } catch (err: any) { showToast(err.response?.data?.error || "Lösen hat nicht geklappt", "error"); } } });
+    }
     if (!row.isCancellationDocument) list.push({ label: "Duplizieren", onClick: () => duplicate(row) });
     const deletable = row.kind === "INVOICE" ? row.status === "DRAFT" : row.kind === "QUOTE" ? row.status === "DRAFT" : true;
     if (deletable) list.push({ label: row.status === "DRAFT" ? "Entwurf verwerfen" : "Ungültig markieren", onClick: () => remove(row), danger: true });
@@ -228,9 +267,12 @@ export default function Documents() {
         label: "Angenommen → Auftrag",
         title: "Der Kunde hat zugesagt: Angebot als angenommen markieren und daraus die Auftragsbestätigung anlegen",
         run: async () => {
-          if (!confirmNoDuplicateOrder(row)) return;
-          await api.patch(`/quotes/${row.id}/status`, { status: "ACCEPTED" });
-          void convert(row, "convert-to-order-confirmation", "/order-confirmations", "Angebot angenommen, Auftragsbestätigung als Entwurf angelegt", true);
+          const accept = async () => {
+            await api.patch(`/quotes/${row.id}/status`, { status: "ACCEPTED" });
+            void convert(row, "convert-to-order-confirmation", "/order-confirmations", "Angebot angenommen, Auftragsbestätigung als Entwurf angelegt", true);
+          };
+          if (guardOrderCreate(row, () => void accept())) return;
+          await accept();
         },
       };
     }
@@ -309,7 +351,8 @@ export default function Documents() {
         {visible.map((row) => {
           const badge = <StatusChip status={row.status} kind={row.kind} isCancellationDocument={row.isCancellationDocument} emailed={!!row.emailSentAt} />;
           const actions = (
-            <div className="flex gap-2 justify-end items-center flex-wrap">
+            <div className="flex gap-2 justify-end items-start">
+              <div className="flex gap-x-3 gap-y-2 justify-end items-center flex-wrap flex-1 min-w-0">
               {row.hasNext && <span className="text-xs text-green-600" title="Daraus wurde bereits ein Folgebeleg erstellt">✓ weitergeführt</span>}
               {(() => {
                 const step = nextStep(row);
@@ -324,6 +367,7 @@ export default function Documents() {
               {row.status !== "DRAFT" && (
                 <PdfLink url={`${KIND_INFO[row.kind].base}/${row.id}/pdf`} filename={`${row.number ?? "beleg"}.pdf`} className="text-brand hover:underline">PDF</PdfLink>
               )}
+              </div>
               <RowActionsMenu actions={actionsFor(row)} />
             </div>
           );
@@ -360,6 +404,19 @@ export default function Documents() {
           baseUrl={`/labels/document/${labelRow.kind === "INVOICE" ? "invoices" : labelRow.kind === "DELIVERY_NOTE" ? "delivery-notes" : "order-confirmations"}/${labelRow.id}`}
           title={labelRow.number ?? ""}
           onClose={() => setLabelRow(null)}
+        />
+      )}
+      {linkDlg && (
+        <LinkDocsDialog
+          title={linkDlg.mode === "quote" ? `Angebot ${linkDlg.row.number ?? ""} mit einem Auftrag verknüpfen` : `Auftrag ${linkDlg.row.number ?? ""} mit einem Angebot verknüpfen`}
+          intro={linkDlg.mode === "quote" ? (linkDlg.onCreate ? `Für ${linkDlg.row.customerName} gibt es schon einen Auftrag über denselben Betrag, der nicht aus einem Angebot stammt. Verknüpfe ihn mit diesem Angebot, statt einen zweiten anzulegen.` : "Aufträge dieses Kunden, die nicht aus einem Angebot entstanden sind. Das Angebot gilt danach als angenommen und weitergeführt.") : "Offene Angebote dieses Kunden. Ein verknüpftes Angebot gilt danach als angenommen und weitergeführt."}
+          candidates={linkDlg.candidates as LinkCandidate[]}
+          linkLabel="Verknüpfen"
+          createLabel={linkDlg.onCreate ? "Trotzdem neuen Auftrag anlegen" : undefined}
+          busy={linkBusy}
+          onLink={(cand) => (linkDlg.mode === "quote" ? linkOrderToQuote(cand.id, linkDlg.row.id) : linkOrderToQuote(linkDlg.row.id, cand.id))}
+          onCreate={linkDlg.onCreate ? () => { const go = linkDlg.onCreate!; setLinkDlg(null); go(); } : undefined}
+          onClose={() => setLinkDlg(null)}
         />
       )}
       {sendRow && (
