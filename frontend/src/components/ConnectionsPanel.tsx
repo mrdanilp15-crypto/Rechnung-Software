@@ -22,10 +22,11 @@ export function ConnectionsPanel() {
   const [checks, setChecks] = useState<Check[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setError(null);
-    api.get("/system/status").then((r) => setChecks(r.data.checks)).catch((e) => setError(e?.response?.data?.error ?? "Status konnte nicht geladen werden."));
+    api.get("/system/status").then((r) => { setChecks(r.data.checks); setStartedAt(r.data.server?.startedAt ?? null); }).catch((e) => setError(e?.response?.data?.error ?? "Status konnte nicht geladen werden."));
   }, []);
   useEffect(load, [load]);
 
@@ -81,6 +82,9 @@ export function ConnectionsPanel() {
         ))}
         {checks === null && !error && <li className="py-3 text-sm text-slate-500">Wird geprüft ...</li>}
       </ul>
+      <p className="text-xs text-slate-500" title="Zeigt, welcher Stand wirklich läuft - hilfreich nach einem Update">
+        Oberfläche gebaut am {new Date(__BUILD_TIME__).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}{startedAt ? ` · Server gestartet am ${new Date(startedAt).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}` : ""}
+      </p>
     </div>
   );
 }

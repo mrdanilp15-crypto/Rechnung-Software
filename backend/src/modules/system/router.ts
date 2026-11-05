@@ -37,6 +37,8 @@ function freeDiskBytes(): number | null {
   }
 }
 
+const STARTED_AT = new Date();
+
 systemRouter.get("/status", async (req, res) => {
   const companyId = req.auth!.companyId;
   const [company, printers, pushCount, failedMails, products, customers, backup] = await Promise.all([
@@ -77,5 +79,5 @@ systemRouter.get("/status", async (req, res) => {
     hasBackup: !!backup,
   });
 
-  res.json({ checks, setup });
+  res.json({ checks, setup, server: { startedAt: STARTED_AT.toISOString() } });
 });
