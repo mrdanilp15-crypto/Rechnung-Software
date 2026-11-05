@@ -53,6 +53,8 @@ import { expensesRouter } from "./modules/expenses/router";
 import { bankRouter } from "./modules/bank/router";
 import { materialsRouter } from "./modules/materials/router";
 import { auditRouter } from "./modules/audit/router";
+import { todoRouter } from "./modules/todo/router";
+import { systemRouter } from "./modules/system/router";
 
 export function createApp() {
   const app = express();
@@ -143,6 +145,8 @@ export function createApp() {
   app.use("/api/assets", assetsRouter);
   app.use("/api/suppliers", suppliersRouter);
   app.use("/api/order-import", orderImportRouter);
+  app.use("/api/todo", todoRouter);
+  app.use("/api/system", systemRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

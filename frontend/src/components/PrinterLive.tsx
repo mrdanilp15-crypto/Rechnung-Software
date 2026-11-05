@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 import { PrintSendDialog } from "./PrintSendDialog";
 import { OrderSelect } from "./OrderSelect";
+import { JobUsageDialog } from "./JobUsageDialog";
 
 export interface Tray {
   slot: number;
@@ -117,6 +118,7 @@ function SlotAssign({ tray, mapping, materials, canEdit, onChange }: { tray: Tra
 export function PrinterLiveCard({ printerId, status, model, trackedMinutes, lifetimeHours, usedHoursBefore = 0, printerName }: { printerName?: string; printerId: string; status: LiveStatus; model?: string | null; trackedMinutes: number; lifetimeHours: number; usedHoursBefore?: number }) {
   const [photo, setPhoto] = useState<{ url: string | null; error: string | null; loading: boolean } | null>(null);
   const [jobs, setJobs] = useState<PrinterJobRow[] | null>(null);
+  const [usageJob, setUsageJob] = useState<PrinterJobRow | null>(null);
   const [live, setLive] = useState<{ key: number; error: string | null } | null>(null);
   const isAdmin = useAuthStore((s) => s.user?.role) === "ADMIN";
   const [mappings, setMappings] = useState<SlotMapping[]>([]);
@@ -272,13 +274,15 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
       {live?.error && <p className="text-xs text-amber-600">{live.error}</p>}
       {photo?.url && <img src={photo.url} alt="Kamerabild des Druckers" className="rounded-lg w-full max-w-md border border-slate-200 dark:border-slate-700" />}
 
+      {usageJob && <JobUsageDialog jobId={usageJob.id} jobName={usageJob.name} current={usageJob.materialUsage} onClose={() => setUsageJob(null)} onSaved={async () => { setUsageJob(null); setJobs((await api.get(`/printers/${printerId}/jobs`)).data); }} />}
       {jobs && (
         <ul className="text-xs divide-y divide-slate-200 dark:divide-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg">
           {jobs.map((j) => (
             <li key={j.id} className="px-2 py-1.5 flex flex-wrap justify-between gap-2">
               <span className="truncate">{j.name ?? "Druckauftrag"}{j.materialUsage && j.materialUsage.length > 0 ? <span className="text-slate-500"> · {j.materialUsage.map((u) => `${u.name} ${Math.round(u.grams)} g`).join(", ")}</span> : null}</span>
               <span className="text-slate-500">{new Date(j.startedAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · {j.endedAt ? `${formatMinutes(j.minutes ?? 0)} · ${resultLabel[j.result ?? "UNKNOWN"] ?? j.result}` : "läuft"}</span>
-              <span className="w-full flex items-center gap-2">
+              <span className="w-full flex flex-wrap items-center gap-x-3 gap-y-1">
+                {isAdmin && (j.endedAt ? <button type="button" onClick={() => setUsageJob(j)} className="text-brand hover:underline shrink-0" title="Verbrauch festlegen oder korrigieren (z.B. bei Drucken aus Bambu Studio)">{j.materialUsage && j.materialUsage.length > 0 ? "Material ändern" : "Material festlegen"}</button> : <span className="text-slate-500 shrink-0" title="Während des Drucks misst das AMS mit; danach lässt sich der Verbrauch festlegen.">Material nach Druckende</span>)}
                 <span className="text-slate-500 shrink-0">Auftrag:</span>
                 <OrderSelect value={j.order?.id ?? ""} current={j.order} onChange={(id) => assignJob(j.id, id)} className="min-w-0 flex-1 max-w-xs px-1.5 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs" emptyLabel="keinem Auftrag zugeordnet" />
               </span>

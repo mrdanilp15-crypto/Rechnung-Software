@@ -15,6 +15,9 @@ import { computeFailStats } from "./failStats";
 import { buildAmsMapping, buildStartPayload, inspect3mf, publishToPrinter, remoteFileName, uploadToPrinter } from "./bambu/printJob";
 import { absolutePath } from "../archive/service";
 import AdmZip from "adm-zip";
+import { Prisma } from "@prisma/client";
+import { checkLowStock } from "../notifications/lowStock";
+import { matchJobFile, planUsageChange } from "./jobUsage";
 
 /**
  * Drucker/Maschinen mit eigenen Kostenwerten (Anschaffungspreis + Lebensdauer -> Abschreibung je Stunde, Leistung -> Strom,
@@ -436,6 +439,52 @@ printersRouter.patch("/jobs/:jobId", async (req, res) => {
   await prisma.printerJob.update({ where: { id: job.id }, data: { orderConfirmationId } });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "printer.job.assign", entityType: "PrinterJob", entityId: job.id, metadata: { orderConfirmationId } });
   res.json({ ok: true });
+});
+
+// Vorschlag für den Materialverbrauch eines Drucks: passt der Druckname zu einer 3MF im Archiv (gleicher Name wie in Bambu Studio),
+// liefert deren Slicer-Angabe (Gramm je Filament) - sonst nichts.
+printersRouter.get("/jobs/:jobId/usage-suggestion", async (req, res) => {
+  if (req.auth!.role !== "ADMIN") throw new HttpError(403, "Nur ein Administrator darf den Verbrauch ändern.");
+  const companyId = req.auth!.companyId;
+  const job = await prisma.printerJob.findFirst({ where: { id: req.params.jobId, companyId }, select: { name: true } });
+  if (!job) throw new HttpError(404, "Druckauftrag nicht gefunden");
+  const docs = await prisma.archiveDocument.findMany({ where: { companyId, fileName: { endsWith: ".3mf", mode: "insensitive" } }, orderBy: { createdAt: "desc" }, take: 300, select: { id: true, title: true, fileName: true } });
+  const doc = matchJobFile(job.name, docs);
+  if (!doc) return res.json({ document: null, plates: [] });
+  try {
+    const { data } = await printFile(companyId, doc.id);
+    const plates = inspect3mf(data).map((p) => ({ index: p.index, weightGrams: p.weightGrams, filaments: p.filaments }));
+    res.json({ document: doc, plates });
+  } catch (e) {
+    // z.B. reine Projektdatei ohne G-Code: Datei bekannt, aber keine Angaben lesbar
+    res.json({ document: doc, plates: [], note: (e as Error).message });
+  }
+});
+
+// Materialverbrauch eines beendeten Drucks festlegen/korrigieren; der Unterschied zum bisher Gebuchten geht in den Materialbestand
+printersRouter.put("/jobs/:jobId/usage", async (req, res) => {
+  if (req.auth!.role !== "ADMIN") throw new HttpError(403, "Nur ein Administrator darf den Verbrauch ändern.");
+  const companyId = req.auth!.companyId;
+  const body = z.object({ usage: z.array(z.object({ materialId: z.string().min(1), grams: z.number().min(0).max(100_000) })).max(30) }).parse(req.body);
+  const job = await prisma.printerJob.findFirst({ where: { id: req.params.jobId, companyId } });
+  if (!job) throw new HttpError(404, "Druckauftrag nicht gefunden");
+  if (!job.endedAt) throw new HttpError(409, "Der Druck läuft noch. Den Verbrauch kannst du nach dem Druckende festlegen - bis dahin misst das AMS mit.");
+  const ids = [...new Set(body.usage.map((u) => u.materialId))];
+  const materials = await prisma.material.findMany({ where: { companyId, id: { in: ids } }, select: { id: true, name: true, unit: true, costPerUnitCents: true } });
+  if (materials.length !== ids.length) throw new HttpError(400, "Material nicht gefunden.");
+  // auch bisher gebuchte Materialien brauchen Einheit/Preis (für die Bestandskorrektur), selbst wenn sie jetzt entfernt werden
+  const oldIds = Array.isArray(job.materialUsage) ? (job.materialUsage as { materialId: string }[]).map((o) => o.materialId) : [];
+  const allIds = [...new Set([...ids, ...oldIds])];
+  const info = new Map((await prisma.material.findMany({ where: { companyId, id: { in: allIds } }, select: { id: true, name: true, unit: true, costPerUnitCents: true } })).map((m) => [m.id, { name: m.name, unit: m.unit, costPerUnitCents: m.costPerUnitCents }]));
+  const { entries, deltas } = planUsageChange(job.materialUsage, body.usage, info);
+  await prisma.$transaction([
+    ...deltas.filter((d) => !d.skipped && d.amount !== 0).map((d) => prisma.material.update({ where: { id: d.materialId }, data: { stockQuantity: { decrement: d.amount } } })),
+    // eine noch ausstehende Slicer-Buchung entfällt, sonst würde nach der Korrektur doppelt gebucht
+    prisma.printerJob.update({ where: { id: job.id }, data: { materialUsage: entries as unknown as object, slicedPlan: Prisma.DbNull } }),
+  ]);
+  await writeAuditLog({ req, companyId, userId: req.auth!.sub, action: "printer.job.usage", entityType: "PrinterJob", entityId: job.id, metadata: { usage: entries.map((e) => ({ name: e.name, grams: e.grams })) } });
+  void checkLowStock(companyId);
+  res.json({ materialUsage: entries, stockSkipped: deltas.filter((d) => d.skipped).map((d) => info.get(d.materialId)?.name ?? d.materialId) });
 });
 
 // Archivieren statt Löschen: Produkte, die diesen Drucker nutzen, behalten ihre Zuordnung nicht - sie fallen auf den
