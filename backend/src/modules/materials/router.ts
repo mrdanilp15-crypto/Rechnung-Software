@@ -7,9 +7,21 @@ import { writeAuditLog } from "../audit/auditLog";
 import { weightedAverageCost } from "../../utils/materialCost";
 import { checkLowStock } from "../notifications/lowStock";
 import { findDuplicate, nextSku } from "../../utils/sku";
+import { buildReorder } from "./reorder";
 
 export const materialsRouter = Router();
 materialsRouter.use(requireAuth);
+
+// Nachbestellliste: Material unter dem Mindestbestand je Lieferant, mit Mengenvorschlag
+materialsRouter.get("/reorder", async (req, res) => {
+  const companyId = req.auth!.companyId;
+  const [rows, company] = await Promise.all([
+    prisma.material.findMany({ where: { companyId, isArchived: false, minStock: { gt: 0 } }, include: { supplier: { select: { id: true, name: true, email: true, contactName: true, customerNumber: true } } } }),
+    prisma.company.findUniqueOrThrow({ where: { id: companyId }, select: { name: true } }),
+  ]);
+  const groups = buildReorder(rows.map((m) => ({ id: m.id, name: m.name, sku: m.sku, unit: m.unit, stockQuantity: m.stockQuantity, minStock: m.minStock ?? 0, supplier: m.supplier })));
+  res.json({ company: { name: company.name }, groups });
+});
 
 materialsRouter.get("/next-sku", async (req, res) => {
   const rows = await prisma.material.findMany({ where: { companyId: req.auth!.companyId, isArchived: false }, select: { sku: true } });

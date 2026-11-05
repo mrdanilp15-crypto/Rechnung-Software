@@ -17,12 +17,14 @@ interface Settings {
   onFail: boolean;
   onError: boolean;
   onLowStock: boolean;
+  onOverdue?: boolean;
   onMaintenance: boolean;
 }
 
 const TONE: Record<string, string> = {
   LOW_STOCK: "bg-amber-500",
   MAINTENANCE_DUE: "bg-amber-500",
+  INVOICE_OVERDUE: "bg-red-500",
   PRINT_FINISHED: "bg-green-500",
   PRINT_FAILED: "bg-red-500",
   PRINTER_ERROR: "bg-amber-500",
@@ -189,6 +191,7 @@ export function NotificationsCard() {
             <label className="flex items-center gap-2"><input type="checkbox" checked={settings.onError} onChange={(e) => set({ onError: e.target.checked })} /> Druckerfehler</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={settings.onLowStock} onChange={(e) => set({ onLowStock: e.target.checked })} /> Material wird knapp</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={settings.onMaintenance} onChange={(e) => set({ onMaintenance: e.target.checked })} /> Wartung fällig</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={settings.onOverdue !== false} onChange={(e) => set({ onOverdue: e.target.checked })} /> Rechnung überfällig</label>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={save} className="bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded text-sm">Speichern</button>

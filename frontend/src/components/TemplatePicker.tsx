@@ -20,7 +20,7 @@ export const docTypeForBase = (base: string): DocType | null =>
  * Auswahl einer E-Mail-Vorlage für einen Beleg. Die Vorlage wird mit den Daten des Belegs gefüllt (Name, Nummer, Betrag, Fälligkeit ...) und
  * über onPick in Betreff und Nachricht übernommen. Die Standardvorlage der Belegart wird einmal automatisch eingesetzt. Gibt es keine Vorlage, erscheint nichts.
  */
-export function TemplatePicker({ docType, docId, onPick }: { docType: DocType; docId: string; onPick: (subject: string, message: string) => void }) {
+export function TemplatePicker({ docType, docId, onPick, autoApply = true }: { docType: DocType; docId: string; onPick: (subject: string, message: string) => void; autoApply?: boolean }) {
   const [templates, setTemplates] = useState<EmailTemplateRow[] | null>(null);
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +43,7 @@ export function TemplatePicker({ docType, docId, onPick }: { docType: DocType; d
   }, [docType, docId]);
 
   useEffect(() => {
-    if (!templates || applied.current) return;
+    if (!templates || applied.current || !autoApply) return;
     applied.current = true;
     const d = templates.find((t) => t.isDefault);
     if (d) void pick(d);

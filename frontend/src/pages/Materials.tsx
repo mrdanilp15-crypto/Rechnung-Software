@@ -5,6 +5,7 @@ import { useSaveStatus } from "../hooks/useSaveStatus";
 import { InfoBox } from "../components/InfoBox";
 import { useToast } from "../components/Toast";
 import { MobileCard, MobileField } from "../components/MobileCard";
+import { ReorderDialog } from "../components/ReorderDialog";
 import { SkuField } from "../components/SkuField";
 import { RowActionsMenu } from "../components/RowActionsMenu";
 
@@ -34,6 +35,8 @@ const formatQty = (n: number) => new Intl.NumberFormat("de-DE", { maximumFractio
 export default function Materials() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [showForm, setShowForm] = useState(false);
+  // ?reorder=1 (aus "Heute zu tun") öffnet die Nachbestellliste sofort
+  const [reorderOpen, setReorderOpen] = useState(() => new URLSearchParams(window.location.search).get("reorder") === "1");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [restockingId, setRestockingId] = useState<string | null>(null);
@@ -144,9 +147,14 @@ export default function Materials() {
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
         <h1 className="text-2xl font-semibold">Material</h1>
-        <button onClick={startCreate} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm w-full sm:w-auto">
-          Neues Material
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <button onClick={() => setReorderOpen(true)} className="px-4 py-2 rounded text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700" title="Material unter dem Mindestbestand je Lieferant, mit vorbereiteter Bestell-E-Mail">
+            Nachbestellliste{materials.filter((m) => !!m.minStock && m.minStock > 0 && m.stockQuantity <= m.minStock).length > 0 ? ` (${materials.filter((m) => !!m.minStock && m.minStock > 0 && m.stockQuantity <= m.minStock).length})` : ""}
+          </button>
+          <button onClick={startCreate} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
+            Neues Material
+          </button>
+        </div>
       </div>
 
       <InfoBox title="Wozu dient Material?" defaultOpen>
@@ -156,6 +164,7 @@ export default function Materials() {
         <p>Bei <strong>Produkte</strong> kannst du hinterlegen, wie viel von welchem Material ein Produkt pro Stück verbraucht (z.B. "15g Filament pro Druck"). Beim Erstellen einer Rechnung wird der Bestand hier automatisch entsprechend reduziert.</p>
       </InfoBox>
 
+      {reorderOpen && <ReorderDialog onClose={() => setReorderOpen(false)} />}
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
       {showForm && (

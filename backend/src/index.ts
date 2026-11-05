@@ -5,6 +5,7 @@ import { prisma } from "./db/prisma";
 import { registerPlugin } from "./modules/plugins/hooks";
 import exampleTaxNotePlugin from "../plugins/example-tax-note";
 import { markOverdueInvoices } from "./modules/invoices/overdueJob";
+import { markExpiredQuotes } from "./modules/quotes/expiryJob";
 import { runBackup } from "./modules/backup/runBackup";
 import { runDueRecurringInvoices } from "./modules/recurring/service";
 import { bambuMonitor } from "./modules/printers/bambu/monitor";
@@ -45,6 +46,12 @@ async function main() {
   }, 60 * 60 * 1000);
   markOverdueInvoices().catch((err) => logger.error({ err }, "Fehler beim Prüfen überfälliger Rechnungen"));
 
+  // Abgelaufene Angebote auf "Abgelaufen" setzen (stündlich)
+  const expiryInterval = setInterval(() => {
+    markExpiredQuotes().catch((err) => logger.error({ err }, "Fehler beim Prüfen abgelaufener Angebote"));
+  }, 60 * 60 * 1000);
+  markExpiredQuotes().catch((err) => logger.error({ err }, "Fehler beim Prüfen abgelaufener Angebote"));
+
   // Wiederkehrende Rechnungen: stündlich fällige Vorlagen als ENTWURF anlegen (nie automatisch versenden)
   const recurringInterval = setInterval(() => {
     runDueRecurringInvoices().catch((err) => logger.error({ err }, "Fehler bei wiederkehrenden Rechnungen"));
@@ -67,6 +74,7 @@ async function main() {
   const shutdown = async (signal: string) => {
     logger.info(`${signal} empfangen, fahre Server geordnet herunter...`);
     clearInterval(overdueInterval);
+    clearInterval(expiryInterval);
     clearInterval(recurringInterval);
     clearInterval(lowStockInterval);
     bambuMonitor.stopAll();

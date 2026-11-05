@@ -61,6 +61,7 @@ export default function Documents() {
   const location = useLocation();
   // Nach "Fertigstellen" im Editor: Versand-Dialog gleich öffnen
   const pendingSend = (location.state as { sendEmail?: { kind: Kind; id: string } } | null)?.sendEmail;
+  const [followUp, setFollowUp] = useState(false);
   const [recurringRow, setRecurringRow] = useState<DocRow | null>(null);
   const [dpPercent, setDpPercent] = useState("30");
   const newRef = useRef<HTMLDivElement>(null);
@@ -72,6 +73,20 @@ export default function Documents() {
     });
   }
   useEffect(load, []);
+  useEffect(() => {
+    const id = params.get("followup");
+    if (!id || !loaded) return;
+    const row = rows.find((x) => x.kind === "QUOTE" && x.id === id);
+    if (row) {
+      setFollowUp(true);
+      setSendRow(row);
+    }
+    const next = new URLSearchParams(params);
+    next.delete("followup");
+    setParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
+
   useEffect(() => {
     if (!pendingSend || !loaded) return;
     const row = rows.find((r) => r.kind === pendingSend.kind && r.id === pendingSend.id);
@@ -173,7 +188,8 @@ export default function Documents() {
     const list: RowAction[] = [];
     if (row.status === "DRAFT") list.push({ label: "Bearbeiten", onClick: () => navigate(openPath(row)!) });
     if (row.status !== "CANCELLED" && !row.isCancellationDocument) list.push({ label: row.emailSentAt ? "Erneut per E-Mail senden" : "Per E-Mail senden", onClick: () => setSendRow(row) });
-    if (row.kind === "QUOTE" && row.status === "SENT") {
+    if (row.kind === "QUOTE" && (row.status === "SENT" || row.status === "EXPIRED")) {
+      list.push({ label: "Nachfassen (E-Mail vorbereitet)", onClick: () => { setFollowUp(true); setSendRow(row); } });
       list.push({ label: "Als angenommen markieren", onClick: () => setQuoteStatus(row, "ACCEPTED", "angenommen") });
       list.push({ label: "Als abgelehnt markieren", onClick: () => setQuoteStatus(row, "DECLINED", "abgelehnt") });
     }
@@ -198,7 +214,7 @@ export default function Documents() {
   /** Der eine nächste Schritt je Beleg als auffälliger Knopf (alles Weitere bleibt im ⋮-Menü). */
   function nextStep(row: DocRow): { label: string; title: string; run: () => void } | null {
     if (row.status === "DRAFT" || row.isCancellationDocument || row.hasNext) return null;
-    if (row.kind === "QUOTE" && row.status === "SENT") {
+    if (row.kind === "QUOTE" && (row.status === "SENT" || row.status === "EXPIRED")) {
       return {
         label: "Angenommen → Auftrag",
         title: "Der Kunde hat zugesagt: Angebot als angenommen markieren und daraus die Auftragsbestätigung anlegen",
@@ -343,9 +359,11 @@ export default function Documents() {
           label={KIND_INFO[sendRow.kind].label}
           number={sendRow.number}
           isDraft={sendRow.status === "DRAFT"}
-          onClose={() => setSendRow(null)}
+          followUp={followUp}
+          onClose={() => { setSendRow(null); setFollowUp(false); }}
           onSent={(to) => {
             setSendRow(null);
+            setFollowUp(false);
             showToast(`${KIND_INFO[sendRow.kind].label} wurde an ${to} gesendet`, "success");
             load();
           }}

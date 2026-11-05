@@ -14,6 +14,7 @@ export function SendDocumentDialog({
   isDraft,
   onClose,
   onSent,
+  followUp = false,
 }: {
   base: string; // z.B. /quotes
   id: string;
@@ -22,6 +23,8 @@ export function SendDocumentDialog({
   isDraft: boolean;
   onClose: () => void;
   onSent: (to: string) => void;
+  /** Nachfassen bei einem Angebot ohne Antwort: vorbereiteter Text statt der Standardvorlage */
+  followUp?: boolean;
 }) {
   const [to, setTo] = useState("");
   const [customerEmail, setCustomerEmail] = useState<string | null | undefined>(undefined);
@@ -42,6 +45,20 @@ export function SendDocumentDialog({
       .catch(() => setCustomerEmail(null));
   }, [base, id]);
 
+  // vorbereitete Nachfass-Mail (Platzhalter wie in den Vorlagen, werden mit den Daten des Angebots gefüllt)
+  useEffect(() => {
+    if (!followUp) return;
+    api
+      .post("/templates/render", {
+        subject: "Ihr Angebot {nummer} - kurze Nachfrage",
+        body: "Hallo {ansprechpartner},\n\nich wollte kurz nachfragen, ob Sie unser Angebot {nummer} über {betrag} schon ansehen konnten und ob es noch Fragen gibt. Gern passe ich es an Ihre Wünsche an.\n\nWenn Sie das Angebot annehmen möchten, genügt eine kurze Antwort auf diese E-Mail.\n\nMit freundlichen Grüßen\n{firma}",
+        docType: "QUOTE",
+        docId: id,
+      })
+      .then((r) => { setSubject(r.data.subject); setMessage(r.data.body); })
+      .catch(() => {});
+  }, [followUp, id]);
+
   async function send() {
     setSending(true);
     setError(null);
@@ -59,7 +76,7 @@ export function SendDocumentDialog({
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center sm:px-4" onMouseDown={onClose}>
       <div className="w-full sm:max-w-lg bg-white dark:bg-slate-800 rounded-t-xl sm:rounded-xl shadow-2xl p-5 space-y-3 max-h-[92vh] overflow-auto" onMouseDown={(e) => e.stopPropagation()}>
-        <h2 className="font-medium">{label} {number ?? ""} per E-Mail senden</h2>
+        <h2 className="font-medium">{followUp ? `Nachfassen: ${label} ${number ?? ""}` : `${label} ${number ?? ""} per E-Mail senden`}</h2>
         {isDraft && (
           <p className="text-xs text-amber-700 dark:text-amber-400">
             {label === "Rechnung"
@@ -73,7 +90,7 @@ export function SendDocumentDialog({
           <input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="E-Mail-Adresse des Kunden" className={`${inputClass} mt-1`} autoFocus />
           {customerEmail === null && <span className="block text-xs text-amber-600 mt-0.5">Beim Kunden ist keine E-Mail-Adresse hinterlegt - bitte hier eintragen (oder beim Kunden ergänzen).</span>}
         </label>
-        {docTypeForBase(base) && <TemplatePicker docType={docTypeForBase(base)!} docId={id} onPick={(s, m) => { setSubject(s); setMessage(m); }} />}
+        {docTypeForBase(base) && <TemplatePicker docType={docTypeForBase(base)!} docId={id} autoApply={!followUp} onPick={(s, m) => { setSubject(s); setMessage(m); }} />}
         <label className="block text-sm">
           Betreff (optional)
           <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={`${label} ${number ?? ""}`.trim()} className={`${inputClass} mt-1`} />

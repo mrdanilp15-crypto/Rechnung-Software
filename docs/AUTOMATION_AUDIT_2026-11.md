@@ -94,7 +94,7 @@ Vorschlag: eine Seite **Einstellungen -> Verbindungen** mit Ampel je Punkt (grü
 3. Menü aufräumen: Wiederkehrende Rechnungen, Import, Wartung sichtbar verlinken; "+ Neu"-Knopf oben; Suche um Aktionen erweitern; Einrichtungs-Checkliste.
 4. Einstellungen in Gruppen statt 12 Reitern in einer Reihe.
 
-**Paket 2 - Automationen mit Bestätigung per Klick**
+**Paket 2 - Automationen mit Bestätigung per Klick - UMGESETZT (Punkte 5 bis 8; siehe USER_GUIDE)**
 5. Auftragsstatus-Vorschläge aus Druck/Versand/Zahlung (A) und Zuordnung "Druck fertig -> welcher Auftrag?" (E).
 6. Angebote: automatisch "Abgelaufen", Nachfass-Erinnerung mit Vorlage (C).
 7. Überfällig: Benachrichtigung plus vorbereiteter Erinnerungs-Entwurf (D).
