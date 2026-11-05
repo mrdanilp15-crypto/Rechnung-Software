@@ -96,7 +96,7 @@ ordersRouter.get("/:id", async (req, res) => {
       items: order.items.map((i) => ({ description: i.description, quantity: i.quantity, unit: i.unit, unitPriceCents: i.unitPriceCents, lineTotalCents: i.lineTotalCents })),
     },
     links: { quote, deliveryNotes, invoices },
-    jobs: jobs.map((j) => ({ id: j.id, name: j.name, printerName: j.printer.name, startedAt: j.startedAt, endedAt: j.endedAt, minutes: j.minutes, result: j.result })),
+    jobs: jobs.map((j) => ({ id: j.id, name: j.name, printerName: j.printer.name, startedAt: j.startedAt, endedAt: j.endedAt, minutes: j.minutes, result: j.result, materialUsage: Array.isArray(j.materialUsage) ? j.materialUsage : null })),
     timeMinutes: times.reduce((a, t) => a + (t.minutes ?? 0), 0),
     files: files.map((f) => ({ id: f.id, note: f.note, addedAt: f.createdAt, documentId: f.document.id, title: f.document.title, fileName: f.document.fileName, sizeBytes: f.document.sizeBytes })),
     comments: comments.map((c) => ({ id: c.id, text: c.text, createdAt: c.createdAt, userId: c.userId, userName: nameOf(c.userId), mine: c.userId === req.auth!.sub })),

@@ -415,6 +415,17 @@ printersRouter.post("/:id/print", async (req, res) => {
   res.json({ ok: true, fileName, started: body.mode === "start", planned: planEntries.length });
 });
 
+// Drucke ohne Auftrag aus allen Druckern (auch aus Bambu Studio oder am Drucker gestartete), neueste zuerst - zum Zuordnen von der Auftragsseite aus
+printersRouter.get("/jobs/unassigned", async (req, res) => {
+  const jobs = await prisma.printerJob.findMany({
+    where: { companyId: req.auth!.companyId, orderConfirmationId: null, startedAt: { gte: new Date(Date.now() - 90 * 86_400_000) }, printer: { isArchived: false } },
+    orderBy: { startedAt: "desc" },
+    take: 60,
+    select: { id: true, name: true, startedAt: true, endedAt: true, minutes: true, result: true, materialUsage: true, printer: { select: { name: true } } },
+  });
+  res.json(jobs.map(({ printer, ...j }) => ({ ...j, printerName: printer.name })));
+});
+
 printersRouter.get("/:id/jobs", async (req, res) => {
   const p = await prisma.printer.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!p) throw new HttpError(404, "Drucker nicht gefunden");

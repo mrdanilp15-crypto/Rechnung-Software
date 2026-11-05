@@ -6,6 +6,8 @@ import { PdfLink } from "../components/PdfLink";
 import { Panel, eur } from "../components/dashboard/widgets";
 import { PrintStartButton } from "../components/PrintStartButton";
 import { AssigneeSelect } from "../components/AssigneeSelect";
+import { JobAssignPicker } from "../components/JobAssignPicker";
+import { JobUsageDialog } from "../components/JobUsageDialog";
 import { useAuthStore } from "../store/authStore";
 
 /** Auftragsseite: alles zu einem Auftrag an einem Ort - Positionen, Belege, Drucke, Zeiten, Dateien, Kommentare und Verlauf. */
@@ -21,7 +23,7 @@ interface Detail {
     items: { description: string; quantity: number; unit: string; unitPriceCents: number; lineTotalCents: number }[];
   };
   links: { quote: { id: string; quoteNumber: string; status: string } | null; deliveryNotes: { id: string; noteNumber: string; status: string }[]; invoices: { id: string; invoiceNumber: string | null; status: string; totalCents: number; isCancellationDocument: boolean }[] };
-  jobs: { id: string; name: string | null; printerName: string; startedAt: string; endedAt: string | null; minutes: number | null; result: string | null }[];
+  jobs: { id: string; name: string | null; printerName: string; startedAt: string; endedAt: string | null; minutes: number | null; result: string | null; materialUsage: { materialId: string; name: string; grams: number }[] | null }[];
   timeMinutes: number;
   files: { id: string; note: string | null; addedAt: string; documentId: string; title: string; fileName: string; sizeBytes: number }[];
   comments: { id: string; text: string; createdAt: string; userName: string | null; mine: boolean }[];
@@ -53,6 +55,8 @@ export default function OrderDetail() {
   const [q, setQ] = useState("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
+  const [picking3d, setPicking3d] = useState(false);
+  const [usageJob, setUsageJob] = useState<Detail["jobs"][number] | null>(null);
   const isAdmin = useAuthStore((s) => s.user?.role) === "ADMIN";
 
   const load = useCallback(() => {
@@ -69,6 +73,10 @@ export default function OrderDetail() {
 
   async function setPriority(v: number) {
     try { await api.patch(`/orders/${id}`, { priority: v }); load(); } catch (e) { fail(e, "Priorität konnte nicht geändert werden."); }
+  }
+  async function unassignJob(jobId: string) {
+    if (!window.confirm("Diesen Druck vom Auftrag lösen? Zeit und Material zählen dann nicht mehr zu den Kosten dieses Auftrags.")) return;
+    try { await api.patch(`/printers/jobs/${jobId}`, { orderConfirmationId: null }); load(); } catch (e) { fail(e, "Lösen hat nicht geklappt."); }
   }
   async function setAssignee(userId: string | null) {
     try { await api.patch(`/orders/${id}`, { assigneeId: userId }); load(); } catch (e) { fail(e, "Zuständigkeit konnte nicht geändert werden."); }
@@ -219,9 +227,24 @@ export default function OrderDetail() {
                 </ul>
               </div>
             )}
-            {d.jobs.length === 0 ? <p className="text-sm text-slate-500">Noch kein Druck zugeordnet. Beim Senden eines Drucks oder im Druckverlauf des Druckers den Auftrag wählen.</p> : (
-              <ul className="text-sm space-y-1.5">{d.jobs.map((j) => <li key={j.id}><span className="font-medium">{j.name ?? "Druckauftrag"}</span> <span className="text-xs text-slate-500">· {j.printerName} · {j.endedAt ? `${hm(j.minutes ?? 0)} h · ${j.result === "FINISHED" ? "fertig" : j.result === "FAILED" ? "fehlgeschlagen" : j.result === "CANCELLED" ? "abgebrochen" : "beendet"}` : "läuft"}</span></li>)}</ul>
+            {picking3d && <JobAssignPicker orderId={d.order.id} itemNames={d.order.items.map((i) => i.description.split("\n")[0])} onAssigned={() => load()} onClose={() => setPicking3d(false)} />}
+            {d.jobs.length === 0 ? <p className="text-sm text-slate-500">Noch kein Druck zugeordnet.</p> : (
+              <ul className="text-sm space-y-2">
+                {d.jobs.map((j) => (
+                  <li key={j.id}>
+                    <span className="font-medium">{j.name ?? "Druckauftrag"}</span>{" "}
+                    <span className="text-xs text-slate-500">· {j.printerName} · {j.endedAt ? `${hm(j.minutes ?? 0)} h · ${j.result === "FINISHED" ? "fertig" : j.result === "FAILED" ? "fehlgeschlagen" : j.result === "CANCELLED" ? "abgebrochen" : "beendet"}` : "läuft"}</span>
+                    <span className="block text-xs text-slate-500">
+                      {j.materialUsage && j.materialUsage.length > 0 ? `Material: ${j.materialUsage.map((u) => `${u.name} ${Math.round(u.grams)} g`).join(", ")}` : "Noch kein Material erfasst"}
+                      {isAdmin && j.endedAt && <button type="button" onClick={() => setUsageJob(j)} className="ml-2 text-brand hover:underline">{j.materialUsage && j.materialUsage.length > 0 ? "ändern" : "festlegen"}</button>}
+                      <button type="button" onClick={() => unassignJob(j.id)} className="ml-3 text-slate-500 hover:underline">Zuordnung lösen</button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
             )}
+            {!picking3d && <button type="button" onClick={() => setPicking3d(true)} className="mt-3 text-sm text-brand hover:underline">+ Vorhandenen Druck zuordnen (z.B. aus Bambu Studio)</button>}
+            {usageJob && <JobUsageDialog jobId={usageJob.id} jobName={usageJob.name} current={usageJob.materialUsage} onClose={() => setUsageJob(null)} onSaved={() => { setUsageJob(null); load(); }} />}
           </Panel>
           <Panel title="Versand">
             {o.shippedAt ? <p className="text-sm">Versendet am {fmtDate(o.shippedAt)}{o.carrier ? ` mit ${o.carrier}` : ""}{o.trackingNumber ? `, Sendung ${o.trackingNumber}` : ""}.{o.shippedMailAt ? ` Versandmail am ${fmtDate(o.shippedMailAt)}.` : ""}</p> : <p className="text-sm text-slate-500">Noch nicht versendet. Im Auftragsboard nach "Versendet" verschieben (mit Sendungsnummer und Versandmail).</p>}
