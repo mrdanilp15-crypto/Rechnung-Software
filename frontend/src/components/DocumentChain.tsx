@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import { StatusChip } from "./StatusChip";
 import { PdfLink } from "./PdfLink";
 import { useToast } from "./Toast";
+import { LinkDocsDialog, type LinkCandidate } from "./LinkDocsDialog";
 
 /**
  * Vorgangs-Übersicht: die ganze Belegkette zu einem Angebot, Auftrag, Lieferschein oder einer Rechnung (Angebot -> Auftrag -> Lieferschein -> Rechnung).
@@ -20,6 +21,7 @@ interface Node {
   date: string;
   totalCents: number | null;
   emailSentAt: string | null;
+  customerId?: string;
   isCancellationDocument?: boolean;
   invoiceKind?: string;
 }
@@ -39,13 +41,13 @@ const STEP_OF: Record<ActionId, "quote" | "orders" | "deliveryNotes" | "invoices
 };
 const BASE: Record<Kind, string> = { QUOTE: "/quotes", ORDER_CONFIRMATION: "/order-confirmations", DELIVERY_NOTE: "/delivery-notes", INVOICE: "/invoices" };
 
-/** Wohin führt ein Beleg: Entwurf -> Bearbeiten, sonst Detailseite (Lieferscheine haben keine eigene: dort das PDF). */
+/** Wohin führt ein Beleg: Entwurf -> Bearbeiten, sonst die Detailseite. */
 function pathOf(n: Node): string | null {
   if (n.status === "DRAFT") return `${BASE[n.kind]}/${n.id}/edit`;
   if (n.kind === "QUOTE") return `/quotes/${n.id}`;
   if (n.kind === "ORDER_CONFIRMATION") return `/orders/${n.id}`;
   if (n.kind === "INVOICE") return `/invoices/${n.id}`;
-  return null;
+  return `/delivery-notes/${n.id}`;
 }
 const money = (c: number | null) => (c === null ? "" : new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(c / 100));
 const day = (iso: string) => new Intl.DateTimeFormat("de-DE").format(new Date(iso));
@@ -56,11 +58,51 @@ export function DocumentChain({ kind, id, onChanged }: { kind: Kind; id: string;
   const [chain, setChain] = useState<ChainData | null>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<ActionId | null>(null);
+  const [linkDlg, setLinkDlg] = useState<{ order: Node; candidates: LinkCandidate[] } | null>(null);
+  const [linkBusy, setLinkBusy] = useState(false);
 
   const load = useCallback(() => {
     api.get(`/documents/chain/${kind}/${id}`).then((r) => { setChain(r.data); setFailed(false); }).catch(() => setFailed(true));
   }, [kind, id]);
   useEffect(load, [load]);
+
+  /** Auftrag ohne Angebot: offene Angebote desselben Kunden zur Auswahl anbieten. */
+  async function openLink(order: Node) {
+    try {
+      const { data } = await api.get("/documents");
+      const cands = (data as { kind: Kind; id: string; number: string | null; date: string; totalCents: number | null; status: string; customerId: string; hasOrder: boolean }[])
+        .filter((d) => d.kind === "QUOTE" && d.customerId === order.customerId && !d.hasOrder && ["SENT", "ACCEPTED", "EXPIRED"].includes(d.status))
+        .map((d) => ({ id: d.id, number: d.number, date: d.date, totalCents: d.totalCents, status: d.status }));
+      setLinkDlg({ order, candidates: cands });
+    } catch {
+      showToast("Angebote konnten nicht geladen werden", "error");
+    }
+  }
+  async function link(orderId: string, quoteId: string) {
+    setLinkBusy(true);
+    try {
+      const { data } = await api.post(`/order-confirmations/${orderId}/link-quote`, { quoteId });
+      showToast(`Verknüpft mit Angebot ${data.quoteNumber}`, "success");
+      setLinkDlg(null);
+      load();
+      onChanged?.();
+    } catch (e: any) {
+      showToast(e?.response?.data?.error ?? "Verknüpfen hat nicht geklappt", "error");
+    } finally {
+      setLinkBusy(false);
+    }
+  }
+  async function unlink(orderId: string) {
+    if (!window.confirm("Verknüpfung dieses Auftrags mit dem Angebot lösen? Das Angebot gilt danach wieder als nicht weitergeführt.")) return;
+    try {
+      await api.post(`/order-confirmations/${orderId}/unlink-quote`);
+      showToast("Verknüpfung gelöst", "success");
+      load();
+      onChanged?.();
+    } catch (e: any) {
+      showToast(e?.response?.data?.error ?? "Lösen hat nicht geklappt", "error");
+    }
+  }
 
   async function run(a: Next) {
     setBusy(a.id);
@@ -92,6 +134,7 @@ export function DocumentChain({ kind, id, onChanged }: { kind: Kind; id: string;
   if (!chain) return <p className="text-sm text-slate-500">Wird geladen ...</p>;
 
   return (
+    <>
     <ol className="relative space-y-3">
       {STEPS.map((step, idx) => {
         const nodes = step.key === "quote" ? (chain.quote ? [chain.quote] : []) : chain[step.key];
@@ -127,7 +170,10 @@ export function DocumentChain({ kind, id, onChanged }: { kind: Kind; id: string;
                   </div>
                 );
               })}
-              {nodes.length === 0 && actions.length === 0 && <p className="mt-1 text-sm text-slate-400">{step.key === "quote" && chain.orders.length > 0 ? "kein Angebot verknüpft (Belege → ⋮ → Mit Angebot verknüpfen)" : "noch nicht angelegt"}</p>}
+              {nodes.length === 0 && actions.length === 0 && (step.key === "quote" && chain.orders.length > 0 && chain.orders[0].customerId
+                ? <button type="button" onClick={() => openLink(chain.orders[0])} className="mt-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-sm">+ Mit Angebot verknüpfen</button>
+                : <p className="mt-1 text-sm text-slate-400">noch nicht angelegt</p>)}
+              {step.key === "quote" && chain.quote && chain.orders.length === 1 && <button type="button" onClick={() => unlink(chain.orders[0].id)} className="mt-1 text-xs text-slate-500 hover:underline">Verknüpfung mit dem Auftrag lösen</button>}
               {actions.length > 0 && (
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   {actions.map((a) => (
@@ -140,5 +186,17 @@ export function DocumentChain({ kind, id, onChanged }: { kind: Kind; id: string;
         );
       })}
     </ol>
+    {linkDlg && (
+      <LinkDocsDialog
+        title={`Auftrag ${linkDlg.order.number ?? ""} mit einem Angebot verknüpfen`}
+        intro="Offene Angebote dieses Kunden. Ein verknüpftes Angebot gilt danach als angenommen und weitergeführt."
+        candidates={linkDlg.candidates}
+        linkLabel="Verknüpfen"
+        busy={linkBusy}
+        onLink={(cand) => link(linkDlg.order.id, cand.id)}
+        onClose={() => setLinkDlg(null)}
+      />
+    )}
+    </>
   );
 }

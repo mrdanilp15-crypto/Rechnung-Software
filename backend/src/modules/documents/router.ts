@@ -23,6 +23,7 @@ export interface DocumentRow {
   customerId: string;
   hasSource: boolean; // stammt aus einem Vorgängerbeleg (nur Aufträge: aus einem Angebot)
   hasInvoice: boolean; // wurde daraus schon eine Rechnung erstellt (Angebote, Aufträge)?
+  hasOrder: boolean; // wurde aus dem Angebot schon ein Auftrag erstellt?
   sourceQuoteId: string | null;
   sourceOrderId: string | null;
   invoiceKind?: string; // STANDARD | DOWN_PAYMENT | FINAL (nur Rechnungen)
@@ -45,6 +46,7 @@ documentsRouter.get("/", async (req, res) => {
     prisma.deliveryNote.findMany({ where: { companyId, sourceOrderConfirmationId: { not: null }, voidedAt: null }, select: { sourceOrderConfirmationId: true } }),
   ]);
 
+  const quoteHasOrder = new Set<string>(confirmationSources.map((c) => c.sourceQuoteId).filter((x): x is string => !!x));
   const quoteHasInvoice = new Set<string>(invoiceSources.map((i) => i.sourceQuoteId).filter((x): x is string => !!x));
   const confirmationHasInvoice = new Set<string>(invoiceSources.map((i) => i.sourceOrderConfirmationId).filter((x): x is string => !!x));
   const quoteHasNext = new Set<string>([
@@ -58,19 +60,19 @@ documentsRouter.get("/", async (req, res) => {
 
   const rows: DocumentRow[] = [
     ...invoices.map((i): DocumentRow => ({
-      kind: "INVOICE", customerId: i.customerId, hasSource: !!(i.sourceQuoteId || i.sourceOrderConfirmationId), hasInvoice: false, sourceQuoteId: i.sourceQuoteId, sourceOrderId: i.sourceOrderConfirmationId, id: i.id, number: i.invoiceNumber, customerName: i.customer.name, date: i.issueDate.toISOString(), dueDate: i.dueDate?.toISOString() ?? null,
+      kind: "INVOICE", customerId: i.customerId, hasSource: !!(i.sourceQuoteId || i.sourceOrderConfirmationId), hasInvoice: false, hasOrder: false, sourceQuoteId: i.sourceQuoteId, sourceOrderId: i.sourceOrderConfirmationId, id: i.id, number: i.invoiceNumber, customerName: i.customer.name, date: i.issueDate.toISOString(), dueDate: i.dueDate?.toISOString() ?? null,
       totalCents: i.totalCents, status: i.status, isCancellationDocument: i.isCancellationDocument, hasNext: !!i.finalInvoiceId, invoiceKind: i.kind, emailSentAt: i.emailSentAt?.toISOString() ?? null,
     })),
     ...quotes.map((q): DocumentRow => ({
-      kind: "QUOTE", customerId: q.customerId, hasSource: false, hasInvoice: quoteHasInvoice.has(q.id), sourceQuoteId: null, sourceOrderId: null, id: q.id, number: q.quoteNumber, customerName: q.customer.name, date: q.issueDate.toISOString(), dueDate: q.validUntil?.toISOString() ?? null,
+      kind: "QUOTE", customerId: q.customerId, hasSource: false, hasInvoice: quoteHasInvoice.has(q.id), hasOrder: quoteHasOrder.has(q.id), sourceQuoteId: null, sourceOrderId: null, id: q.id, number: q.quoteNumber, customerName: q.customer.name, date: q.issueDate.toISOString(), dueDate: q.validUntil?.toISOString() ?? null,
       totalCents: q.totalCents, status: q.status, isCancellationDocument: false, hasNext: quoteHasNext.has(q.id), emailSentAt: q.emailSentAt?.toISOString() ?? null,
     })),
     ...confirmations.map((c): DocumentRow => ({
-      kind: "ORDER_CONFIRMATION", customerId: c.customerId, hasSource: !!c.sourceQuoteId, hasInvoice: confirmationHasInvoice.has(c.id), sourceQuoteId: c.sourceQuoteId, sourceOrderId: null, id: c.id, number: c.confirmationNumber, customerName: c.customer.name, date: c.issueDate.toISOString(), dueDate: c.expectedDeliveryDate?.toISOString() ?? null,
+      kind: "ORDER_CONFIRMATION", customerId: c.customerId, hasSource: !!c.sourceQuoteId, hasInvoice: confirmationHasInvoice.has(c.id), hasOrder: false, sourceQuoteId: c.sourceQuoteId, sourceOrderId: null, id: c.id, number: c.confirmationNumber, customerName: c.customer.name, date: c.issueDate.toISOString(), dueDate: c.expectedDeliveryDate?.toISOString() ?? null,
       totalCents: c.totalCents, status: c.status, isCancellationDocument: false, hasNext: confirmationHasNext.has(c.id), emailSentAt: c.emailSentAt?.toISOString() ?? null,
     })),
     ...notes.map((n): DocumentRow => ({
-      kind: "DELIVERY_NOTE", customerId: n.customerId, hasSource: !!n.sourceOrderConfirmationId, hasInvoice: false, sourceQuoteId: null, sourceOrderId: n.sourceOrderConfirmationId, id: n.id, number: n.noteNumber, customerName: n.customer.name, date: n.deliveryDate.toISOString(), dueDate: null,
+      kind: "DELIVERY_NOTE", customerId: n.customerId, hasSource: !!n.sourceOrderConfirmationId, hasInvoice: false, hasOrder: false, sourceQuoteId: null, sourceOrderId: n.sourceOrderConfirmationId, id: n.id, number: n.noteNumber, customerName: n.customer.name, date: n.deliveryDate.toISOString(), dueDate: null,
       totalCents: null, status: n.status, isCancellationDocument: false, hasNext: false, emailSentAt: n.emailSentAt?.toISOString() ?? null,
     })),
   ];
@@ -191,8 +193,8 @@ documentsRouter.get("/chain/:kind/:id", async (req, res) => {
   // Lieferschein ohne Auftrag (oder Rechnung ohne Quelle): der Beleg selbst bildet die Kette
   const lonelyNote = kind === "DELIVERY_NOTE" && !notes.some((n) => n.id === id) ? await prisma.deliveryNote.findFirst({ where: { id, companyId } }) : null;
 
-  const toNode = (k: DocKind) => (x: { id: string; status: string; emailSentAt: Date | null; totalCents?: number; isCancellationDocument?: boolean; kind?: string } & Record<string, unknown>, number: string | null, date: Date): ChainNode => ({
-    kind: k, id: x.id, number, status: x.status, date, totalCents: typeof x.totalCents === "number" ? x.totalCents : null, emailSentAt: x.emailSentAt ?? null, isCancellationDocument: !!x.isCancellationDocument, ...(k === "INVOICE" ? { invoiceKind: String(x.kind ?? "STANDARD") } : {}),
+  const toNode = (k: DocKind) => (x: { id: string; status: string; emailSentAt: Date | null; customerId?: string; totalCents?: number; isCancellationDocument?: boolean; kind?: string } & Record<string, unknown>, number: string | null, date: Date): ChainNode => ({
+    kind: k, id: x.id, number, status: x.status, date, customerId: x.customerId, totalCents: typeof x.totalCents === "number" ? x.totalCents : null, emailSentAt: x.emailSentAt ?? null, isCancellationDocument: !!x.isCancellationDocument, ...(k === "INVOICE" ? { invoiceKind: String(x.kind ?? "STANDARD") } : {}),
   });
   const chain = buildChain({
     quote: quote ? toNode("QUOTE")(quote, quote.quoteNumber, quote.issueDate) : null,

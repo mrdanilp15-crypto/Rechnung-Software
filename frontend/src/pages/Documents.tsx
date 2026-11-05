@@ -27,6 +27,7 @@ interface DocRow {
   customerId: string;
   hasSource: boolean;
   hasInvoice: boolean;
+  hasOrder: boolean;
   sourceQuoteId: string | null;
   sourceOrderId: string | null;
   invoiceKind?: string;
@@ -139,7 +140,7 @@ export default function Documents() {
   /** Aufträge desselben Kunden, die nicht aus einem Angebot stammen (Kandidaten zum Verknüpfen mit diesem Angebot). */
   const orderCandidates = (quote: DocRow) => rows.filter((r) => r.kind === "ORDER_CONFIRMATION" && r.customerId === quote.customerId && !r.hasSource && r.status !== "CANCELLED");
   /** Angebote desselben Kunden, aus denen noch kein Auftrag entstanden ist (Kandidaten zum Verknüpfen mit diesem Auftrag). */
-  const quoteCandidates = (order: DocRow) => rows.filter((r) => r.kind === "QUOTE" && r.customerId === order.customerId && !r.hasNext && ["SENT", "ACCEPTED", "EXPIRED"].includes(r.status));
+  const quoteCandidates = (order: DocRow) => rows.filter((r) => r.kind === "QUOTE" && r.customerId === order.customerId && !r.hasOrder && ["SENT", "ACCEPTED", "EXPIRED"].includes(r.status));
 
   async function linkOrderToQuote(orderId: string, quoteId: string) {
     setLinkBusy(true);
@@ -225,7 +226,7 @@ export default function Documents() {
     if (row.kind === "QUOTE") return `/quotes/${row.id}`;
     if (row.kind === "ORDER_CONFIRMATION") return `/orders/${row.id}`;
     if (row.kind === "INVOICE") return `/invoices/${row.id}`;
-    if (row.kind === "DELIVERY_NOTE" && row.sourceOrderId) return `/orders/${row.sourceOrderId}`;
+    if (row.kind === "DELIVERY_NOTE") return `/delivery-notes/${row.id}`;
     return null;
   }
   /** Ist der Beleg schon abgerechnet/weitergeführt? Beim Auftrag zählt nur eine Rechnung - ein Lieferschein allein ist noch kein Abschluss. */
@@ -259,7 +260,7 @@ export default function Documents() {
     if (row.kind !== "QUOTE" && row.status !== "DRAFT") list.push({ label: "Versandetikett", onClick: () => setLabelRow(row) });
     if (row.kind === "INVOICE" && !row.isCancellationDocument && row.invoiceKind !== "DOWN_PAYMENT") list.push({ label: "Wiederkehrend einrichten", onClick: () => setRecurringRow(row) });
     // nachträglich verknüpfen (z.B. wenn der Auftrag separat angelegt wurde) oder eine falsche Verknüpfung lösen
-    if (row.kind === "QUOTE" && !row.hasNext && ["SENT", "ACCEPTED", "EXPIRED"].includes(row.status) && orderCandidates(row).length > 0) {
+    if (row.kind === "QUOTE" && !row.hasOrder && ["SENT", "ACCEPTED", "EXPIRED"].includes(row.status) && orderCandidates(row).length > 0) {
       list.push({ label: "Mit vorhandenem Auftrag verknüpfen", onClick: () => setLinkDlg({ mode: "quote", row, candidates: orderCandidates(row) }) });
     }
     if (row.kind === "ORDER_CONFIRMATION" && !row.hasSource && quoteCandidates(row).length > 0) {

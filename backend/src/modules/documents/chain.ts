@@ -13,6 +13,7 @@ export interface ChainNode {
   date: Date;
   totalCents: number | null;
   emailSentAt: Date | null;
+  customerId?: string;
   isCancellationDocument?: boolean;
   /** STANDARD | DOWN_PAYMENT | FINAL (nur Rechnungen) */
   invoiceKind?: string;

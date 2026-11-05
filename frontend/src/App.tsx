@@ -28,6 +28,7 @@ import ScanItem from "./pages/ScanItem";
 import AuditLog from "./pages/AuditLog";
 import Settings from "./pages/Settings";
 import QuoteDetail from "./pages/QuoteDetail";
+import DeliveryNoteDetail from "./pages/DeliveryNoteDetail";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const status = useAuthStore((s) => s.status);
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="/quotes/:id/edit" element={<DocumentEditor kind="quote" />} />
         <Route path="/delivery-notes" element={<Navigate to="/documents?type=DELIVERY_NOTE" replace />} />
         <Route path="/delivery-notes/new" element={<DocumentEditor kind="deliveryNote" />} />
+        <Route path="/delivery-notes/:id" element={<DeliveryNoteDetail />} />
         <Route path="/delivery-notes/:id/edit" element={<DocumentEditor kind="deliveryNote" />} />
         <Route path="/order-confirmations" element={<Navigate to="/documents?type=ORDER_CONFIRMATION" replace />} />
         <Route path="/order-confirmations/new" element={<DocumentEditor kind="confirmation" />} />
