@@ -26,6 +26,9 @@ interface DocRow {
   hasNext: boolean;
   customerId: string;
   hasSource: boolean;
+  hasInvoice: boolean;
+  sourceQuoteId: string | null;
+  sourceOrderId: string | null;
   invoiceKind?: string;
   emailSentAt: string | null;
 }
@@ -216,6 +219,18 @@ export default function Documents() {
     }
   }
 
+  /** Wohin führt ein Antippen des Belegs: Entwurf -> Bearbeiten, sonst die Vorgangsseite (Angebot, Auftrag, Rechnung); Lieferschein -> sein Auftrag. */
+  function detailPath(row: DocRow): string | null {
+    if (row.status === "DRAFT") return `${KIND_INFO[row.kind].base}/${row.id}/edit`;
+    if (row.kind === "QUOTE") return `/quotes/${row.id}`;
+    if (row.kind === "ORDER_CONFIRMATION") return `/orders/${row.id}`;
+    if (row.kind === "INVOICE") return `/invoices/${row.id}`;
+    if (row.kind === "DELIVERY_NOTE" && row.sourceOrderId) return `/orders/${row.sourceOrderId}`;
+    return null;
+  }
+  /** Ist der Beleg schon abgerechnet/weitergeführt? Beim Auftrag zählt nur eine Rechnung - ein Lieferschein allein ist noch kein Abschluss. */
+  const continued = (row: DocRow) => (row.kind === "ORDER_CONFIRMATION" ? row.hasInvoice : row.hasNext);
+
   function openPath(row: DocRow): string | null {
     if (row.status === "DRAFT") return `${KIND_INFO[row.kind].base}/${row.id}/edit`;
     if (row.kind === "INVOICE") return `/invoices/${row.id}`;
@@ -261,7 +276,7 @@ export default function Documents() {
 
   /** Der eine nächste Schritt je Beleg als auffälliger Knopf (alles Weitere bleibt im ⋮-Menü). */
   function nextStep(row: DocRow): { label: string; title: string; run: () => void } | null {
-    if (row.status === "DRAFT" || row.isCancellationDocument || row.hasNext) return null;
+    if (row.status === "DRAFT" || row.isCancellationDocument || continued(row)) return null;
     if (row.kind === "QUOTE" && (row.status === "SENT" || row.status === "EXPIRED")) {
       return {
         label: "Angenommen → Auftrag",
@@ -353,7 +368,8 @@ export default function Documents() {
           const actions = (
             <div className="flex gap-2 justify-end items-start">
               <div className="flex gap-x-3 gap-y-2 justify-end items-center flex-wrap flex-1 min-w-0">
-              {row.hasNext && <span className="text-xs text-green-600" title="Daraus wurde bereits ein Folgebeleg erstellt">✓ weitergeführt</span>}
+              {continued(row) && <span className="text-xs text-green-600" title="Daraus wurde bereits ein Folgebeleg erstellt">{row.kind === "ORDER_CONFIRMATION" ? "✓ Rechnung angelegt" : "✓ weitergeführt"}</span>}
+              {row.kind === "ORDER_CONFIRMATION" && row.hasNext && !row.hasInvoice && <span className="text-xs text-slate-500" title="Zu diesem Auftrag gibt es einen Lieferschein, aber noch keine Rechnung">Lieferschein ✓</span>}
               {(() => {
                 const step = nextStep(row);
                 return step ? <button type="button" onClick={step.run} title={step.title} className="bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded text-sm whitespace-nowrap">{step.label}</button> : null;
@@ -375,14 +391,14 @@ export default function Documents() {
             <div key={`${row.kind}-${row.id}`}>
               <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
                 <span className="text-slate-500">{kindLabel(row)}</span>
-                <span className={`font-medium truncate ${row.number ? "" : "italic text-slate-500"}`}>{row.number ?? "Entwurf"}</span>
+                {detailPath(row) ? <Link to={detailPath(row)!} className={`font-medium truncate text-brand hover:underline ${row.number ? "" : "italic"}`} title="Übersicht und Folgebelege öffnen">{row.number ?? "Entwurf"}</Link> : <span className={`font-medium truncate ${row.number ? "" : "italic text-slate-500"}`}>{row.number ?? "Entwurf"}</span>}
                 <span className="truncate">{row.customerName}</span>
                 <span className="text-right text-slate-500">{formatDate(row.date)}</span>
                 <span className="text-right">{money(row.totalCents)}</span>
                 <span className="text-right">{badge}</span>
                 {actions}
               </div>
-              <MobileCard title={`${kindLabel(row)} ${row.number ?? "(Entwurf)"}`} subtitle={row.customerName}>
+              <MobileCard title={detailPath(row) ? <Link to={detailPath(row)!} className="text-brand hover:underline">{`${kindLabel(row)} ${row.number ?? "(Entwurf)"}`}</Link> : `${kindLabel(row)} ${row.number ?? "(Entwurf)"}`} subtitle={row.customerName}>
                 <MobileField label="Datum" value={formatDate(row.date)} />
                 <MobileField label="Betrag" value={money(row.totalCents)} />
                 <MobileField label="Status" value={badge} />

@@ -27,6 +27,7 @@ import Statistics from "./pages/Statistics";
 import ScanItem from "./pages/ScanItem";
 import AuditLog from "./pages/AuditLog";
 import Settings from "./pages/Settings";
+import QuoteDetail from "./pages/QuoteDetail";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const status = useAuthStore((s) => s.status);
@@ -83,6 +84,7 @@ export default function App() {
         <Route path="/invoices/:id/edit" element={<DocumentEditor kind="invoice" />} />
         <Route path="/quotes" element={<Navigate to="/documents?type=QUOTE" replace />} />
         <Route path="/quotes/new" element={<DocumentEditor kind="quote" />} />
+        <Route path="/quotes/:id" element={<QuoteDetail />} />
         <Route path="/quotes/:id/edit" element={<DocumentEditor kind="quote" />} />
         <Route path="/delivery-notes" element={<Navigate to="/documents?type=DELIVERY_NOTE" replace />} />
         <Route path="/delivery-notes/new" element={<DocumentEditor kind="deliveryNote" />} />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { DocumentChain } from "../components/DocumentChain";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
@@ -222,6 +223,13 @@ export default function InvoiceDetail() {
       </div>
 
       {actionError && <p className="text-red-600 text-sm mb-4">{actionError}</p>}
+
+      {id && (
+        <details className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4" open>
+          <summary className="cursor-pointer font-medium select-none">Vorgang (Angebot, Auftrag, Lieferschein, Rechnung)</summary>
+          <div className="mt-3"><DocumentChain kind="INVOICE" id={id} /></div>
+        </details>
+      )}
 
       {showDunning && id && <DunningPanel invoiceId={id} onChanged={load} />}
 

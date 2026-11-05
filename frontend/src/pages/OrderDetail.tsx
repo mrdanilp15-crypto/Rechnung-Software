@@ -7,6 +7,7 @@ import { Panel, eur } from "../components/dashboard/widgets";
 import { PrintStartButton } from "../components/PrintStartButton";
 import { AssigneeSelect } from "../components/AssigneeSelect";
 import { JobAssignPicker } from "../components/JobAssignPicker";
+import { DocumentChain } from "../components/DocumentChain";
 import { JobUsageDialog } from "../components/JobUsageDialog";
 import { useAuthStore } from "../store/authStore";
 
@@ -202,13 +203,8 @@ export default function OrderDetail() {
         </div>
 
         <div className="space-y-3 min-w-0">
-          <Panel title="Belege">
-            <ul className="text-sm space-y-1.5">
-              {d.links.quote && <li><span className="text-slate-500">Angebot</span> · <Link to="/documents?type=QUOTE" className="text-brand hover:underline">{d.links.quote.quoteNumber}</Link></li>}
-              {d.links.deliveryNotes.map((n) => <li key={n.id}><span className="text-slate-500">Lieferschein</span> · <Link to="/documents?type=DELIVERY_NOTE" className="text-brand hover:underline">{n.noteNumber}</Link></li>)}
-              {d.links.invoices.map((i) => <li key={i.id}><span className="text-slate-500">{i.isCancellationDocument ? "Korrekturbeleg" : "Rechnung"}</span> · <Link to={`/invoices/${i.id}`} className="text-brand hover:underline">{i.invoiceNumber ?? "Entwurf"}</Link> · {eur(i.totalCents)}</li>)}
-              {!d.links.quote && d.links.deliveryNotes.length === 0 && d.links.invoices.length === 0 && <li className="text-slate-500">Noch keine verknüpften Belege.</li>}
-            </ul>
+          <Panel title="Vorgang">
+            <DocumentChain kind="ORDER_CONFIRMATION" id={d.order.id} />
           </Panel>
           <Panel title="Drucke">
             {isAdmin && d.printables.length > 0 && (

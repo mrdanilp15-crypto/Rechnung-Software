@@ -1,0 +1,144 @@
+import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { api } from "../api/client";
+import { StatusChip } from "./StatusChip";
+import { PdfLink } from "./PdfLink";
+import { useToast } from "./Toast";
+
+/**
+ * Vorgangs-Übersicht: die ganze Belegkette zu einem Angebot, Auftrag, Lieferschein oder einer Rechnung (Angebot -> Auftrag -> Lieferschein -> Rechnung).
+ * Jeder vorhandene Beleg ist antippbar; fehlende Schritte bieten direkt das Anlegen an (z.B. "Rechnung schreiben" beim Auftrag mit Lieferschein).
+ */
+
+type Kind = "QUOTE" | "ORDER_CONFIRMATION" | "DELIVERY_NOTE" | "INVOICE";
+
+interface Node {
+  kind: Kind;
+  id: string;
+  number: string | null;
+  status: string;
+  date: string;
+  totalCents: number | null;
+  emailSentAt: string | null;
+  isCancellationDocument?: boolean;
+  invoiceKind?: string;
+}
+type ActionId = "order-from-quote" | "invoice-from-quote" | "down-payment-from-quote" | "delivery-note-from-order" | "invoice-from-order" | "down-payment-from-order";
+interface Next { id: ActionId; label: string; hint: string; from: { kind: "QUOTE" | "ORDER_CONFIRMATION"; id: string } }
+interface ChainData { quote: Node | null; orders: Node[]; deliveryNotes: Node[]; invoices: Node[]; next: Next[] }
+
+const STEPS: { key: "quote" | "orders" | "deliveryNotes" | "invoices"; title: string; kind: Kind }[] = [
+  { key: "quote", title: "Angebot", kind: "QUOTE" },
+  { key: "orders", title: "Auftrag", kind: "ORDER_CONFIRMATION" },
+  { key: "deliveryNotes", title: "Lieferschein", kind: "DELIVERY_NOTE" },
+  { key: "invoices", title: "Rechnung", kind: "INVOICE" },
+];
+const STEP_OF: Record<ActionId, "quote" | "orders" | "deliveryNotes" | "invoices"> = {
+  "order-from-quote": "orders", "invoice-from-quote": "invoices", "down-payment-from-quote": "invoices",
+  "delivery-note-from-order": "deliveryNotes", "invoice-from-order": "invoices", "down-payment-from-order": "invoices",
+};
+const BASE: Record<Kind, string> = { QUOTE: "/quotes", ORDER_CONFIRMATION: "/order-confirmations", DELIVERY_NOTE: "/delivery-notes", INVOICE: "/invoices" };
+
+/** Wohin führt ein Beleg: Entwurf -> Bearbeiten, sonst Detailseite (Lieferscheine haben keine eigene: dort das PDF). */
+function pathOf(n: Node): string | null {
+  if (n.status === "DRAFT") return `${BASE[n.kind]}/${n.id}/edit`;
+  if (n.kind === "QUOTE") return `/quotes/${n.id}`;
+  if (n.kind === "ORDER_CONFIRMATION") return `/orders/${n.id}`;
+  if (n.kind === "INVOICE") return `/invoices/${n.id}`;
+  return null;
+}
+const money = (c: number | null) => (c === null ? "" : new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(c / 100));
+const day = (iso: string) => new Intl.DateTimeFormat("de-DE").format(new Date(iso));
+
+export function DocumentChain({ kind, id, onChanged }: { kind: Kind; id: string; onChanged?: () => void }) {
+  const navigate = useNavigate();
+  const showToast = useToast();
+  const [chain, setChain] = useState<ChainData | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [busy, setBusy] = useState<ActionId | null>(null);
+
+  const load = useCallback(() => {
+    api.get(`/documents/chain/${kind}/${id}`).then((r) => { setChain(r.data); setFailed(false); }).catch(() => setFailed(true));
+  }, [kind, id]);
+  useEffect(load, [load]);
+
+  async function run(a: Next) {
+    setBusy(a.id);
+    try {
+      let res;
+      if (a.id === "order-from-quote") res = { data: (await api.post(`/quotes/${a.from.id}/convert-to-order-confirmation`)).data, to: "/order-confirmations" };
+      else if (a.id === "invoice-from-quote") res = { data: (await api.post(`/quotes/${a.from.id}/convert-to-invoice`)).data, to: "/invoices" };
+      else if (a.id === "delivery-note-from-order") res = { data: (await api.post(`/order-confirmations/${a.from.id}/convert-to-delivery-note`)).data, to: "/delivery-notes" };
+      else if (a.id === "invoice-from-order") res = { data: (await api.post(`/order-confirmations/${a.from.id}/convert-to-invoice`)).data, to: "/invoices" };
+      else {
+        const p = window.prompt("Wie viel Prozent des Betrags soll als Anzahlung berechnet werden?", "30");
+        if (p === null) return;
+        const percent = parseFloat(p.replace(",", "."));
+        if (!(percent > 0 && percent <= 100)) { showToast("Bitte einen Prozentsatz zwischen 1 und 100 eingeben", "error"); return; }
+        const base = a.from.kind === "QUOTE" ? "/quotes" : "/order-confirmations";
+        res = { data: (await api.post(`${base}/${a.from.id}/down-payment`, { percent })).data, to: "/invoices" };
+      }
+      showToast("Als Entwurf angelegt - bitte prüfen und fertigstellen", "success");
+      onChanged?.();
+      navigate(`${res.to}/${res.data.id}/edit`);
+    } catch (e: any) {
+      showToast(e?.response?.data?.error ?? "Das hat nicht geklappt", "error");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  if (failed) return <p className="text-sm text-slate-500">Die Belegkette konnte nicht geladen werden.</p>;
+  if (!chain) return <p className="text-sm text-slate-500">Wird geladen ...</p>;
+
+  return (
+    <ol className="relative space-y-3">
+      {STEPS.map((step, idx) => {
+        const nodes = step.key === "quote" ? (chain.quote ? [chain.quote] : []) : chain[step.key];
+        const actions = chain.next.filter((a) => STEP_OF[a.id] === step.key);
+        const last = idx === STEPS.length - 1;
+        return (
+          <li key={step.key} className="flex gap-3">
+            <div className="flex flex-col items-center shrink-0">
+              <span className={`w-3 h-3 rounded-full mt-1.5 ${nodes.length > 0 ? "bg-green-500" : "border-2 border-slate-300 dark:border-slate-600"}`} aria-hidden />
+              {!last && <span className="w-px flex-1 bg-slate-200 dark:bg-slate-700 mt-1" aria-hidden />}
+            </div>
+            <div className="min-w-0 flex-1 pb-1">
+              <p className="text-xs font-medium text-slate-500">{step.title}</p>
+              {nodes.map((n) => {
+                const path = pathOf(n);
+                const current = n.kind === kind && n.id === id;
+                const label = n.isCancellationDocument ? "Korrekturbeleg" : n.kind === "INVOICE" && n.invoiceKind === "DOWN_PAYMENT" ? "Anzahlung" : null;
+                return (
+                  <div key={n.id} className={`mt-1 rounded-lg border px-3 py-2 text-sm ${current ? "border-brand/50 bg-brand/5" : "border-slate-200 dark:border-slate-700"}`}>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      {path ? <Link to={path} className="font-medium text-brand hover:underline">{n.number ?? "Entwurf"}</Link> : <span className="font-medium">{n.number ?? "Entwurf"}</span>}
+                      {label && <span className="text-xs text-slate-500">{label}</span>}
+                      <StatusChip status={n.status} kind={n.kind} isCancellationDocument={n.isCancellationDocument} emailed={!!n.emailSentAt} />
+                      {current && <span className="text-xs text-slate-500">(diese Seite)</span>}
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
+                      <span>{day(n.date)}</span>
+                      {n.totalCents !== null && <span>{money(n.totalCents)}</span>}
+                      {n.emailSentAt && <span>✉ gesendet {day(n.emailSentAt)}</span>}
+                      {n.status !== "DRAFT" && <PdfLink url={`${BASE[n.kind]}/${n.id}/pdf`} filename={`${n.number ?? "beleg"}.pdf`} className="text-brand hover:underline">PDF</PdfLink>}
+                      {n.status === "DRAFT" && path && <Link to={path} className="text-brand hover:underline">Weiter bearbeiten</Link>}
+                    </div>
+                  </div>
+                );
+              })}
+              {nodes.length === 0 && actions.length === 0 && <p className="mt-1 text-sm text-slate-400">{step.key === "quote" && chain.orders.length > 0 ? "kein Angebot verknüpft (Belege → ⋮ → Mit Angebot verknüpfen)" : "noch nicht angelegt"}</p>}
+              {actions.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-2">
+                  {actions.map((a) => (
+                    <button key={a.id} type="button" disabled={busy !== null} onClick={() => run(a)} title={a.hint} className="px-3 py-1.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-sm disabled:opacity-50">{busy === a.id ? "Wird angelegt ..." : `+ ${a.label}`}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
