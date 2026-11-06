@@ -89,6 +89,7 @@ model Company {
   orderConfirmationClosingText String @default("Wir kümmern uns um die Ausführung und melden uns bei Rückfragen.\n\nMit freundlichen Grüßen\n{firma}")
   deliveryNoteIntroText        String @default("Sehr geehrte Damen und Herren,\n\nwir liefern Ihnen folgende Positionen:")
   deliveryNoteClosingText      String @default("Bitte prüfen Sie die Lieferung auf Vollständigkeit und Unversehrtheit.\n\nMit freundlichen Grüßen\n{firma}")
+  deliveryNoteReceipt          Boolean @default(false) // Empfangsbestätigung (Unterschrift des Kunden) auf dem Lieferschein - nur sinnvoll bei Übergabe vor Ort, nicht bei Versand
   logoPath      String?
   stampPath     String? // Firmenstempel, wird automatisch auf PDFs eingefügt (siehe modules/pdf)
   signaturePath String? // Unterschrift (z.B. eingescannt), wird automatisch auf PDFs eingefügt

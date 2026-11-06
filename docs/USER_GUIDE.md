@@ -367,3 +367,6 @@ werden ungültig) - Belege und Historie bleiben dabei erhalten.
 
 ### Zeiten für andere nachtragen
 Administratoren können unter Zeit → „Zeit nachtragen“ im Feld „Für wen?“ einen anderen Benutzer wählen und dessen Zeit eintragen (z.B. wenn jemand das Stoppen vergessen hat). Ändern und Löschen fremder Einträge ist ebenfalls nur Administratoren erlaubt; jeder Eintrag für andere wird im Verlauf (Protokoll) vermerkt. Die Buchhaltung sieht alle Zeiten, ändert aber nur eigene.
+
+### Lieferschein ohne Unterschriftszeile (bei Versand)
+Auf dem Lieferschein steht die Zeile „Ware vollständig und unbeschädigt erhalten - Datum, Unterschrift Empfänger“ nur noch, wenn du sie einschaltest (Einstellungen → Beleg-Design → bei den Standardtexten „Unterschriftszeile auf dem Lieferschein drucken“). Standard ist aus, denn bei Versand per DHL/DPD unterschreibt der Kunde nicht auf deinem Lieferschein. Einschalten lohnt sich nur, wenn du Ware persönlich übergibst. Die Migration `20261112100000_delivery_note_receipt` legt das Feld an.

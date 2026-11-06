@@ -28,6 +28,8 @@ export interface BrandingInput {
   logoPath?: string | null;
   stampPath?: string | null;
   signaturePath?: string | null;
+  /** Lieferschein: Zeile "Empfangsbestätigung/Unterschrift Empfänger" drucken (nur bei persönlicher Übergabe sinnvoll) */
+  deliveryNoteReceipt?: boolean | null;
   primaryColor?: string | null;
   footerText?: string | null;
 }
@@ -574,8 +576,8 @@ export async function renderDocumentPdf(input: DocumentPdfInput): Promise<Buffer
       doc.fontSize(8).fillColor("#4b5563").text(noticeText, PAGE_MARGIN, cursorY, { width: CONTENT_WIDTH });
       cursorY = doc.y + 8;
     }
-  } else {
-    // Lieferschein: Empfangsbestätigung
+  } else if (input.branding.deliveryNoteReceipt) {
+    // Lieferschein: Empfangsbestätigung (nur wenn in den Einstellungen gewünscht - bei Versand per Paketdienst unterschreibt niemand)
     ensureSpace(60);
     cursorY += 24;
     doc.moveTo(PAGE_MARGIN, cursorY + 28).lineTo(PAGE_MARGIN + 260, cursorY + 28).lineWidth(0.5).strokeColor("#9ca3af").stroke();

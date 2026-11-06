@@ -68,6 +68,7 @@ interface Company {
   orderConfirmationClosingText?: string;
   deliveryNoteIntroText?: string;
   deliveryNoteClosingText?: string;
+  deliveryNoteReceipt?: boolean;
   iban?: string;
   bic?: string;
   isSmallBusiness: boolean;
@@ -743,6 +744,13 @@ export default function Settings() {
               <textarea rows={4} value={company[closingKey] ?? ""} onChange={(e) => setCompany({ ...company, [closingKey]: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
             </div>
           ))}
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" checked={!!company.deliveryNoteReceipt} onChange={(e) => setCompany({ ...company, deliveryNoteReceipt: e.target.checked })} className="mt-1" />
+            <span>
+              <span className="font-medium">Unterschriftszeile auf dem Lieferschein drucken</span>
+              <span className="block text-xs text-slate-500">Nur sinnvoll, wenn du Ware persönlich übergibst und der Kunde den Empfang quittiert. Bei Versand per DHL oder DPD aus lassen - dort unterschreibt der Kunde nicht auf deinem Lieferschein.</span>
+            </span>
+          </label>
           <div>
             <PlaceholderHint />
             <p className="text-xs text-slate-500 mt-1">

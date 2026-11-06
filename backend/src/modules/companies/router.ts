@@ -83,6 +83,7 @@ const updateCompanySchema = z.object({
   orderConfirmationClosingText: z.string().max(3000).optional(),
   deliveryNoteIntroText: z.string().max(3000).optional(),
   deliveryNoteClosingText: z.string().max(3000).optional(),
+  deliveryNoteReceipt: z.boolean().optional(),
   primaryColor: z.string().optional(),
   invoiceFooterText: z.string().nullish(),
   defaultLocale: z.enum(["de", "en"]).optional(),

@@ -153,7 +153,7 @@ export const HELP: HelpTopic[] = [
     category: "Belege",
     title: "Lieferschein",
     short: "Begleitdokument zur Ware ohne Preise. Entsteht aus dem Auftrag; die Rechnung bleibt davon unabhängig.",
-    body: ["Aus dem Auftrag mit \"→ Lieferschein\" anlegen, fertigstellen und per E-Mail oder PDF mitgeben. Ein Lieferschein allein gilt nicht als Abrechnung: der Auftrag behält den Knopf \"→ Rechnung\"."],
+    body: ["Aus dem Auftrag mit \"→ Lieferschein\" anlegen, fertigstellen und per E-Mail oder PDF mitgeben. Eine Unterschriftszeile für den Kunden steht nur darauf, wenn du sie unter Einstellungen → Beleg-Design → Texte einschaltest - sinnvoll bei persönlicher Übergabe, nicht bei Versand per DHL/DPD. Ein Lieferschein allein gilt nicht als Abrechnung: der Auftrag behält den Knopf \"→ Rechnung\"."],
   },
   {
     id: "einvoice",
