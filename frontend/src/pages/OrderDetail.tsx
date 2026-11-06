@@ -12,6 +12,7 @@ import { JobUsageDialog } from "../components/JobUsageDialog";
 import { OrderTimer } from "../components/OrderTimer";
 import { useAuthStore } from "../store/authStore";
 
+import { HelpTip } from "../components/HelpTip";
 /** Auftragsseite: alles zu einem Auftrag an einem Ort - Positionen, Belege, Drucke, Zeiten, Dateien, Kommentare und Verlauf. */
 
 interface Detail {
@@ -127,17 +128,18 @@ export default function OrderDetail() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight flex flex-wrap items-center gap-3">
             {o.number}
+            <HelpTip topic="order" />
             <span className={`text-sm font-medium px-2.5 py-1 rounded-full ${st.cls}`}>{st.label}</span>
             {o.voided && <span className="text-sm px-2.5 py-1 rounded-full bg-red-500/15 text-red-500">storniert</span>}
           </h1>
           <p className="text-sm text-slate-500 mt-1"><Link to={`/customers/${o.customer.id}`} className="hover:text-brand">{o.customer.name}</Link>{o.customer.contactName ? ` · ${o.customer.contactName}` : ""}{o.customer.email ? ` · ${o.customer.email}` : ""}{o.customer.phone ? ` · ${o.customer.phone}` : ""}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <AssigneeSelect value={o.assignee?.id ?? null} current={o.assignee} onChange={setAssignee} />
+          <span className="inline-flex items-center gap-1"><AssigneeSelect value={o.assignee?.id ?? null} current={o.assignee} onChange={setAssignee} /><HelpTip topic="assignee" /></span>
           <label className="text-sm text-slate-500 flex items-center gap-2">Priorität
             <select value={o.priority} onChange={(e) => setPriority(Number(e.target.value))} className={input}>{PRIORITIES.map((p) => <option key={p.v} value={p.v}>{p.l}</option>)}</select>
           </label>
-          <button onClick={() => setCostOpen(true)} className="px-3 py-2 rounded-lg text-sm bg-brand text-white">Kosten</button>
+          <span className="inline-flex items-center gap-1"><button onClick={() => setCostOpen(true)} className="px-3 py-2 rounded-lg text-sm bg-brand text-white">Kosten</button><HelpTip topic="order-costs" /></span>
           <Link to={o.documentStatus === "DRAFT" ? `/order-confirmations/${o.id}/edit` : "/documents?type=ORDER_CONFIRMATION"} className="px-3 py-2 rounded-lg text-sm border border-slate-300 dark:border-slate-600">Beleg</Link>
         </div>
       </div>
@@ -180,7 +182,7 @@ export default function OrderDetail() {
             )}
           </Panel>
 
-          <Panel title="Dateien">
+          <Panel title="Dateien" help="archive">
             <div className="flex flex-wrap gap-2 mb-3 text-sm">
               <label className="px-3 py-1.5 rounded-lg bg-brand text-white cursor-pointer">Datei hochladen<input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) upload(f); }} /></label>
               <button onClick={() => setPicking((v) => !v)} className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700">Aus dem Archiv zuordnen</button>
@@ -205,10 +207,10 @@ export default function OrderDetail() {
         </div>
 
         <div className="space-y-3 min-w-0">
-          <Panel title="Vorgang">
+          <Panel title="Vorgang" help="chain">
             <DocumentChain kind="ORDER_CONFIRMATION" id={d.order.id} />
           </Panel>
-          <Panel title="Drucke">
+          <Panel title="Drucke" help="print-assign">
             {isAdmin && d.printables.length > 0 && (
               <div className="mb-3 rounded-lg border border-brand/30 bg-brand/5 p-3">
                 <p className="text-xs font-medium text-slate-500 mb-2">Jetzt drucken</p>
@@ -244,10 +246,10 @@ export default function OrderDetail() {
             {!picking3d && <button type="button" onClick={() => setPicking3d(true)} className="mt-3 text-sm text-brand hover:underline">+ Vorhandenen Druck zuordnen (z.B. aus Bambu Studio)</button>}
             {usageJob && <JobUsageDialog jobId={usageJob.id} jobName={usageJob.name} current={usageJob.materialUsage} onClose={() => setUsageJob(null)} onSaved={() => { setUsageJob(null); load(); }} />}
           </Panel>
-          <Panel title="Versand">
+          <Panel title="Versand" help="production">
             {o.shippedAt ? <p className="text-sm">Versendet am {fmtDate(o.shippedAt)}{o.carrier ? ` mit ${o.carrier}` : ""}{o.trackingNumber ? `, Sendung ${o.trackingNumber}` : ""}.{o.shippedMailAt ? ` Versandmail am ${fmtDate(o.shippedMailAt)}.` : ""}</p> : <p className="text-sm text-slate-500">Noch nicht versendet. Im Auftragsboard nach "Versendet" verschieben (mit Sendungsnummer und Versandmail).</p>}
           </Panel>
-          <Panel title="Verlauf">
+          <Panel title="Verlauf" help="order">
             <ol className="space-y-2.5">{d.timeline.slice(0, 30).map((e, i) => (
               <li key={i} className="flex gap-2.5 text-sm"><span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${KIND_DOT[e.kind] ?? "bg-slate-400"}`} /><div className="min-w-0"><p className="break-words">{e.text}</p><p className="text-xs text-slate-500">{fmtDateTime(e.at)}{e.by ? ` · ${e.by}` : ""}</p></div></li>))}</ol>
           </Panel>

@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import { InfoBox } from "../components/InfoBox";
 import { useToast } from "../components/Toast";
 
+import { HelpTip } from "../components/HelpTip";
 interface Supplier {
   id: string;
   name: string;
@@ -92,7 +93,7 @@ export default function Suppliers() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-        <h1 className="text-2xl font-semibold">Lieferanten</h1>
+        <h1 className="text-2xl font-semibold">Lieferanten<HelpTip topic="suppliers" className="ml-2" /></h1>
         <button onClick={() => { setEditingId(null); setForm(emptyForm); setError(null); setShowForm(true); }} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-lg text-sm">+ Lieferant anlegen</button>
       </div>
 

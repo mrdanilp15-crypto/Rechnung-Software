@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { colorName } from "./PrintSendDialog";
 
+import { HelpTip } from "./HelpTip";
 /**
  * Materialverbrauch eines beendeten Drucks festlegen/korrigieren - vor allem für Drucke aus Bambu Studio: die AMS-Messung kennt nur ganze
  * Prozent (bei 1-kg-Spulen ca. 10 g) und nur Fächer mit Zuordnung. Passt der Druckname zu einer 3MF im Archiv, wird deren Slicer-Angabe vorgeschlagen.
@@ -73,7 +74,7 @@ export function JobUsageDialog({ jobId, jobName, current, onClose, onSaved }: { 
     <div className="fixed inset-0 z-[55] bg-black/50 flex items-center justify-center p-4" role="dialog" aria-label="Materialverbrauch festlegen">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg max-h-[92vh] flex flex-col">
         <div className="flex items-center px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-          <h2 className="font-semibold flex-1 truncate">Material für „{jobName ?? "Druck"}“</h2>
+          <h2 className="font-semibold flex-1 truncate">Material für „{jobName ?? "Druck"}“<HelpTip topic="print-assign" className="ml-2" /></h2>
           <button onClick={onClose} className="px-3 py-1.5 rounded-lg text-sm bg-slate-100 dark:bg-slate-800" aria-label="Schließen">✕</button>
         </div>
         <div className="p-4 overflow-y-auto space-y-3 text-sm">

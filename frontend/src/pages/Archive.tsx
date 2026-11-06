@@ -8,6 +8,7 @@ import { RowActionsMenu } from "../components/RowActionsMenu";
 import { useToast } from "../components/Toast";
 import { ARCHIVE_CATEGORIES, categoryLabel, formatBytes, formatDate, retainUntil } from "../lib/archive";
 
+import { HelpTip } from "../components/HelpTip";
 interface ArchiveDoc {
   id: string;
   title: string;
@@ -322,7 +323,7 @@ export default function Archive() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h1 className="text-2xl font-semibold">Belegarchiv</h1>
+        <h1 className="text-2xl font-semibold">Belegarchiv<HelpTip topic="archive" className="ml-2" /></h1>
         <div className="flex gap-2">
           <button onClick={exportZip} disabled={total === 0} className="px-4 py-2 rounded text-sm bg-slate-200 dark:bg-slate-700 disabled:opacity-50" title="Alle Dokumente der aktuellen Auswahl als ZIP mit Übersichtsliste (Excel-tauglich)">
             ZIP-Export{filtersActive ? " (Auswahl)" : ""}

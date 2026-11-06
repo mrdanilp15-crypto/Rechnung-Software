@@ -7,6 +7,7 @@ import { useToast } from "./Toast";
 import { LinkDocsDialog, type LinkCandidate } from "./LinkDocsDialog";
 import { createFinalInvoice, QUICK_INVOICE_CONFIRM } from "../lib/quickInvoice";
 
+import { HelpTip } from "./HelpTip";
 /**
  * Vorgangs-Übersicht: die ganze Belegkette zu einem Angebot, Auftrag, Lieferschein oder einer Rechnung (Angebot -> Auftrag -> Lieferschein -> Rechnung).
  * Jeder vorhandene Beleg ist antippbar; fehlende Schritte bieten direkt das Anlegen an (z.B. "Rechnung schreiben" beim Auftrag mit Lieferschein).
@@ -199,6 +200,10 @@ export function DocumentChain({ kind, id, onChanged }: { kind: Kind; id: string;
                     {(a.id === "invoice-from-order" || a.id === "invoice-from-quote") && (
                       <button type="button" disabled={busy !== null} onClick={() => runFinal(a)} title="Rechnung anlegen, fertigstellen und gleich zum Versenden öffnen - ohne Entwurf prüfen" className="px-3 py-1.5 rounded-lg border border-brand text-brand text-sm disabled:opacity-50">Rechnung gleich fertigstellen</button>
                     )}
+                    {(a.id === "invoice-from-order" || a.id === "invoice-from-quote") && (
+                      <HelpTip topic="quick-invoice" />
+                    )}
+                    {(a.id === "down-payment-from-order" || a.id === "down-payment-from-quote") && <HelpTip topic="down-payment" />}
                     </Fragment>
                   ))}
                 </div>

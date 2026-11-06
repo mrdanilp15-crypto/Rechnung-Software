@@ -8,6 +8,7 @@ import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
 import { MobileCard, MobileField } from "../components/MobileCard";
 
+import { HelpTip } from "../components/HelpTip";
 const ROW_COLUMNS = "1fr 100px 1fr 130px 120px 90px 130px";
 
 interface Customer {
@@ -148,7 +149,7 @@ export default function Customers() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
-        <h1 className="text-2xl font-semibold">{t("customers.title")}</h1>
+        <h1 className="text-2xl font-semibold">{t("customers.title")}<HelpTip topic="customers" className="ml-2" /></h1>
         <button onClick={startCreate} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm w-full sm:w-auto">
           {t("customers.new")}
         </button>

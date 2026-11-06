@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 
+import { HelpTip } from "./HelpTip";
 /**
  * Auftrag als versendet markieren: Versanddienst und Sendungsnummer erfassen und optional einen Versandbescheid per E-Mail an den Kunden schicken.
  * Der Text kommt aus der Standardvorlage "Versandbescheid" (Einstellungen → Vorlagen) und ist vor dem Senden änderbar. Gesendet wird nur auf Klick.
@@ -94,7 +95,7 @@ export function ShippedDialog({ orderId, number, customerName, markShipped, init
     <div className="fixed inset-0 z-[55] bg-black/50 flex items-center justify-center p-4" role="dialog" aria-label="Versand">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg max-h-[92vh] flex flex-col">
         <div className="flex items-center px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-          <h2 className="font-semibold flex-1">{markShipped ? "Als versendet markieren" : "Versandmail senden"} · {number}</h2>
+          <h2 className="font-semibold flex-1">{markShipped ? "Als versendet markieren" : "Versandmail senden"} · {number}<HelpTip topic="production" className="ml-2" /></h2>
           <button onClick={onClose} className="px-3 py-1.5 rounded-lg text-sm bg-slate-100 dark:bg-slate-800" aria-label="Schließen">✕</button>
         </div>
         <div className="p-4 overflow-y-auto space-y-3 text-sm">

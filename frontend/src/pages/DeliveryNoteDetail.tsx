@@ -8,6 +8,7 @@ import { StatusChip } from "../components/StatusChip";
 import { useToast } from "../components/Toast";
 import { Panel } from "../components/dashboard/widgets";
 
+import { HelpTip } from "../components/HelpTip";
 /** Lieferscheinseite: Positionen (ohne Preise), PDF und Versand sowie die ganze Belegkette des Vorgangs mit dem Weg zur Rechnung. */
 
 interface Note {
@@ -44,7 +45,7 @@ export default function DeliveryNoteDetail() {
     <div className="max-w-5xl">
       <Link to="/documents?type=DELIVERY_NOTE" className="text-sm text-slate-500 hover:underline">← Belege</Link>
       <div className="flex flex-wrap items-center gap-3 mt-1 mb-1">
-        <h1 className="text-2xl font-semibold">Lieferschein {note.noteNumber}</h1>
+        <h1 className="text-2xl font-semibold">Lieferschein {note.noteNumber}<HelpTip topic="delivery-note" className="ml-2" /></h1>
         <StatusChip status={note.status} kind="DELIVERY_NOTE" emailed={!!note.emailSentAt} />
       </div>
       <p className="text-sm text-slate-500 mb-4">

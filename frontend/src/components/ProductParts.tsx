@@ -1,4 +1,5 @@
 import { aggregateRows, newPartKey, type PartRow } from "../lib/parts";
+import { HelpTip } from "./HelpTip";
 
 /**
  * Bauteile: für Produkte aus mehreren Drucken (z.B. Tankdeckel = Scharnier + Deckel, je eine 3MF). Jedes Bauteil hat Druckzeit und Material je
@@ -22,7 +23,7 @@ export function ProductParts({ rows, setRows, materials }: { rows: PartRow[]; se
   return (
     <div className="rounded-lg border border-brand/30 bg-brand/5 p-3 space-y-3">
       <div>
-        <div className="text-sm font-medium">Bauteile (Produkt aus mehreren Drucken)</div>
+        <div className="text-sm font-medium">Bauteile (Produkt aus mehreren Drucken)<HelpTip topic="parts" className="ml-1.5" /></div>
         <p className="text-xs text-slate-500 mt-0.5">
           Jedes Bauteil hat seine eigene Platte mit Druckzeit und Material (so zeigt es der Slicer). Druckzeit und Materialverbrauch des Produkts sind die <strong>Summe aller Bauteile</strong> -
           bei mehreren gleichen Teilen auf einer Platte wird durch deren Anzahl geteilt und mit der Anzahl je Produkt multipliziert. Die Werte aus der 3MF übernimmst du bei <em>Dateien und Versionen</em> (Werte aus 3MF übernehmen → Bauteil).

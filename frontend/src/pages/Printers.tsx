@@ -7,6 +7,7 @@ import { useAuthStore } from "../store/authStore";
 import { MaintenancePanel, type MaintenanceTaskRow } from "../components/MaintenancePanel";
 import { CAMERA_MODELS, PrinterLiveCard, type LiveStatus } from "../components/PrinterLive";
 
+import { HelpTip } from "../components/HelpTip";
 interface Printer {
   id: string;
   name: string;
@@ -172,7 +173,7 @@ export default function Printers() {
   return (
     <div>
       <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
-        <h1 className="text-2xl font-semibold">Drucker</h1>
+        <h1 className="text-2xl font-semibold">Drucker<HelpTip topic="printers" className="ml-2" /></h1>
         <button onClick={startCreate} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">+ Drucker anlegen</button>
       </div>
       <p className="text-sm text-slate-500 mb-4">

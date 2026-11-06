@@ -6,6 +6,7 @@ import { DocumentTexts } from "../components/DocumentTexts";
 import { PdfCanvasViewer, useNeedsCanvasPdf } from "../components/PdfCanvasViewer";
 import { CustomerPicker, PickerCustomer } from "../components/CustomerPicker";
 
+import { HelpTip } from "../components/HelpTip";
 export type DocKind = "invoice" | "quote" | "confirmation" | "deliveryNote";
 
 type DateField = "issueDate" | "dueDate" | "deliveryDate" | "validUntil" | "expectedDeliveryDate";
@@ -425,7 +426,7 @@ Abbrechen = weiter bearbeiten`)) navigate("/documents");
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">
           <Link to="/documents" className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 text-sm" aria-label="Zurück zu den Belegen">← Belege</Link>
-          <h1 className="text-xl font-semibold truncate">{kind === "invoice" && invoiceKind === "DOWN_PAYMENT" ? "Anzahlungsrechnung" : kind === "invoice" && invoiceKind === "FINAL" ? "Schlussrechnung" : draftId ? cfg.editTitle : cfg.newTitle}</h1>
+          <h1 className="text-xl font-semibold truncate">{kind === "invoice" && invoiceKind === "DOWN_PAYMENT" ? "Anzahlungsrechnung" : kind === "invoice" && invoiceKind === "FINAL" ? "Schlussrechnung" : draftId ? cfg.editTitle : cfg.newTitle}<HelpTip topic={kind === "invoice" ? "invoice" : kind === "quote" ? "quote" : kind === "deliveryNote" ? "delivery-note" : "documents"} className="ml-2" /></h1>
           <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 shrink-0">Entwurf</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">

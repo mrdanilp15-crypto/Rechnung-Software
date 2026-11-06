@@ -12,6 +12,7 @@ import { BankMatchPanel } from "../components/BankMatchPanel";
 import { ReceiptScanDialog } from "../components/ReceiptScanDialog";
 import { FinanceChart, FinanceLegend, type FinanceMonth } from "../components/FinanceChart";
 
+import { HelpLine, HelpTip } from "../components/HelpTip";
 interface Expense {
   id: string;
   date: string;
@@ -126,7 +127,7 @@ export default function Finance() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-6">Finanzen</h1>
+      <h1 className="text-2xl font-semibold mb-6">Finanzen<HelpTip topic="finance" className="ml-2" /></h1>
 
       <div className="flex flex-wrap gap-2 mb-6">
         {(["euer", "expenses", "assets", "bank", "tax"] as const).map((tabKey) => (
@@ -139,6 +140,8 @@ export default function Finance() {
           </button>
         ))}
       </div>
+
+      <HelpLine topic={tab} />
 
       {tab === "assets" && (
         <div>

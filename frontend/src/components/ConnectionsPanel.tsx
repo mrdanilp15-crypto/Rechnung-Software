@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { useToast } from "./Toast";
 
+import { HelpTip } from "./HelpTip";
 /** Einstellungen -> Verbindungen: Ampel für E-Mail, Drucker, Adresse (QR-Codes), Push, Backup und Speicherplatz, mit Testknöpfen. */
 
 interface Check {
@@ -55,7 +56,7 @@ export function ConnectionsPanel() {
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="font-medium">Verbindungen &amp; Status</h2>
+          <h2 className="font-medium">Verbindungen &amp; Status<HelpTip topic="connections" className="ml-2" /></h2>
           <p className="text-sm text-slate-500">Hier siehst du an einer Stelle, ob E-Mail, Drucker, QR-Adresse, Push und Backup gerade funktionieren.</p>
         </div>
         <button type="button" onClick={load} className="text-sm text-brand hover:underline shrink-0">Neu prüfen</button>

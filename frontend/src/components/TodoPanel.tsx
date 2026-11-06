@@ -59,7 +59,7 @@ export function TodoPanel() {
   const high = list.filter((i) => i.severity === "high").length;
 
   return (
-    <Panel title="Heute zu tun" className="mb-3">
+    <Panel title="Heute zu tun" help="today" className="mb-3">
       {items === null ? (
         <p className="text-sm text-slate-500">Wird geladen ...</p>
       ) : list.length === 0 ? (

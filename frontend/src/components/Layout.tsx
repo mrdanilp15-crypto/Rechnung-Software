@@ -8,6 +8,7 @@ import { api } from "../api/client";
 import { GlobalSearch } from "./GlobalSearch";
 import { NewMenu } from "./NewMenu";
 import { RunningTimerChip } from "./RunningTimerChip";
+import { topicForPath } from "../lib/helpContent";
 import { Avatar } from "./Avatar";
 import { Icon, type IconName } from "./Icon";
 import { cachedAppearance, setAppearanceFromCompany } from "../theme/appearance";
@@ -35,6 +36,7 @@ const navItems: readonly NavItem[] = [
   { to: "/stats", key: "stats", icon: "chart", match: ["/stats"] },
   { to: "/archive", key: "archive", icon: "archive", match: ["/archive"] },
   { to: "/settings", key: "settings", icon: "cog", match: ["/settings", "/audit-log"] },
+  { to: "/help", key: "help", icon: "help", match: ["/help"] },
 ];
 
 /** Schaltet bei Änderung der Fenstergröße (Drehen des Tablets) sofort um. */
@@ -333,6 +335,9 @@ export default function Layout() {
             <NewMenu />
             <button onClick={toggle} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t("settings.darkMode")} title={t("settings.darkMode")}>
               <Icon name={isDark ? "sun" : "moon"} className="w-5 h-5" />
+            </button>
+            <button onClick={() => navigate(`/help#${topicForPath(location.pathname, location.search)}`)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 text-base font-semibold" aria-label="Hilfe zu dieser Seite" title="Hilfe zu dieser Seite">
+              ?
             </button>
             <button onClick={() => navigate("/#meldungen")} className="relative w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={unread > 0 ? `${unread} neue Meldungen` : "Meldungen"} title="Meldungen">
               <Icon name="bell" className="w-5 h-5" />

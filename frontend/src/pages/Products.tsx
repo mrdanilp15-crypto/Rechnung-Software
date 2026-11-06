@@ -14,6 +14,7 @@ import { aggregateRows, newPartKey, type PartRow } from "../lib/parts";
 import { ProductFiles, type Applied3mf } from "../components/ProductFiles";
 import { calcCost, feesAt, sollParts, type CostRates, type PriceTier, type PrinterCosts } from "../lib/cost";
 
+import { HelpTip } from "../components/HelpTip";
 interface Material {
   id: string;
   name: string;
@@ -336,7 +337,7 @@ export default function Products() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
-        <h1 className="text-2xl font-semibold">{t("products.title")}</h1>
+        <h1 className="text-2xl font-semibold">{t("products.title")}<HelpTip topic="products" className="ml-2" /></h1>
         <button onClick={startCreate} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm w-full sm:w-auto">
           {t("products.new")}
         </button>
@@ -355,7 +356,10 @@ export default function Products() {
             <SkuField kind="products" value={form.sku} onChange={(v) => setForm((f) => ({ ...f, sku: v }))} selfId={editingId} />
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+            <div className="flex items-center gap-1.5">
             <label className="flex items-center gap-2"><input type="checkbox" checked={form.trackStock} onChange={(e) => setForm((f) => ({ ...f, trackStock: e.target.checked }))} /> Lagerbestand führen (Fertigteile auf Vorrat)</label>
+              <HelpTip topic="stock-products" />
+            </div>
             {form.trackStock && (
               <label className="flex items-center gap-2">Mindestbestand
                 <input type="number" min="0" step="any" inputMode="decimal" value={form.stockMin} onChange={(e) => setForm((f) => ({ ...f, stockMin: e.target.value }))} placeholder="optional" className="w-24 px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
@@ -437,7 +441,7 @@ export default function Products() {
 
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-sm">Materialverbrauch {pieces > 1 ? "pro Druckplatte" : `pro ${form.unit || "Einheit"}`} (optional)</label>
+              <label className="block text-sm">Materialverbrauch {pieces > 1 ? "pro Druckplatte" : `pro ${form.unit || "Einheit"}`} (optional)<HelpTip topic="costs" className="ml-1.5" /></label>
               <button type="button" onClick={addMaterialRow} disabled={filamentMats.length === 0} className="text-brand hover:underline text-sm disabled:opacity-50 disabled:cursor-not-allowed">
                 + Material hinzufügen
               </button>
@@ -484,7 +488,7 @@ export default function Products() {
 
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-sm">Zukaufteile aus dem Lager pro {form.unit || "Einheit"} (optional)</label>
+              <label className="block text-sm">Zukaufteile aus dem Lager pro {form.unit || "Einheit"} (optional)<HelpTip topic="purchased" className="ml-1.5" /></label>
               <button type="button" onClick={addStockPartRow} disabled={partMats.length === 0} className="text-brand hover:underline text-sm disabled:opacity-50 disabled:cursor-not-allowed">+ Zukaufteil hinzufügen</button>
             </div>
             <p className="text-xs text-slate-500 mb-2">Teile, die du einkaufst und mit verbaust (Schrauben, Magnete, Federn ...): einmal unter <Link to="/catalog?tab=materials" className="text-brand hover:underline">Katalog → Material</Link> mit Einkaufspreis, Lieferant und Bestand anlegen (Art: Zukaufteil), hier nur die <strong>Menge je verkaufter Einheit</strong> wählen. Der Preis kommt aus dem Lager, ändert sich der Einkaufspreis, passen sich alle Produkte an. Beim Verkauf werden sie vom Bestand abgebucht, bei knappem Bestand kommt die Nachbestellung.</p>
@@ -510,7 +514,7 @@ export default function Products() {
           </div>
 
           <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-3">
-            <div className="text-sm font-medium">Kalkulation (optional)</div>
+            <div className="text-sm font-medium">Kalkulation (optional)<HelpTip topic="costs" className="ml-1.5" /></div>
             <p className="text-xs text-slate-500 -mt-2">
               Ergebnis = Material (mit Ausschuss) + Strom + Abschreibung + Verschleiß + Arbeit + Gemeinkosten = <strong>Selbstkosten</strong>. Darauf kommt der Gewinnaufschlag = <strong>Preisvorschlag</strong>. Alle Sätze stehen unter Einstellungen → Firma → Kalkulation, die Maschinenwerte unter Katalog → Drucker.
             </p>
@@ -538,7 +542,7 @@ export default function Products() {
             </div>
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="block text-xs text-slate-500">Zukaufteile &amp; Veredelung (feste Kosten pro {form.unit || "Einheit"})</label>
+                <label className="block text-xs text-slate-500">Zukaufteile &amp; Veredelung (feste Kosten pro {form.unit || "Einheit"})<HelpTip topic="purchased" className="ml-1.5" /></label>
                 <button type="button" onClick={() => setExtraRows((rows) => [...rows, { label: "", amountEur: "", qty: "1" }])} className="text-brand hover:underline text-sm">+ Zukaufteil / Posten hinzufügen</button>
               </div>
               <p className="text-xs text-slate-500 mb-2">Alles, was du für ein Stück <strong>dazukaufst oder extern machen lässt</strong>: z.B. 4 Schrauben je 0,05 €, 2 Magnete je 0,50 €, Feder, Lackieren 40 €, Klarlack 2 €. Anzahl mal Einzelpreis fließt in die Selbstkosten ein. Deine eigene Arbeitszeit trägst du oben als Arbeitszeit ein.</p>

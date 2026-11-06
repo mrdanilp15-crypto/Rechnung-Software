@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 
+import { HelpTip } from "./HelpTip";
 /** Einrichtungs-Checkliste (nur Administratoren): zeigt, was für den vollen Funktionsumfang noch fehlt; verschwindet, wenn alles erledigt oder ausgeblendet ist. */
 
 interface Step {
@@ -39,7 +40,7 @@ export function SetupChecklist() {
     <div className="mb-3 rounded-xl border border-brand/30 bg-brand/5 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold tracking-tight">Einrichtung: {steps.length - open.length} von {steps.length} erledigt</h2>
+          <h2 className="text-base font-semibold tracking-tight">Einrichtung: {steps.length - open.length} von {steps.length} erledigt<HelpTip topic="setup" className="ml-2" /></h2>
           <p className="text-xs text-slate-500 mt-0.5">Damit alle Funktionen laufen, fehlt noch:</p>
         </div>
         <button type="button" onClick={hide} className="text-xs text-slate-500 hover:underline shrink-0">Ausblenden</button>

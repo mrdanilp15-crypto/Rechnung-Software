@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 
+import { HelpTip } from "./HelpTip";
 /**
  * Nachbestellliste: Material unter dem Mindestbestand, je Lieferant mit Mengenvorschlag. Die Bestell-E-Mail wird nur vorbereitet
  * (öffnet dein Mailprogramm zum Prüfen und Absenden) - die Software bestellt nichts von selbst. Gebucht wird weiter über "Nachbestellen" beim Material, sobald geliefert wird.
@@ -75,7 +76,7 @@ export function ReorderDialog({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-[55] bg-black/50 flex items-center justify-center p-4" role="dialog" aria-label="Nachbestellliste">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col">
         <div className="flex items-center px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-          <h2 className="font-semibold flex-1">Nachbestellliste</h2>
+          <h2 className="font-semibold flex-1">Nachbestellliste<HelpTip topic="reorder" className="ml-2" /></h2>
           <button onClick={onClose} className="px-3 py-1.5 rounded-lg text-sm bg-slate-100 dark:bg-slate-800" aria-label="Schließen">✕</button>
         </div>
         <div className="p-4 overflow-y-auto space-y-4 text-sm">

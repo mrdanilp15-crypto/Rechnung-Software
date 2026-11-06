@@ -6,6 +6,7 @@ import { InfoBox } from "../components/InfoBox";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { StatusChip } from "../components/StatusChip";
 
+import { HelpTip } from "../components/HelpTip";
 interface Invoice {
   id: string;
   invoiceNumber: string | null;
@@ -78,7 +79,7 @@ export default function Invoices() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
-        <h1 className="text-2xl font-semibold">{t("invoices.title")}</h1>
+        <h1 className="text-2xl font-semibold">{t("invoices.title")}<HelpTip topic="invoice" className="ml-2" /></h1>
         <Link to="/invoices/new" className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm w-full sm:w-auto text-center">
           {t("invoices.new")}
         </Link>

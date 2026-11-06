@@ -13,6 +13,7 @@ import { EtsyImport } from "../components/EtsyImport";
 import { OrderCostDialog } from "../components/OrderCostDialog";
 import { ShippedDialog } from "../components/ShippedDialog";
 
+import { HelpTip } from "../components/HelpTip";
 type ProductionStatus = "CREATED" | "IN_PRODUCTION" | "READY_TO_SHIP" | "SHIPPED";
 interface Order {
   id: string;
@@ -116,7 +117,7 @@ export default function Production() {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Produktion</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Produktion<HelpTip topic="production" className="ml-2" /></h1>
           <p className="text-sm text-slate-500">Aufträge von der Annahme bis zum Versand</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">

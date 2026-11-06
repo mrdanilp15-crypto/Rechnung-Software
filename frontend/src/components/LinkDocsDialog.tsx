@@ -1,4 +1,5 @@
-/**
+
+import { HelpTip } from "./HelpTip";/**
  * Angebot und Auftrag verknüpfen: zeigt passende Belege desselben Kunden zur Auswahl. Kommt der Dialog beim Anlegen eines Auftrags
  * aus einem Angebot (es gibt schon einen Auftrag mit gleichem Betrag), lässt sich stattdessen "trotzdem neu anlegen" wählen.
  */
@@ -28,7 +29,7 @@ export function LinkDocsDialog({ title, intro, candidates, linkLabel, createLabe
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center sm:px-4" role="dialog" aria-label={title} onMouseDown={onClose}>
       <div className="w-full sm:max-w-lg bg-white dark:bg-slate-800 rounded-t-xl sm:rounded-xl shadow-2xl p-5 space-y-3 max-h-[92vh] overflow-auto" onMouseDown={(e) => e.stopPropagation()}>
-        <h2 className="font-medium">{title}</h2>
+        <h2 className="font-medium">{title}<HelpTip topic="chain" className="ml-2" /></h2>
         <p className="text-sm text-slate-500">{intro}</p>
         <ul className="divide-y divide-slate-100 dark:divide-slate-700">
           {candidates.map((c) => (

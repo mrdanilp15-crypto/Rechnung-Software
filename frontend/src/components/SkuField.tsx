@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 
+import { HelpTip } from "./HelpTip";
 interface Props {
   /** "products" oder "materials": bestimmt, wogegen geprüft wird */
   kind: "products" | "materials";
@@ -58,7 +59,7 @@ export function SkuField({ kind, value, onChange, selfId, label = "Artikelnummer
 
   return (
     <div>
-      <label className="block text-sm mb-1">{label}</label>
+      <label className="block text-sm mb-1">{label}<HelpTip topic="sku" className="ml-1.5" /></label>
       <div className="flex gap-2">
         <input
           value={value}

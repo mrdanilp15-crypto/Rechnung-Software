@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useToast } from "./Toast";
 
+import { HelpTip } from "./HelpTip";
 /**
  * Zahlungseingänge ohne Rechnung: Vorschläge mit Begründung, Zuordnen per Klick (die Rechnung wird dann als bezahlt markiert), anderes Zuordnen
  * aus der Liste offener Rechnungen oder Ausblenden (gehört zu keiner Rechnung). Nichts wird ohne deine Bestätigung gebucht.
@@ -56,7 +57,7 @@ export function BankMatchPanel({ reloadKey, onChanged }: { reloadKey: number; on
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 space-y-3">
       <div>
-        <h2 className="font-medium">Zahlungen zuordnen ({rows.length})</h2>
+        <h2 className="font-medium">Zahlungen zuordnen ({rows.length})<HelpTip topic="bank" className="ml-2" /></h2>
         <p className="text-sm text-slate-500">Diese Zahlungseingänge konnten nicht eindeutig einer Rechnung zugeordnet werden. Prüfe den Vorschlag und bestätige mit einem Klick - die Rechnung wird dann als bezahlt markiert.</p>
       </div>
       <ul className="divide-y divide-slate-100 dark:divide-slate-700">

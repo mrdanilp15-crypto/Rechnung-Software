@@ -1,6 +1,7 @@
 import { DataResetPanel } from "../components/DataResetPanel";
 import { FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { HelpLine, HelpTip } from "../components/HelpTip";
 import { api } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 import { CompanyAssetUpload } from "../components/CompanyAssetUpload";
@@ -108,6 +109,8 @@ const TABS = [
   { key: "data", label: "Daten", group: "Konto & System" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
+/** Hilfethema je Reiter (kurze Erklärung unter den Reitern) */
+const SETTINGS_TAB_HELP: Record<string, string> = { company: "settings-company", branding: "settings-branding", design: "settings-design", templates: "settings-templates", dunning: "settings-dunning", verbindungen: "connections", email: "settings-email", schnittstellen: "integrations", users: "users", password: "users", security: "security", appearance: "appearance", audit: "audit", data: "data" };
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -265,7 +268,7 @@ export default function Settings() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl font-semibold mb-6">{t("settings.title")}</h1>
+      <h1 className="text-2xl font-semibold mb-6">{t("settings.title")}<HelpTip topic="settings" className="ml-2" /></h1>
 
       {revenue?.isSmallBusiness && (revenue.isApproaching || revenue.currentYearExceeded || revenue.priorYearExceeded) && (
         <div className="space-y-3 mb-6">
@@ -304,6 +307,8 @@ export default function Settings() {
           </div>
         ))}
       </div>
+
+      <HelpLine topic={SETTINGS_TAB_HELP[tab] ?? "settings"} />
 
       {tab === "company" && (
         <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-4">

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { Kpi, Panel, eur, eurShort } from "../components/dashboard/widgets";
 
+import { HelpTip } from "../components/HelpTip";
 /** Statistiken: Umsatz mit Vorjahresvergleich, Bestseller, Kunden, Druckerauslastung und Materialverbrauch. */
 
 interface Overview {
@@ -86,7 +87,7 @@ export default function Statistics() {
     <div className="max-w-6xl">
       <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Statistiken</h1>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Statistiken<HelpTip topic="stats" className="ml-2" /></h1>
           <p className="text-sm text-slate-500 mt-1">Umsatz, Bestseller, Kunden, Drucker und Materialverbrauch</p>
         </div>
         <label className="text-sm text-slate-500 flex items-center gap-2">Jahr

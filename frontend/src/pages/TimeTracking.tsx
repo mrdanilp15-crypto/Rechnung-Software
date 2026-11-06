@@ -5,6 +5,7 @@ import { OrderSelect } from "../components/OrderSelect";
 import { PdfLink } from "../components/PdfLink";
 import { useToast } from "../components/Toast";
 
+import { HelpTip } from "../components/HelpTip";
 /** Zeiterfassung: Start/Stopp oder manuell, optional einem Auftrag zugeordnet. Stundenzettel als PDF, CSV für den Steuerberater. */
 
 interface Entry {
@@ -151,7 +152,7 @@ export default function TimeTracking() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl font-semibold tracking-tight mb-1">Zeiterfassung</h1>
+      <h1 className="text-2xl font-semibold tracking-tight mb-1">Zeiterfassung<HelpTip topic="time" className="ml-2" /></h1>
       <p className="text-sm text-slate-500 mb-4">Arbeitszeit mit Start und Stopp oder von Hand eintragen, optional einem Auftrag zuordnen.</p>
 
       <InfoBox title="So funktioniert die Zeiterfassung">

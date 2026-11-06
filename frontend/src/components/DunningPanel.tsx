@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { HelpTip } from "./HelpTip";
 import { PdfLink } from "./PdfLink";
 import { PlaceholderHint } from "./DocumentTexts";
 
@@ -82,7 +83,7 @@ export function DunningPanel({ invoiceId, onChanged }: { invoiceId: string; onCh
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 space-y-4 text-sm">
-      <h2 className="font-medium">Zahlungserinnerung und Mahnungen</h2>
+      <h2 className="font-medium">Zahlungserinnerung und Mahnungen<HelpTip topic="dunning" className="ml-2" /></h2>
 
       {history.length > 0 && (
         <div className="divide-y divide-slate-100 dark:divide-slate-700">

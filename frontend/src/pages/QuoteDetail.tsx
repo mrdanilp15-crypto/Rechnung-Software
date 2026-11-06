@@ -9,6 +9,7 @@ import { useToast } from "../components/Toast";
 import { Panel } from "../components/dashboard/widgets";
 import { AssigneeSelect } from "../components/AssigneeSelect";
 
+import { HelpTip } from "../components/HelpTip";
 /** Angebotsseite: Zusammenfassung, Positionen, Aktionen (senden, annehmen, ablehnen, nachfassen) und die ganze Belegkette des Vorgangs. */
 
 interface Quote {
@@ -72,9 +73,9 @@ export default function QuoteDetail() {
     <div className="max-w-5xl">
       <Link to="/documents?type=QUOTE" className="text-sm text-slate-500 hover:underline">← Belege</Link>
       <div className="flex flex-wrap items-center gap-3 mt-1 mb-1">
-        <h1 className="text-2xl font-semibold">Angebot {quote.quoteNumber}</h1>
+        <h1 className="text-2xl font-semibold">Angebot {quote.quoteNumber}<HelpTip topic="quote" className="ml-2" /></h1>
         <StatusChip status={quote.status} kind="QUOTE" emailed={!!quote.emailSentAt} />
-        <AssigneeSelect value={quote.assigneeId ?? null} onChange={setAssignee} className="sm:ml-auto" />
+        <span className="sm:ml-auto inline-flex items-center gap-1"><AssigneeSelect value={quote.assigneeId ?? null} onChange={setAssignee} /><HelpTip topic="assignee" /></span>
       </div>
       <p className="text-sm text-slate-500 mb-4">
         <Link to={`/customers/${quote.customer.id}`} className="text-brand hover:underline">{quote.customer.name}</Link>

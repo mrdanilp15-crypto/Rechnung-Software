@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Icon, type IconName } from "../Icon";
 import { formatMinutes, type LiveStatus } from "../PrinterLive";
 
+import { HelpTip } from "../HelpTip";
 /** Bausteine der Startseite: Kennzahlen, Druckerübersicht, Aufträge, Umsatz und Gewinn, Materiallager, Schnellaktionen. */
 
 export const eur = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
@@ -20,12 +21,12 @@ export type Tone = keyof typeof TONES;
 const SUB_TONES = { good: "text-green-600 dark:text-green-400", warn: "text-amber-600 dark:text-amber-400", bad: "text-red-600 dark:text-red-400", muted: "text-slate-500" } as const;
 
 /** Karte mit Titel und optionalem Link rechts oben. */
-export function Panel({ title, action, className = "", children }: { title?: string; action?: { to: string; label: string }; className?: string; children: ReactNode }) {
+export function Panel({ title, action, className = "", help, children }: { title?: string; action?: { to: string; label: string }; className?: string; /** Hilfethema: zeigt ein ? neben dem Titel */ help?: string; children: ReactNode }) {
   return (
     <section className={`bg-white dark:bg-slate-800 rounded-xl p-4 shadow min-w-0 ${className}`}>
       {title && (
         <div className="flex items-center justify-between gap-2 mb-3">
-          <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+          <h2 className="text-base font-semibold tracking-tight">{title}{help && <HelpTip topic={help} className="ml-2" />}</h2>
           {action && <Link to={action.to} className="text-xs text-slate-500 hover:text-brand border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">{action.label}</Link>}
         </div>
       )}

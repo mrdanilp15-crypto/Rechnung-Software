@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import type { LiveStatus } from "./PrinterLive";
 import { OrderSelect } from "./OrderSelect";
 
+import { HelpTip } from "./HelpTip";
 /**
  * Druck an einen Bambu-Lab-Drucker senden: fertig geslicte 3MF-Datei (G-Code 3MF aus Bambu Studio) aus dem Belegarchiv wählen,
  * Platte und AMS-Fächer zuordnen. "Nur senden" legt die Datei auf der SD-Karte ab (Start am Drucker), "Senden und starten" startet
@@ -141,7 +142,7 @@ export function PrintSendDialog({ printerId, printerName, status, onClose, initi
     <div className="fixed inset-0 z-[55] bg-black/50 flex items-center justify-center p-4" role="dialog" aria-label="Druck senden">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg max-h-[92vh] flex flex-col">
         <div className="flex items-center px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-          <h2 className="font-semibold flex-1">Druck an {printerName} senden</h2>
+          <h2 className="font-semibold flex-1">Druck an {printerName} senden<HelpTip topic="print-start" className="ml-2" /></h2>
           <button onClick={onClose} className="px-3 py-1.5 rounded-lg text-sm bg-slate-100 dark:bg-slate-800" aria-label="Schließen">✕</button>
         </div>
         <div className="p-4 overflow-y-auto space-y-3 text-sm">

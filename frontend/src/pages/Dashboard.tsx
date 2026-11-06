@@ -9,6 +9,7 @@ import { NotificationsCard } from "../components/NotificationsCard";
 import { useAuthStore } from "../store/authStore";
 import { Kpi, MaterialWidget, MonthChart, OrdersWidget, Panel, PrinterOverview, QuickActions, eur, isLow, stockKg, type DayPoint, type MaterialRow, type OrderRow } from "../components/dashboard/widgets";
 
+import { HelpTip } from "../components/HelpTip";
 interface DocRow {
   kind: "INVOICE" | "QUOTE" | "ORDER_CONFIRMATION" | "DELIVERY_NOTE";
   id: string;
@@ -211,7 +212,7 @@ export default function Dashboard() {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{greeting(now.getHours())}{firstName ? `, ${firstName}` : ""}!</h1>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{greeting(now.getHours())}{firstName ? `, ${firstName}` : ""}!<HelpTip topic="start" className="ml-2" /></h1>
           <p className="text-sm text-slate-500 mt-1">{summary}</p>
         </div>
         <p className="text-sm text-slate-500">{WEEKDAY_DATE.format(now)}</p>
@@ -247,10 +248,10 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-3">
-            <Panel title="Druckerübersicht" action={{ to: "/catalog?tab=printers", label: "Alle anzeigen" }} className="xl:col-span-2">
+            <Panel title="Druckerübersicht" help="printers" action={{ to: "/catalog?tab=printers", label: "Alle anzeigen" }} className="xl:col-span-2">
               <PrinterOverview printers={livePrinters} />
             </Panel>
-            <Panel title="Aktuelle Aufträge" action={{ to: "/production", label: "Alle anzeigen" }}>
+            <Panel title="Aktuelle Aufträge" help="production" action={{ to: "/production", label: "Alle anzeigen" }}>
               <OrdersWidget orders={openOrders} />
             </Panel>
           </div>
@@ -282,13 +283,13 @@ export default function Dashboard() {
               )}
               <p className="text-xs text-slate-500 mt-2">Monatsansicht: aufgelaufene Werte seit dem 1. des Monats. Umsatz aus gestellten Rechnungen netto, Ausgaben laut Ausgabenliste.</p>
             </Panel>
-            <Panel title="Materiallager" action={{ to: "/catalog?tab=materials", label: "Alle anzeigen" }}>
+            <Panel title="Materiallager" help="materials" action={{ to: "/catalog?tab=materials", label: "Alle anzeigen" }}>
               <MaterialWidget materials={materials} />
             </Panel>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-6">
-            <Panel title="Letzte Aktivität" action={{ to: "/documents", label: "Alle Belege" }} className="xl:col-span-2">
+            <Panel title="Letzte Aktivität" help="documents" action={{ to: "/documents", label: "Alle Belege" }} className="xl:col-span-2">
               <div className="-mx-2 divide-y divide-slate-100 dark:divide-slate-700">
                 {recent.map((r) => (
                   <Link key={`${r.kind}-${r.id}`} to={r.kind === "INVOICE" ? `/invoices/${r.id}` : `/documents?type=${r.kind}`} className="flex items-center justify-between gap-3 px-2 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/40 rounded-lg">
@@ -307,7 +308,7 @@ export default function Dashboard() {
             </Panel>
 
             <div className="space-y-3 min-w-0">
-              <Panel title="Schnellaktionen"><QuickActions /></Panel>
+              <Panel title="Schnellaktionen" help="search"><QuickActions /></Panel>
               <Panel title="Rechnungen nach Status"><StatusRing parts={ringParts} /></Panel>
               {stats && (
                 <Panel title={`Beste Kunden ${now.getFullYear()}`}>

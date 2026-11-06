@@ -5,6 +5,7 @@ import { InfoBox } from "../components/InfoBox";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { useAuthStore } from "../store/authStore";
 
+import { HelpTip } from "../components/HelpTip";
 interface Entry {
   id: string;
   action: string;
@@ -62,7 +63,7 @@ export default function AuditLog() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-6">Audit-Log</h1>
+      <h1 className="text-2xl font-semibold mb-6">Audit-Log<HelpTip topic="audit" className="ml-2" /></h1>
       <InfoBox title="Wozu dient das Audit-Log?">
         <p>Protokolliert jede schreibende Aktion (Anlegen, Ändern, Login, Statuswechsel usw.) unveränderlich - wer hat wann was gemacht. Erfüllt die Rechenschaftspflicht nach Art. 5 Abs. 2 DSGVO. Nur für Admins einsehbar, da auch Handlungen anderer Benutzer inkl. IP-Adresse sichtbar sind.</p>
       </InfoBox>

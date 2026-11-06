@@ -9,6 +9,7 @@ import { ReorderDialog } from "../components/ReorderDialog";
 import { SkuField } from "../components/SkuField";
 import { RowActionsMenu } from "../components/RowActionsMenu";
 
+import { HelpTip } from "../components/HelpTip";
 interface Material {
   amsMeasured?: boolean;
   amsSources?: string[];
@@ -150,7 +151,7 @@ export default function Materials() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
-        <h1 className="text-2xl font-semibold">Material</h1>
+        <h1 className="text-2xl font-semibold">Material<HelpTip topic="materials" className="ml-2" /></h1>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <button onClick={() => setReorderOpen(true)} className="px-4 py-2 rounded text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700" title="Material unter dem Mindestbestand je Lieferant, mit vorbereiteter Bestell-E-Mail">
             Nachbestellliste{materials.filter((m) => !!m.minStock && m.minStock > 0 && m.stockQuantity <= m.minStock).length > 0 ? ` (${materials.filter((m) => !!m.minStock && m.minStock > 0 && m.stockQuantity <= m.minStock).length})` : ""}
@@ -175,7 +176,7 @@ export default function Materials() {
       {showForm && (
         <form onSubmit={handleCreate} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="sm:col-span-3">
-            <label className="block text-sm mb-1">Art</label>
+            <label className="block text-sm mb-1">Art<HelpTip topic="purchased" className="ml-1.5" /></label>
             <div className="inline-flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden text-sm" role="radiogroup" aria-label="Art des Materials">
               {([["FILAMENT", "Druckmaterial (Filament)"], ["PART", "Zukaufteil (Schrauben, Magnete ...)"]] as const).map(([k, label]) => (
                 <button key={k} type="button" role="radio" aria-checked={form.kind === k} onClick={() => setForm((f) => ({ ...f, kind: k, unit: k === "PART" && (f.unit === "g" || f.unit === "kg") ? "Stk." : k === "FILAMENT" && f.unit === "Stk." ? "g" : f.unit }))} className={`px-3 py-2 ${form.kind === k ? "bg-brand text-white" : "bg-white dark:bg-slate-800"}`}>{label}</button>

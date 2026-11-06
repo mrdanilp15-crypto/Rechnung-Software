@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { useToast } from "./Toast";
 
+import { HelpTip } from "./HelpTip";
 /**
  * Zeit direkt am Auftrag erfassen: ein Klick startet die Arbeitszeit für diesen Auftrag, ein Klick beendet sie. Läuft schon eine Zeit für etwas anderes,
  * wechselt "Hierher wechseln" in einem Klick (die andere wird beendet). Die erfasste Zeit steht im Auftrag und in der Zeiterfassung.
@@ -72,7 +73,7 @@ export function OrderTimer({ orderId, orderNumber, onChanged }: { orderId: strin
     <div className="flex flex-wrap items-center gap-3 rounded-xl bg-white dark:bg-slate-800 shadow px-4 py-3 mb-4 text-sm">
       {running && here ? (
         <>
-          <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" aria-hidden />Zeit läuft für diesen Auftrag</span>
+          <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" aria-hidden />Zeit läuft für diesen Auftrag<HelpTip topic="timer" /></span>
           <span className="font-mono tabular-nums text-lg">{clock(elapsed)}</span>
           <button type="button" disabled={busy} onClick={stop} className="ml-auto px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-60">■ Stopp</button>
         </>
@@ -85,7 +86,7 @@ export function OrderTimer({ orderId, orderNumber, onChanged }: { orderId: strin
         </>
       ) : (
         <>
-          <span className="text-slate-600 dark:text-slate-300">Arbeitszeit für {orderNumber ?? "diesen Auftrag"}</span>
+          <span className="text-slate-600 dark:text-slate-300">Arbeitszeit für {orderNumber ?? "diesen Auftrag"}<HelpTip topic="timer" className="ml-1.5" /></span>
           <select value={activity} onChange={(e) => setActivity(e.target.value)} className={input} aria-label="Tätigkeit">
             {(activities.length ? activities : [{ key: "PRODUKTION", label: "Produktion" }]).map((a) => <option key={a.key} value={a.key}>{a.label.split(" (")[0]}</option>)}
           </select>

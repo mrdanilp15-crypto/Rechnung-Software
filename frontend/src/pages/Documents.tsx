@@ -12,6 +12,7 @@ import { SendDocumentDialog } from "../components/SendDocumentDialog";
 import { createFinalInvoice, QUICK_INVOICE_CONFIRM } from "../lib/quickInvoice";
 import { LinkDocsDialog, type LinkCandidate } from "../components/LinkDocsDialog";
 
+import { HelpTip } from "../components/HelpTip";
 type Kind = "INVOICE" | "QUOTE" | "ORDER_CONFIRMATION" | "DELIVERY_NOTE";
 
 interface DocRow {
@@ -340,7 +341,7 @@ export default function Documents() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h1 className="text-2xl font-semibold">Belege</h1>
+        <h1 className="text-2xl font-semibold">Belege<HelpTip topic="documents" className="ml-2" /></h1>
         <div className="flex items-center gap-4">
         <Link to="/recurring" className="text-sm text-brand hover:underline whitespace-nowrap">Wiederkehrende Rechnungen</Link>
         <Link to="/invoices" className="text-sm text-brand hover:underline whitespace-nowrap hidden sm:inline">Rechnungen verwalten</Link>

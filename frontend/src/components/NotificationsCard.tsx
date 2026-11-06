@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 
+import { HelpTip } from "./HelpTip";
 interface Item {
   id: string;
   type: string;
@@ -178,7 +179,7 @@ export function NotificationsCard() {
   return (
     <div id="meldungen" className="bg-white dark:bg-slate-800 rounded-xl shadow p-4 mb-6 scroll-mt-24">
       <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${collapsed ? "" : "mb-2"}`}>
-        <h2 className="font-medium">Meldungen{unread > 0 && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-brand text-white whitespace-nowrap">{unread} neu</span>}</h2>
+        <h2 className="font-medium">Meldungen<HelpTip topic="meldungen" className="ml-1.5 mr-1" />{unread > 0 && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-brand text-white whitespace-nowrap">{unread} neu</span>}</h2>
         {unread > 0 && <button onClick={markRead} className="text-xs text-brand hover:underline">Alle gelesen</button>}
         <button onClick={toggleCollapsed} className="text-xs text-slate-500 hover:underline" aria-expanded={!collapsed}>{collapsed ? "Ausklappen" : "Einklappen"}</button>
         {isAdmin && <button onClick={() => setOpen((v) => !v)} className="text-xs text-slate-500 hover:underline ml-auto">{open ? "Einstellungen schließen" : "Einstellungen"}</button>}

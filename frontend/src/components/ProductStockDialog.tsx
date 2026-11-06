@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api/client";
 
+import { HelpTip } from "./HelpTip";
 /**
  * Bestand eines Fertigteils buchen: Zugang (z.B. fertig gedruckt), Abgang (z.B. verschenkt, Ausschuss, Messe) oder Inventur (Bestand ist genau ...).
  * Verkäufe über Rechnungen buchen den Bestand von selbst ab.
@@ -35,7 +36,7 @@ export function ProductStockDialog({ product, onClose, onSaved }: { product: { i
   return (
     <div className="fixed inset-0 z-[55] bg-black/50 flex items-center justify-center p-4" role="dialog" aria-label="Bestand buchen">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-sm p-4 space-y-3 text-sm">
-        <h2 className="font-semibold">Bestand buchen: {product.name}</h2>
+        <h2 className="font-semibold">Bestand buchen: {product.name}<HelpTip topic="stock-products" className="ml-2" /></h2>
         <p className="text-xs text-slate-500">Aktuell im Lager: <strong>{product.stockQuantity} {product.unit}</strong></p>
         <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden text-xs" role="group">
           {([["in", "Zugang"], ["out", "Abgang"], ["count", "Inventur"]] as const).map(([k, l]) => (

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { ratesFromCompany, sollParts, type CostProduct, type CostRates, type PrinterCosts } from "../lib/cost";
 
+import { HelpTip } from "./HelpTip";
 /**
  * Auftragskosten: Was haben die dem Auftrag zugeordneten Drucke wirklich gekostet (Material zum Einkaufspreis, Maschine je Betriebsstunde),
  * im Vergleich zur Kalkulation der Produkte in den Positionen. Arbeit, Verpackung und Gemeinkosten sind nicht messbar und stehen nicht darin.
@@ -93,7 +94,7 @@ export function OrderCostDialog({ orderId, onClose }: { orderId: string; onClose
     <div className="fixed inset-0 z-[55] bg-black/50 flex items-center justify-center p-4" role="dialog" aria-label="Auftragskosten">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-xl max-h-[92vh] flex flex-col">
         <div className="flex items-center px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-          <h2 className="font-semibold flex-1">Kosten {data ? `· ${data.order.number}` : ""}</h2>
+          <h2 className="font-semibold flex-1">Kosten {data ? `· ${data.order.number}` : ""}<HelpTip topic="order-costs" className="ml-2" /></h2>
           <button onClick={onClose} className="px-3 py-1.5 rounded-lg text-sm bg-slate-100 dark:bg-slate-800" aria-label="Schließen">✕</button>
         </div>
         <div className="p-4 overflow-y-auto space-y-4 text-sm">

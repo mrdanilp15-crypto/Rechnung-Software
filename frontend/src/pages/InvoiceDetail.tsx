@@ -10,6 +10,7 @@ import { useToast } from "../components/Toast";
 import { DunningPanel } from "../components/DunningPanel";
 import { TemplatePicker } from "../components/TemplatePicker";
 
+import { HelpTip } from "../components/HelpTip";
 interface InvoiceItem {
   id: string;
   description: string;
@@ -175,8 +176,9 @@ export default function InvoiceDetail() {
           <h1 className="text-2xl font-semibold">
             {invoice.isCancellationDocument && <span className="text-red-600">Korrekturbeleg </span>}
             {numberLabel}
+            <HelpTip topic="invoice" className="ml-2" />
           </h1>
-          {!invoice.isCancellationDocument && <AssigneeSelect value={invoice.assigneeId ?? null} onChange={setAssignee} className="mt-1" />}
+          {!invoice.isCancellationDocument && <span className="mt-1 inline-flex items-center gap-1"><AssigneeSelect value={invoice.assigneeId ?? null} onChange={setAssignee} /><HelpTip topic="assignee" /></span>}
           {invoice.correctsInvoice && (
             <p className="text-sm text-slate-500">
               Korrektur zu Rechnung{" "}
@@ -236,6 +238,7 @@ export default function InvoiceDetail() {
               ZUGFeRD-PDF
             </PdfLink>
           )}
+          {invoice.invoiceNumber && <HelpTip topic="einvoice" />}
           <button onClick={handleShare} className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm">
             Teilen (WhatsApp, Mail, ...)
           </button>
@@ -246,7 +249,7 @@ export default function InvoiceDetail() {
 
       {id && (
         <details className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4" open>
-          <summary className="cursor-pointer font-medium select-none">Vorgang (Angebot, Auftrag, Lieferschein, Rechnung)</summary>
+          <summary className="cursor-pointer font-medium select-none">Vorgang (Angebot, Auftrag, Lieferschein, Rechnung)<HelpTip topic="chain" className="ml-2" /></summary>
           <div className="mt-3"><DocumentChain kind="INVOICE" id={id} /></div>
         </details>
       )}
@@ -263,7 +266,7 @@ export default function InvoiceDetail() {
 
       {showEmailForm && (
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 space-y-3">
-          <h2 className="font-medium text-sm">Rechnung per E-Mail senden</h2>
+          <h2 className="font-medium text-sm">Rechnung per E-Mail senden<HelpTip topic="send-mail" className="ml-2" /></h2>
           {id && <TemplatePicker docType="INVOICE" docId={id} onPick={(s, m) => setEmailForm((f) => ({ ...f, subject: s, message: m }))} />}
           <input placeholder="Empfänger-E-Mail" value={emailForm.to} onChange={(e) => setEmailForm((f) => ({ ...f, to: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
           <input placeholder="Betreff (optional)" value={emailForm.subject} onChange={(e) => setEmailForm((f) => ({ ...f, subject: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />

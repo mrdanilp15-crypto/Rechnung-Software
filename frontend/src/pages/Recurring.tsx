@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useToast } from "../components/Toast";
 
+import { HelpTip } from "../components/HelpTip";
 interface Recurring {
   id: string;
   name: string;
@@ -63,7 +64,7 @@ export default function RecurringPage() {
     <div>
       <div className="flex items-center gap-3 mb-4">
         <Link to="/documents" className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 text-sm">← Belege</Link>
-        <h1 className="text-2xl font-semibold">Wiederkehrende Rechnungen</h1>
+        <h1 className="text-2xl font-semibold">Wiederkehrende Rechnungen<HelpTip topic="recurring" className="ml-2" /></h1>
       </div>
       <p className="text-sm text-slate-500 mb-4">
         Zu jedem Termin legt die Software automatisch einen <strong>Entwurf</strong> an. Sie prüfen ihn und stellen ihn fertig - es wird nie automatisch eine Rechnung ausgestellt oder versendet.

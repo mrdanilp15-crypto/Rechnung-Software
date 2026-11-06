@@ -28,6 +28,7 @@ import ScanItem from "./pages/ScanItem";
 import AuditLog from "./pages/AuditLog";
 import Settings from "./pages/Settings";
 import QuoteDetail from "./pages/QuoteDetail";
+import Help from "./pages/Help";
 import DeliveryNoteDetail from "./pages/DeliveryNoteDetail";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -102,6 +103,7 @@ export default function App() {
         <Route path="/stats" element={<Statistics />} />
         <Route path="/q/:type/:id" element={<ScanItem />} />
         <Route path="/audit-log" element={<AuditLog />} />
+        <Route path="/help" element={<Help />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
