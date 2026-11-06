@@ -156,7 +156,13 @@ export default function DocumentEditor({ kind }: { kind: DocKind }) {
   // ---------- Daten laden ----------
   useEffect(() => {
     api.get("/customers").then((res) => setCustomers(res.data));
-    if (cfg.prices) api.get("/products").then((res) => setProducts(res.data));
+    if (!cfg.prices) return;
+    const loadProducts = () => api.get("/products").then((res) => setProducts(res.data)).catch(() => {});
+    loadProducts();
+    // Kommt man aus einem anderen Tab/Fenster zurück (Produkt dort bearbeitet), den Katalog neu laden
+    const onVisible = () => { if (document.visibilityState === "visible") void loadProducts(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

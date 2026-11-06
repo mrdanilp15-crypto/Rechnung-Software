@@ -153,6 +153,35 @@ export function PricedItemsEditor({
       )
     ) : null;
 
+  // Hat sich das Produkt im Katalog geändert, seit es in die Position übernommen wurde (z.B. Preis nachgetragen),
+  // zeigt die Position das sichtbar an - mit einem Klick werden Preis, USt. und Einheit aktualisiert.
+  // Nicht automatisch, weil ein Preis auch bewusst von Hand abweichen darf (Rabatt, Sonderpreis).
+  const catalogChange = (item: LineItem) => {
+    if (!showPrices || !item.productId || item.isDownPaymentDeduction) return null;
+    const product = products.find((p) => p.id === item.productId);
+    if (!product) return null;
+    const price = unitPriceForQuantity(product.unitPriceCents, product.priceTiers, item.quantity);
+    if (price === item.unitPriceCents && product.vatRateBps === item.vatRateBps && product.unit === item.unit) return null;
+    return { product, price };
+  };
+
+  function refreshFromCatalog(item: LineItem) {
+    const change = catalogChange(item);
+    if (!change) return;
+    updateItem(item._key, { unitPriceCents: change.price, vatRateBps: change.product.vatRateBps, unit: change.product.unit });
+  }
+
+  const catalogHint = (item: LineItem) => {
+    const change = catalogChange(item);
+    if (!change) return null;
+    return (
+      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 rounded bg-amber-50 dark:bg-amber-900/20 px-2 py-1 text-xs text-amber-800 dark:text-amber-300">
+        <span>Im Katalog jetzt: {formatEuro(change.price)} pro {change.product.unit} ({change.product.vatRateBps / 100} % USt.)</span>
+        <button type="button" onClick={() => refreshFromCatalog(item)} className="font-medium underline">Übernehmen</button>
+      </div>
+    );
+  };
+
   const inputClass = "w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800";
 
   return (
@@ -172,6 +201,7 @@ export function PricedItemsEditor({
                 <div className="flex-1 min-w-0">
                   <input list="pe-products" placeholder="Beschreibung oder Produkt eintippen" value={item.description} onChange={(e) => onDescription(item, e.target.value)} className={inputClass} />
                   {productHint(item)}{showPrices && tierNote(item)}
+                  {catalogHint(item)}
                 </div>
                 <select value={item.productId || ""} onChange={(e) => applyProduct(item._key, e.target.value)} className={`${inputClass} !w-28 shrink-0 ${products.length ? "" : "hidden"}`} aria-label="Aus Katalog wählen">
                   <option value="">Katalog</option>
@@ -236,6 +266,7 @@ export function PricedItemsEditor({
               <td className="py-2 pr-2">
                 <input list="pe-products" value={item.description} onChange={(e) => onDescription(item, e.target.value)} className={inputClass} />
                 {productHint(item)}{showPrices && tierNote(item)}
+                {catalogHint(item)}
               </td>
               <td className="py-2 pr-2">
                 <input type="number" min={0} step="any" value={item.quantity} onFocus={(e) => e.target.select()} onChange={(e) => setQuantity(item, parseFloat(e.target.value) || 0)} className={inputClass} />
@@ -280,6 +311,7 @@ export function PricedItemsEditor({
               <label className="block text-xs text-slate-500 mb-1">Beschreibung</label>
               <input list="pe-products" value={item.description} onChange={(e) => onDescription(item, e.target.value)} className={inputClass} />
               {productHint(item)}{showPrices && tierNote(item)}
+              {catalogHint(item)}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
