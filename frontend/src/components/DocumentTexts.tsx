@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { DocTextLibraryButton, type LibDocType } from "./TextLibrary";
 
 interface Snippet {
   id: string;
@@ -75,13 +76,21 @@ export function DocumentTexts({
   introText,
   closingText,
   onChange,
+  docType,
 }: {
   introText: string;
   closingText: string;
   onChange: (patch: { introText?: string; closingText?: string }) => void;
+  docType?: LibDocType;
 }) {
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 space-y-3">
+      {docType && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-slate-500">Unsicher, wie es klingen soll? Schau dir fertige Formulierungen an - förmlich, freundlich, kurz oder persönlich.</p>
+          <DocTextLibraryButton docType={docType} onApply={onChange} />
+        </div>
+      )}
       <div>
         <div className="flex items-center justify-between gap-2 mb-1">
           <label className="block text-sm">Begrüßung (über den Positionen)</label>

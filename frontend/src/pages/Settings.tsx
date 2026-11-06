@@ -20,6 +20,7 @@ import { useSearchParams } from "react-router-dom";
 import AuditLog from "./AuditLog";
 import { ACCENTS, applyAppearance, cacheAppearance, DEFAULT_APP_NAME, DEFAULT_APPEARANCE } from "../theme/appearance";
 import { THEMES, themeById } from "../theme/themes";
+import { DocTextLibraryButton } from "../components/TextLibrary";
 
 interface Company {
   name: string;
@@ -158,6 +159,17 @@ export default function Settings() {
     const a = { accent: next.uiAccent ?? DEFAULT_APPEARANCE.accent, theme: themeById(next.uiDarkStyle).id, appName: next.uiAppName?.trim() || DEFAULT_APP_NAME };
     applyAppearance(a);
     cacheAppearance(a);
+  }
+
+  /** Formulierung aus der Bibliothek in die Standardtexte einer Belegart übernehmen (gespeichert wird erst mit "Speichern") */
+  function applyDocTexts(introKey: "invoiceIntroText" | "quoteIntroText" | "orderConfirmationIntroText" | "deliveryNoteIntroText", closingKey: "invoiceClosingText" | "quoteClosingText" | "orderConfirmationClosingText" | "deliveryNoteClosingText", patch: { introText?: string; closingText?: string }) {
+    setCompany((c) => {
+      if (!c) return c;
+      const next = { ...c };
+      if (patch.introText !== undefined) next[introKey] = patch.introText;
+      if (patch.closingText !== undefined) next[closingKey] = patch.closingText;
+      return next;
+    });
   }
 
   async function handleSave(e: FormEvent) {
@@ -723,7 +735,10 @@ export default function Settings() {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold mb-2">Standardtexte für Rechnungen</h3>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <h3 className="text-sm font-semibold">Standardtexte für Rechnungen</h3>
+              <DocTextLibraryButton docType="INVOICE" onApply={(p) => applyDocTexts("invoiceIntroText", "invoiceClosingText", p)} />
+            </div>
             <label className="block text-sm mb-1">Begrüßung</label>
             <textarea rows={3} value={company.invoiceIntroText ?? ""} onChange={(e) => setCompany({ ...company, invoiceIntroText: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
             <label className="block text-sm mb-1 mt-3">Schlusstext</label>
@@ -737,7 +752,13 @@ export default function Settings() {
             ] as const
           ).map(([title, introKey, closingKey]) => (
             <div key={introKey}>
-              <h3 className="text-sm font-semibold mb-2">Standardtexte für {title}</h3>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <h3 className="text-sm font-semibold">Standardtexte für {title}</h3>
+                <DocTextLibraryButton
+                  docType={introKey === "quoteIntroText" ? "QUOTE" : introKey === "orderConfirmationIntroText" ? "ORDER_CONFIRMATION" : "DELIVERY_NOTE"}
+                  onApply={(p) => applyDocTexts(introKey, closingKey, p)}
+                />
+              </div>
               <label className="block text-sm mb-1">Begrüßung</label>
               <textarea rows={3} value={company[introKey] ?? ""} onChange={(e) => setCompany({ ...company, [introKey]: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
               <label className="block text-sm mb-1 mt-3">Schlusstext</label>

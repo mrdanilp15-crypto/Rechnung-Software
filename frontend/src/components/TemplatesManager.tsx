@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { EmailTemplateRow } from "./TemplatePicker";
+import { useTextLibrary, withExample } from "./TextLibrary";
 
 /** Einstellungen → Vorlagen: E-Mail-Vorlagen je Anlass (mit Platzhaltern) und Textbausteine für Beleg-Texte. Nur für Administratoren. */
 
@@ -34,6 +35,8 @@ export function TemplatesManager() {
   const [snipForm, setSnipForm] = useState<{ id: string; name: string; text: string } | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const lib = useTextLibrary();
+  const [libKind, setLibKind] = useState("INVOICE");
 
   const load = useCallback(() => {
     api.get("/templates/email").then((r) => setTemplates(r.data)).catch(() => undefined);
@@ -86,6 +89,19 @@ export function TemplatesManager() {
       const end = el?.selectionEnd ?? f.body.length;
       return { ...f, body: f.body.slice(0, start) + key + f.body.slice(end) };
     });
+  }
+
+  /** Einen Vorschlag aus der Bibliothek als eigene Vorlage übernehmen (danach frei änderbar) */
+  async function adopt(v: { kind: string; name: string; subject: string; body: string }, asDefault: boolean) {
+    setMsg(null);
+    const name = `${KIND_LABELS[v.kind] ?? v.kind} - ${v.name}`;
+    try {
+      await api.post("/templates/email", { kind: v.kind, name, subject: v.subject, body: v.body, isDefault: asDefault });
+      load();
+      setMsg({ ok: true, text: asDefault ? `"${name}" ist jetzt die Standardvorlage.` : `"${name}" wurde als Vorlage übernommen - du findest sie oben und kannst sie anpassen.` });
+    } catch (e) {
+      fail(e, "Übernehmen hat nicht geklappt.");
+    }
   }
 
   async function saveSnippet() {
@@ -175,6 +191,41 @@ export function TemplatesManager() {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
+        <h2 className="font-medium">Formulierungen zum Ausprobieren</h2>
+        <p className="text-sm text-slate-500">
+          Fertige E-Mail-Texte in verschiedenen Tonlagen - förmlich, freundlich, kurz, persönlich. Lies sie durch (hier mit Beispieldaten) und übernimm, was am besten klingt; danach kannst du sie oben ändern.
+          Im Versanddialog kannst du sie außerdem direkt mit den echten Belegdaten ausprobieren (Auswahl "Vorlage" → "Vorschläge zum Ausprobieren").
+          Begrüßung und Schlusstext der Belege findest du als "Formulierungen ansehen" im Beleg und unter Beleg-Design.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {KINDS.filter((k) => k !== "OTHER").map((k) => (
+            <button key={k} type="button" onClick={() => setLibKind(k)} className={`px-3 py-1.5 rounded-full text-sm ${libKind === k ? "bg-brand text-white" : "bg-slate-100 dark:bg-slate-700"}`}>{KIND_LABELS[k]}</button>
+          ))}
+        </div>
+        <div className="space-y-3">
+          {(lib?.email ?? []).filter((v) => v.kind === libKind).map((v) => {
+            const have = templates.some((t) => t.kind === v.kind && t.subject === v.subject && t.body === v.body);
+            return (
+              <div key={v.name} className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-sm">{v.name}</span>
+                  {have && <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">schon übernommen</span>}
+                </div>
+                <div className="text-xs text-slate-500">Betreff: <span className="text-slate-700 dark:text-slate-200">{withExample(v.subject)}</span></div>
+                <div className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line rounded bg-slate-50 dark:bg-slate-900/40 p-2">{withExample(v.body)}</div>
+                {!have && (
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <button type="button" onClick={() => adopt(v, false)} className="px-3 py-1.5 rounded bg-brand text-white">Als Vorlage übernehmen</button>
+                    <button type="button" onClick={() => adopt(v, true)} className="px-3 py-1.5 rounded bg-slate-200 dark:bg-slate-700">Als Standard übernehmen</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">

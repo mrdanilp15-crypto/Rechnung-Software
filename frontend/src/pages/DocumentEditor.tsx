@@ -490,7 +490,7 @@ Abbrechen = weiter bearbeiten`)) navigate("/documents");
 
           <details className="mb-4 group">
             <summary className="cursor-pointer text-sm text-brand px-1 mb-2 select-none">Begrüßung und Schlusstext anpassen</summary>
-            <DocumentTexts introText={introText} closingText={closingText} onChange={(p) => { if (p.introText !== undefined) setIntroText(p.introText); if (p.closingText !== undefined) setClosingText(p.closingText); }} />
+            <DocumentTexts docType={kind === "invoice" ? "INVOICE" : kind === "quote" ? "QUOTE" : kind === "confirmation" ? "ORDER_CONFIRMATION" : "DELIVERY_NOTE"} introText={introText} closingText={closingText} onChange={(p) => { if (p.introText !== undefined) setIntroText(p.introText); if (p.closingText !== undefined) setClosingText(p.closingText); }} />
           </details>
 
           <div className="lg:hidden mb-4">

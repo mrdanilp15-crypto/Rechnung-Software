@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { TemplatePicker } from "./TemplatePicker";
 import { api } from "../api/client";
 
 import { HelpTip } from "./HelpTip";
@@ -127,6 +128,7 @@ export function ShippedDialog({ orderId, number, customerName, markShipped, init
               <label className="block">Empfänger
                 <input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="E-Mail-Adresse des Kunden" className={`${field} mt-1`} />
               </label>
+              <TemplatePicker docType="ORDER_CONFIRMATION" docId={orderId} kind="SHIPPED" autoApply={false} extra={{ carrier: carrier || null, tracking: tracking.trim() || null }} onPick={(s, m) => { touched.current = true; setSubject(s); setMessage(m); }} />
               <label className="block">Betreff
                 <input value={subject} onChange={(e) => { touched.current = true; setSubject(e.target.value); }} className={`${field} mt-1`} />
               </label>

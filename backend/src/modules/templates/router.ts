@@ -5,7 +5,8 @@ import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { PLACEHOLDER_HELP, SHIPPING_PLACEHOLDER_HELP } from "../pdf/placeholders";
-import { CARRIERS, DOC_TYPES, EMAIL_KINDS, EXAMPLE_TEMPLATES, dropEmptyShippingLines, loadPlaceholderValues, renderText } from "./render";
+import { DOC_TEXT_LIBRARY, EMAIL_LIBRARY } from "./library";
+import { CARRIERS, DOC_TYPES, EMAIL_KINDS, EXAMPLE_TEMPLATES, carrierLabel, dropEmptyShippingLines, loadPlaceholderValues, renderText, trackingLink } from "./render";
 
 /**
  * E-Mail-Vorlagen und Textbausteine. Lesen darf jeder angemeldete Benutzer (der Versanddialog braucht die Vorlagen),
@@ -21,6 +22,11 @@ const adminOnly = (role: string) => {
 
 templatesRouter.get("/meta", (_req, res) => {
   res.json({ placeholders: [...PLACEHOLDER_HELP, ...SHIPPING_PLACEHOLDER_HELP], carriers: CARRIERS, kinds: EMAIL_KINDS });
+});
+
+// Fertige Formulierungen in mehreren Tonlagen zum Ausprobieren (E-Mails und Begrüßung/Schlusstext der Belege) - nur Vorschläge, nichts wird automatisch verwendet
+templatesRouter.get("/library", (_req, res) => {
+  res.json({ email: EMAIL_LIBRARY, documents: DOC_TEXT_LIBRARY });
 });
 
 // ---------- E-Mail-Vorlagen ----------
@@ -92,10 +98,18 @@ const renderSchema = z.object({
   body: z.string().max(5000).default(""),
   docType: z.enum(DOC_TYPES),
   docId: z.string().min(1),
+  // Versandangaben aus dem Dialog (noch nicht gespeichert) für die Versandplatzhalter
+  carrier: z.string().max(40).nullish(),
+  tracking: z.string().max(100).nullish(),
 });
 templatesRouter.post("/render", async (req, res) => {
   const body = renderSchema.parse(req.body);
   const values = await loadPlaceholderValues(req.auth!.companyId, body.docType, body.docId);
+  if (body.carrier !== undefined || body.tracking !== undefined) {
+    if (body.carrier !== undefined) values.versanddienst = carrierLabel(body.carrier);
+    if (body.tracking !== undefined) values.sendungsnummer = (body.tracking ?? "").trim();
+    values.sendungslink = trackingLink(body.carrier ?? undefined, body.tracking ?? undefined);
+  }
   res.json({ subject: renderText(body.subject, values), body: dropEmptyShippingLines(renderText(body.body, values)) });
 });
 

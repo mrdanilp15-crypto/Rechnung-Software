@@ -476,8 +476,8 @@ export const HELP: HelpTopic[] = [
     category: "Einstellungen und Team",
     title: "Vorlagen (E-Mail-Texte)",
     short: "Wiederverwendbare Texte für Mails zu Angebot, Rechnung, Erinnerung, Versandbescheid und Nachfassen mit Platzhaltern wie {nummer}.",
-    body: ["Die Standardvorlage je Art wird beim Senden vorgeschlagen und lässt sich dort noch ändern. Platzhalter werden mit den Daten des Belegs gefüllt."],
-    keywords: "platzhalter mailtext",
+    body: ["Die Standardvorlage je Art wird beim Senden vorgeschlagen und lässt sich dort noch ändern. Platzhalter werden mit den Daten des Belegs gefüllt.", "Unsicher, wie es klingen soll? Unter \"Formulierungen zum Ausprobieren\" stehen fertige Mails in vier Tonlagen (förmlich, freundlich, kurz, persönlich), dazu Nachfassen beim Angebot und Zahlungserinnerungen. Im Versanddialog wählst du unter \"Vorlage\" → \"Vorschläge zum Ausprobieren\" eine Variante und siehst sofort den Text mit den echten Belegdaten. Begrüßung und Schlusstext der Belege hast du als \"Formulierungen ansehen\" im Beleg und unter Beleg-Design."],
+    keywords: "platzhalter mailtext formulierungen tonlage förmlich freundlich vorschläge textvorschläge",
   },
   {
     id: "settings-dunning",

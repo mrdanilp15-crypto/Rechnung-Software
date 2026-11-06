@@ -370,3 +370,9 @@ Administratoren können unter Zeit → „Zeit nachtragen“ im Feld „Für wen
 
 ### Lieferschein ohne Unterschriftszeile (bei Versand)
 Auf dem Lieferschein steht die Zeile „Ware vollständig und unbeschädigt erhalten - Datum, Unterschrift Empfänger“ nur noch, wenn du sie einschaltest (Einstellungen → Beleg-Design → bei den Standardtexten „Unterschriftszeile auf dem Lieferschein drucken“). Standard ist aus, denn bei Versand per DHL/DPD unterschreibt der Kunde nicht auf deinem Lieferschein. Einschalten lohnt sich nur, wenn du Ware persönlich übergibst. Die Migration `20261112100000_delivery_note_receipt` legt das Feld an.
+
+### Formulierungen zum Ausprobieren
+Zu jedem Anlass gibt es fertige Texte in mehreren Tonlagen (förmlich, freundlich, kurz, persönlich), damit du vergleichen und die Variante wählen kannst, die am besten klingt. Alles sind nur Vorschläge, nichts wird automatisch verwendet.
+- **E-Mails** (Angebot, Auftragsbestätigung, Lieferschein, Rechnung, Versandbescheid; dazu Nachfassen beim Angebot und zwei Zahlungserinnerungen): Im Versanddialog unter „Vorlage“ → „Vorschläge zum Ausprobieren“ wählen, der Text erscheint sofort mit den echten Daten des Belegs und bleibt vor dem Senden änderbar. Beim Versandbescheid (Produktion → versendet) gilt das genauso, mit Versanddienst und Sendungsnummer aus dem Dialog. Unter Einstellungen → Vorlagen → „Formulierungen zum Ausprobieren“ liest du alle in Ruhe und übernimmst gewünschte als eigene Vorlage oder als Standard.
+- **Begrüßung und Schlusstext der Belege:** Im Beleg („Formulierungen ansehen“) und unter Einstellungen → Beleg-Design bei den Standardtexten. Du übernimmst beides zusammen oder nur Begrüßung bzw. Schlusstext. In den Einstellungen gilt es erst nach „Speichern“.
+Die Bibliothek liegt in `backend/src/modules/templates/library.ts` und lässt sich dort erweitern.
