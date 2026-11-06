@@ -426,7 +426,7 @@ export const HELP: HelpTopic[] = [
     category: "Finanzen",
     title: "Statistiken",
     short: "Auswertungen zu Umsatz und Kunden über die Zeit, damit du siehst, was sich lohnt.",
-    body: ["Wähle den Zeitraum oben. Je genauer du Drucke den Aufträgen zuordnest und Ausgaben erfasst, desto verlässlicher sind die Zahlen."],
+    body: ["Der Umsatz zählt nur bezahlte Rechnungen, und zwar im Monat des Zahlungseingangs (wie in der EÜR). Ausgestellte, noch unbezahlte Rechnungen und Aufträge sind kein Umsatz; der offene Betrag steht separat bei \"Bezahlte Rechnungen\". Eine Rechnung wird bezahlt durch \"Als bezahlt markieren\" oder den Zahlungsabgleich mit dem Konto.", "Wähle den Zeitraum oben. Je genauer du Drucke den Aufträgen zuordnest und Ausgaben erfasst, desto verlässlicher sind die Zahlen."],
     keywords: "auswertung umsatz diagramm",
   },
   {

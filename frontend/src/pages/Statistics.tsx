@@ -8,7 +8,7 @@ import { HelpTip } from "../components/HelpTip";
 interface Overview {
   year: number;
   months: { revenue: number[]; revenuePrev: number[]; expenses: number[]; expensesPrev: number[] };
-  totals: { revenueCents: number; revenuePrevCents: number; expenseCents: number; expensePrevCents: number; invoiceCount: number; newCustomers: number };
+  totals: { revenueCents: number; revenuePrevCents: number; expenseCents: number; expensePrevCents: number; invoiceCount: number; newCustomers: number; openCents: number; openCount: number };
   bestsellers: { name: string; quantity: number; revenueCents: number }[];
   customers: { name: string; revenueCents: number; invoices: number }[];
   printers: { id: string; name: string; jobs: number; finished: number; failed: number; cancelled: number; hoursGood: number; hoursWasted: number; percentByCount: number | null }[];
@@ -100,10 +100,10 @@ export default function Statistics() {
       {!d || !t ? <p className="text-slate-500">Wird geladen ...</p> : (
         <>
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
-            <Kpi icon="money" tone="violet" label={`Umsatz ${year} (netto)`} value={eur(t.revenueCents)} sub={dRev === null ? `Vorjahr ${eur(t.revenuePrevCents)}` : `${dRev >= 0 ? "+" : ""}${dRev} % zum Vorjahr`} subTone={dRev === null ? "muted" : dRev >= 0 ? "good" : "bad"} />
+            <Kpi icon="money" tone="violet" label={`Umsatz ${year} (bezahlt, netto)`} value={eur(t.revenueCents)} sub={dRev === null ? `Vorjahr ${eur(t.revenuePrevCents)}` : `${dRev >= 0 ? "+" : ""}${dRev} % zum Vorjahr`} subTone={dRev === null ? "muted" : dRev >= 0 ? "good" : "bad"} />
             <Kpi icon="receipt" tone="amber" label="Ausgaben" value={eur(t.expenseCents)} sub={`Vorjahr ${eur(t.expensePrevCents)}`} />
             <Kpi icon="scale" tone="green" label="Ergebnis vor Steuern" value={eur(result)} sub={dRes === null ? `Vorjahr ${eur(resultPrev)}` : `${dRes >= 0 ? "+" : ""}${dRes} % zum Vorjahr`} subTone={dRes === null ? "muted" : dRes >= 0 ? "good" : "bad"} />
-            <Kpi icon="document" tone="brand" label="Rechnungen" value={t.invoiceCount} sub={`${t.newCustomers} neue Kunden`} />
+            <Kpi icon="document" tone="brand" label="Bezahlte Rechnungen" value={t.invoiceCount} sub={t.openCount > 0 ? `Noch offen: ${eur(t.openCents)} (${t.openCount})` : `${t.newCustomers} neue Kunden`} />
           </div>
 
           <Panel className="mb-3">
@@ -112,7 +112,7 @@ export default function Statistics() {
               <span className="flex items-center gap-4 text-xs text-slate-500"><span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-brand" />{year}</span><span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-brand/35" />{year - 1}</span></span>
             </div>
             <CompareChart cur={d.months.revenue} prev={d.months.revenuePrev} year={year} />
-            <p className="text-xs text-slate-500 mt-1">Netto-Umsatz aus gestellten Rechnungen nach Rechnungsdatum, ohne Entwürfe und Korrekturbelege.</p>
+            <p className="text-xs text-slate-500 mt-1">Netto-Umsatz aus bezahlten Rechnungen nach Zahlungsdatum (wie in der EÜR). Offene Rechnungen, Entwürfe, Aufträge und Korrekturbelege zählen nicht mit; was noch offen ist, steht oben bei den Rechnungen.</p>
           </Panel>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
