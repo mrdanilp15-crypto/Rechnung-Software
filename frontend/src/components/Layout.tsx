@@ -347,7 +347,7 @@ export default function Layout() {
           </div>
         </header>
 
-        <main className={`flex-1 p-4 sm:p-6 lg:p-8 overflow-auto min-w-0 pt-[calc(5rem+env(safe-area-inset-top,0px))] lg:pt-8 ${inEditor ? "" : "pb-[calc(9rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(9rem+env(safe-area-inset-bottom,0px))] lg:pb-8"}`}>
+        <main className={`flex-1 p-4 sm:p-6 lg:p-8 overflow-auto min-w-0 pt-[calc(5rem+env(safe-area-inset-top,0px))] sm:pt-[calc(5rem+env(safe-area-inset-top,0px))] lg:pt-8 ${inEditor ? "" : "pb-[calc(9rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(9rem+env(safe-area-inset-bottom,0px))] lg:pb-8"}`}>
           <Outlet />
         </main>
       </div>
