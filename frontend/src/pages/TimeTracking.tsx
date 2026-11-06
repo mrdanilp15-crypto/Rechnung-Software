@@ -84,7 +84,7 @@ export default function TimeTracking() {
     }).catch((e) => fail(e, "Zeiten konnten nicht geladen werden."));
   }, [month, userId]);
   const loadRunning = useCallback(() => {
-    api.get("/time/running").then((r) => setRunning(r.data)).catch(() => undefined);
+    api.get("/time/running").then((r) => { setRunning(r.data); window.dispatchEvent(new Event("timer-changed")); }).catch(() => undefined);
   }, []);
 
   useEffect(() => { api.get("/time/meta").then((r) => setMeta(r.data)).catch(() => undefined); loadRunning(); }, [loadRunning]);

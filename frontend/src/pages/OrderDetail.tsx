@@ -9,6 +9,7 @@ import { AssigneeSelect } from "../components/AssigneeSelect";
 import { JobAssignPicker } from "../components/JobAssignPicker";
 import { DocumentChain } from "../components/DocumentChain";
 import { JobUsageDialog } from "../components/JobUsageDialog";
+import { OrderTimer } from "../components/OrderTimer";
 import { useAuthStore } from "../store/authStore";
 
 /** Auftragsseite: alles zu einem Auftrag an einem Ort - Positionen, Belege, Drucke, Zeiten, Dateien, Kommentare und Verlauf. */
@@ -141,6 +142,7 @@ export default function OrderDetail() {
         </div>
       </div>
       {msg && <p className="text-sm text-red-600 mb-3">{msg}</p>}
+      {!o.voided && <OrderTimer orderId={o.id} orderNumber={o.number} onChanged={load} />}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 text-sm">
         {[

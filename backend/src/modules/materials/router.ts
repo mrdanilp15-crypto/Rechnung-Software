@@ -54,6 +54,8 @@ materialsRouter.get("/", async (req, res) => {
 
 const materialSchema = z.object({
   name: z.string().min(1),
+  // Zukaufteil (z.B. Schrauben, Magnete) oder Druckmaterial (Standard)
+  kind: z.enum(["FILAMENT", "PART"]).default("FILAMENT"),
   unit: z.string().default("g"),
   // Anfangsbestand bzw. Korrektur (z.B. Inventur) - im Unterschied zu POST /:id/restock
   // wird hierbei KEINE Ausgabe angelegt, da kein tatsächlicher Neukauf stattfindet.

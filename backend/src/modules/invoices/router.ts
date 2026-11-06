@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import { assignDocument } from "../documents/assignee";
 import { Parser as CsvParser } from "json2csv";
 import { prisma } from "../../db/prisma";
 import { requireAuth, requireRole } from "../../middleware/auth";
@@ -342,6 +343,12 @@ invoicesRouter.post("/:id/cancel", requireRole("ADMIN", "BUCHHALTUNG"), async (r
     metadata: { creditNoteId: creditNote.id, creditNoteNumber: creditNote.invoiceNumber },
   });
   res.status(201).json(creditNote);
+});
+
+invoicesRouter.patch("/:id/assignee", async (req, res) => {
+  const { assigneeId } = z.object({ assigneeId: z.string().min(1).nullable() }).parse(req.body);
+  await assignDocument(req, "INVOICE", req.params.id, assigneeId);
+  res.json({ ok: true });
 });
 
 invoicesRouter.get("/:id/pdf", async (req, res) => {

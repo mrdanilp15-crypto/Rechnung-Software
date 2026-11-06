@@ -65,6 +65,7 @@ export interface CostResult {
   setup: number; // Anteil der Rüstzeit je Einheit (in labor enthalten, nur zur Anzeige)
   packaging: number;
   extras: number; // Veredelung/Nachbearbeitung
+  purchased: number; // Zukaufteile aus dem Lager (Schrauben, Magnete ...), ohne Ausschuss
   overhead: number;
   total: number;
   /** Preisvorschlag vor Rundung */
@@ -86,7 +87,7 @@ export function roundPrice(cents: number, mode: PriceRounding): number {
 }
 
 export function calcCost(
-  used: { quantityPerUnit: number; costPerUnitCents: number }[],
+  used: { quantityPerUnit: number; costPerUnitCents: number; /** Zukaufteil: feste Menge je Einheit, ohne Ausschuss und Zusatzverlust */ part?: boolean }[],
   printMinutes: number,
   laborMinutes: number,
   rates: CostRates,
@@ -95,7 +96,8 @@ export function calcCost(
 ): CostResult {
   const printHours = Math.max(0, printMinutes) / 60;
   const quantity = Math.max(1, extras_.quantity ?? 1);
-  const material = used.reduce((s, m) => s + m.quantityPerUnit * m.costPerUnitCents, 0) * (1 + (rates.materialWastePercent + (extras_.extraMaterialPercent ?? 0)) / 100);
+  const material = used.filter((m) => !m.part).reduce((s, m) => s + m.quantityPerUnit * m.costPerUnitCents, 0) * (1 + (rates.materialWastePercent + (extras_.extraMaterialPercent ?? 0)) / 100);
+  const purchased = used.filter((m) => m.part).reduce((s, m) => s + m.quantityPerUnit * m.costPerUnitCents, 0);
   const electricity = printer ? printHours * (printer.powerWatts / 1000) * rates.electricityCentsPerKwh : 0;
   const depreciation = printer ? printHours * depreciationPerHour(printer) : 0;
   const wear = printer ? printHours * printer.wearCentsPerHour : 0;
@@ -105,13 +107,13 @@ export function calcCost(
   const labor = (Math.max(0, laborMinutes) / 60) * rates.laborRateCentsPerHour + setup;
   const packaging = Math.max(0, extras_.packagingCents ?? 0);
   const extras = Math.max(0, extras_.extraCostsCents ?? 0);
-  const subtotal = material + electricity + depreciation + wear + machineFlat + failures + labor + packaging + extras;
+  const subtotal = material + purchased + electricity + depreciation + wear + machineFlat + failures + labor + packaging + extras;
   const overhead = subtotal * (rates.overheadPercent / 100);
   const total = subtotal + overhead;
   const feeFactor = 1 - Math.min(rates.platformFeePercent, 90) / 100;
   const recommendedRaw = (total * (1 + rates.targetMarginPercent / 100)) / feeFactor;
   const recommended = total > 0 ? Math.max(roundPrice(recommendedRaw, rates.priceRounding), rates.minPriceCents) : 0;
-  return { material, electricity, depreciation, wear, machineFlat, failures, labor, setup, packaging, extras, overhead, total, recommendedRaw, recommended };
+  return { material, electricity, depreciation, wear, machineFlat, failures, labor, setup, packaging, extras, purchased, overhead, total, recommendedRaw, recommended };
 }
 
 /** Gebühren (Plattform/Zahlung), die bei diesem Verkaufspreis anfallen. */
@@ -163,7 +165,7 @@ export interface CostProduct {
   packagingCents?: number;
   extraMaterialPercent?: number;
   extraCosts?: { amountCents: number }[] | null;
-  materials: { quantityPerUnit: number; costOverrideCents?: number | null; material: { costPerUnitCents?: number } }[];
+  materials: { quantityPerUnit: number; costOverrideCents?: number | null; material: { costPerUnitCents?: number; kind?: string } }[];
 }
 
 /** Soll-Kosten (Kalkulation) von Material und Maschine für eine Menge Stück - die beiden Posten, die sich aus Drucken messen lassen. */
@@ -176,7 +178,7 @@ export interface SollParts {
 }
 export function sollParts(p: CostProduct, printer: PrinterCosts | null | undefined, rates: CostRates, quantity = 1): SollParts {
   const c = calcCost(
-    p.materials.map((m) => ({ quantityPerUnit: m.quantityPerUnit, costPerUnitCents: m.costOverrideCents ?? m.material.costPerUnitCents ?? 0 })),
+    p.materials.map((m) => ({ quantityPerUnit: m.quantityPerUnit, costPerUnitCents: m.costOverrideCents ?? m.material.costPerUnitCents ?? 0, part: m.material.kind === "PART" })),
     p.printTimeMinutes ?? 0,
     p.laborMinutes ?? 0,
     rates,

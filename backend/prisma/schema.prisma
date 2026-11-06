@@ -326,6 +326,8 @@ model Material {
   company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   companyId        String
   name             String
+  // FILAMENT = Druckmaterial (Gramm, wird gedruckt), PART = Zukaufteil (Schrauben, Magnete ...: Stück, je verkaufter Einheit fest, ohne Ausschuss)
+  kind             String   @default("FILAMENT")
   unit             String   @default("g")
   stockQuantity    Float    @default(0)
   // Zuletzt gezahlter Preis pro Einheit in Cent - wird bei jeder Nachbestellung/Anlage
@@ -428,6 +430,8 @@ model Invoice {
   companyId       String
   customer        Customer      @relation(fields: [customerId], references: [id])
   customerId      String
+  // Zuständiger Mitarbeiter (wird aus Angebot/Auftrag übernommen, jederzeit änderbar - auch bei fertigen Rechnungen)
+  assigneeId      String?
   // NULL, solange die Rechnung ein Entwurf ist - die fortlaufende Nummer wird erst beim
   // ersten Verlassen von DRAFT (Versenden/als bezahlt markieren) vergeben (siehe
   // finalizeInvoiceNumber in modules/invoices/router.ts). So entsteht durch das Löschen
@@ -531,6 +535,8 @@ model Quote {
   companyId     String
   customer      Customer    @relation(fields: [customerId], references: [id])
   customerId    String
+  // Zuständiger Mitarbeiter (wird in Auftrag und Rechnung übernommen)
+  assigneeId    String?
   quoteNumber   String
   status        String      @default("DRAFT")
   issueDate     DateTime    @default(now())

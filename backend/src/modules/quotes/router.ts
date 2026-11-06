@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
+import { assignDocument } from "../documents/assignee";
 import { prisma } from "../../db/prisma";
 import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
@@ -207,6 +208,7 @@ quotesRouter.post("/:id/convert-to-invoice", async (req, res) => {
         isSmallBusiness: financials.isSmallBusiness,
         vatNoticeKey: financials.vatNoticeKey,
         sourceQuoteId: quote.id,
+        assigneeId: quote.assigneeId,
         kind: deductions.items.length > 0 ? "FINAL" : "STANDARD",
         introText: company.invoiceIntroText,
         closingText: company.invoiceClosingText,
@@ -255,6 +257,12 @@ async function renderQuotePdf(quote: Prisma.QuoteGetPayload<{ include: { items: 
   });
 }
 
+quotesRouter.patch("/:id/assignee", async (req, res) => {
+  const { assigneeId } = z.object({ assigneeId: z.string().min(1).nullable() }).parse(req.body);
+  await assignDocument(req, "QUOTE", req.params.id, assigneeId);
+  res.json({ ok: true });
+});
+
 quotesRouter.get("/:id/pdf", async (req, res) => {
   const quote = await prisma.quote.findFirst({
     where: { id: req.params.id, companyId: req.auth!.companyId },
@@ -295,6 +303,7 @@ quotesRouter.post("/:id/convert-to-order-confirmation", async (req, res) => {
         customerId: quote.customerId,
         confirmationNumber,
         sourceQuoteId: quote.id,
+        assigneeId: quote.assigneeId,
         subtotalCents: quote.subtotalCents,
         vatTotalCents: quote.vatTotalCents,
         totalCents: quote.totalCents,

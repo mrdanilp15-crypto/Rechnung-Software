@@ -44,9 +44,9 @@ export interface TodoOrder {
 
 export interface TodoInput {
   now: Date;
-  overdueInvoices: { id: string; number: string | null; customer: string; totalCents: number; dueDate: Date | null }[];
+  overdueInvoices: { id: string; number: string | null; customer: string; totalCents: number; dueDate: Date | null; assigneeId?: string | null }[];
   /** Versendete oder abgelaufene Angebote */
-  openQuotes: { id: string; number: string; customer: string; issueDate: Date; emailSentAt: Date | null; validUntil: Date | null; hasFollowUp: boolean }[];
+  openQuotes: { id: string; number: string; customer: string; issueDate: Date; emailSentAt: Date | null; validUntil: Date | null; hasFollowUp: boolean; assigneeId?: string | null }[];
   /** Aufträge (nicht ungültig, fertiggestellt) */
   orders: TodoOrder[];
   oldDrafts: number;
@@ -93,6 +93,7 @@ export function buildTodo(i: TodoInput): TodoItem[] {
       title: `Rechnung ${inv.number ?? ""} überfällig`.replace("  ", " "),
       detail: `${inv.customer} · ${eur(inv.totalCents)}${late ? ` · seit ${late} ${plural(late, "Tag", "Tagen")}` : ""} - Erinnerung oder Mahnung vorbereiten`,
       link: `/invoices/${inv.id}?dunning=1`,
+      assigneeId: inv.assigneeId ?? null,
     });
   }
 
@@ -140,6 +141,13 @@ export function buildTodo(i: TodoInput): TodoItem[] {
     if (age >= FOLLOW_UP_DAYS) {
       items.push({ id: `qfu-${q.id}`, kind: "quote-follow-up", severity: "normal", title: `Angebot ${q.number}: seit ${age} Tagen keine Antwort`, detail: `${q.customer} - nachfassen (Mail ist vorbereitet)`, link });
     }
+  }
+
+  // angebotsbezogene Punkte tragen den Zuständigen des Angebots
+  const quoteOwner = new Map(i.openQuotes.map((q) => [q.id, q.assigneeId ?? null]));
+  for (const it of items) {
+    const qid = /^(?:qexp|qfu)-(.+)$/.exec(it.id)?.[1];
+    if (qid && quoteOwner.has(qid)) it.assigneeId = quoteOwner.get(qid);
   }
 
   // Drucke ohne Auftrag: ein Vorschlag je Druck, wenn genau ein offener Auftrag zum Namen passt; ohne Namenstreffer nur im eindeutigen Fall

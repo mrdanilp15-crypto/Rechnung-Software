@@ -93,15 +93,24 @@ const productSchema = z.object({
  * Hat ein Produkt Bauteile, gilt deren Summe: Druckzeit je Produkt und Rezept werden daraus berechnet (der Preis pro Material, den man beim Produkt
  * eingetragen hat, bleibt erhalten). Gibt null zurück, wenn es keine Bauteile gibt.
  */
-async function derivedFromParts(companyId: string, parts: z.infer<typeof partSchema>[], keepOverrides: Map<string, number | null>) {
+async function derivedFromParts(companyId: string, parts: z.infer<typeof partSchema>[], keepOverrides: Map<string, number | null>, purchased: PurchasedRow[] = []) {
   if (parts.length === 0) return null;
   const ids = [...new Set(parts.flatMap((p) => p.materials.map((m) => m.materialId)))];
   if (ids.length > 0 && (await prisma.material.count({ where: { id: { in: ids }, companyId } })) !== ids.length) throw new HttpError(400, "Ein Material der Bauteile wurde nicht gefunden.");
   const agg = aggregateParts(parts);
-  return {
-    printTimeMinutes: agg.printMinutes,
-    recipe: agg.materials.map((m) => ({ materialId: m.materialId, quantityPerUnit: m.quantity, costOverrideCents: keepOverrides.get(m.materialId) ?? null })),
-  };
+  const printed = agg.materials.map((m) => ({ materialId: m.materialId, quantityPerUnit: m.quantity, costOverrideCents: keepOverrides.get(m.materialId) ?? null }));
+  // Zukaufteile (Schrauben, Magnete ...) gehören nicht zu den gedruckten Bauteilen und bleiben im Rezept erhalten
+  const recipe = [...printed, ...purchased.filter((p) => !printed.some((x) => x.materialId === p.materialId))];
+  return { printTimeMinutes: agg.printMinutes, recipe };
+}
+
+/** Rezeptzeilen, die Zukaufteile (Materialart PART) sind: Menge gilt je verkaufter Einheit, nicht je Druckplatte. */
+interface PurchasedRow { materialId: string; quantityPerUnit: number; costOverrideCents: number | null }
+async function purchasedRows(companyId: string, rows: { materialId: string; quantityPerUnit: number; costOverrideCents?: number | null }[]): Promise<PurchasedRow[]> {
+  if (rows.length === 0) return [];
+  const hits = await prisma.material.findMany({ where: { id: { in: rows.map((r) => r.materialId) }, companyId, kind: "PART" }, select: { id: true } });
+  const set = new Set(hits.map((h) => h.id));
+  return rows.filter((r) => set.has(r.materialId)).map((r) => ({ materialId: r.materialId, quantityPerUnit: r.quantityPerUnit, costOverrideCents: r.costOverrideCents ?? null }));
 }
 const partsForDb = (parts: z.infer<typeof partSchema>[]) => parts.map((p, i) => ({ name: p.name, position: i, documentId: p.documentId ?? null, fileName: p.fileName ?? null, quantityPerProduct: p.quantityPerProduct, piecesPerPlate: p.piecesPerPlate, printMinutes: p.printMinutes, materials: p.materials }));
 
@@ -136,7 +145,7 @@ productsRouter.post("/", async (req, res) => {
   const body = productSchema.parse(req.body);
   const { materials, priceTiers, extraCosts, parts, ...productData } = body;
   await assertSkuFree(req.auth!.companyId, productData.sku);
-  const derived = await derivedFromParts(req.auth!.companyId, parts ?? [], new Map((materials ?? []).map((m) => [m.materialId, m.costOverrideCents ?? null])));
+  const derived = await derivedFromParts(req.auth!.companyId, parts ?? [], new Map((materials ?? []).map((m) => [m.materialId, m.costOverrideCents ?? null])), await purchasedRows(req.auth!.companyId, materials ?? []));
   const product = await prisma.product.create({
     data: {
       ...productData,
@@ -164,7 +173,7 @@ productsRouter.patch("/:id", async (req, res) => {
   // Preise je Material, die schon beim Produkt stehen, bleiben erhalten, wenn das Rezept aus den Bauteilen neu berechnet wird
   const overrides = new Map<string, number | null>(existing.materials.map((m) => [m.materialId, m.costOverrideCents ?? null]));
   for (const m of materials ?? []) overrides.set(m.materialId, m.costOverrideCents ?? null);
-  const derived = parts !== undefined ? await derivedFromParts(req.auth!.companyId, parts, overrides) : null;
+  const derived = parts !== undefined ? await derivedFromParts(req.auth!.companyId, parts, overrides, await purchasedRows(req.auth!.companyId, materials ?? existing.materials)) : null;
   const updated = await prisma.product.update({
     where: { id: existing.id },
     data: {

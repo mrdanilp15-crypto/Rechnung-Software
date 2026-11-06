@@ -142,3 +142,19 @@ describe("Vorschläge mit einem Klick", () => {
     expect(jobMatchesOrder(null, ["Halter"])).toBe(false);
   });
 });
+
+describe("Heute zu tun: Zuständigkeit bei Angeboten und Rechnungen", () => {
+  it("überfällige Rechnungen und Angebots-Nachfassen tragen den Zuständigen (für Nur meine)", () => {
+    const items = buildTodo({
+      ...base,
+      overdueInvoices: [{ id: "i1", number: "RE-1", customer: "Max", totalCents: 100, dueDate: ago(5), assigneeId: "u1" }],
+      openQuotes: [
+        { id: "A", number: "AN-A", customer: "K", issueDate: ago(9), emailSentAt: null, validUntil: null, hasFollowUp: false, assigneeId: "u2" },
+        { id: "B", number: "AN-B", customer: "K", issueDate: ago(40), emailSentAt: ago(40), validUntil: ago(10), hasFollowUp: false },
+      ],
+    });
+    expect(items.find((x) => x.id === "inv-i1")?.assigneeId).toBe("u1");
+    expect(items.find((x) => x.id === "qfu-A")?.assigneeId).toBe("u2");
+    expect(items.find((x) => x.id === "qexp-B")?.assigneeId).toBeNull();
+  });
+});

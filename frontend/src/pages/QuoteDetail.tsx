@@ -7,6 +7,7 @@ import { SendDocumentDialog } from "../components/SendDocumentDialog";
 import { StatusChip } from "../components/StatusChip";
 import { useToast } from "../components/Toast";
 import { Panel } from "../components/dashboard/widgets";
+import { AssigneeSelect } from "../components/AssigneeSelect";
 
 /** Angebotsseite: Zusammenfassung, Positionen, Aktionen (senden, annehmen, ablehnen, nachfassen) und die ganze Belegkette des Vorgangs. */
 
@@ -20,6 +21,7 @@ interface Quote {
   vatTotalCents: number;
   totalCents: number;
   emailSentAt: string | null;
+  assigneeId?: string | null;
   notes?: string | null;
   customer: { id: string; name: string; email: string | null; phone?: string | null };
   items: { id: string; description: string; quantity: number; unit: string; unitPriceCents: number; lineTotalCents: number }[];
@@ -52,6 +54,15 @@ export default function QuoteDetail() {
     }
   }
 
+  async function setAssignee(userId: string | null) {
+    try {
+      await api.patch(`/quotes/${id}/assignee`, { assigneeId: userId });
+      load();
+    } catch (e: any) {
+      showToast(e?.response?.data?.error ?? "Zuständigkeit konnte nicht geändert werden", "error");
+    }
+  }
+
   if (error) return <p className="text-red-600">{error}</p>;
   if (!quote) return <p>Wird geladen ...</p>;
   if (quote.status === "DRAFT") return <Navigate to={`/quotes/${quote.id}/edit`} replace />;
@@ -63,6 +74,7 @@ export default function QuoteDetail() {
       <div className="flex flex-wrap items-center gap-3 mt-1 mb-1">
         <h1 className="text-2xl font-semibold">Angebot {quote.quoteNumber}</h1>
         <StatusChip status={quote.status} kind="QUOTE" emailed={!!quote.emailSentAt} />
+        <AssigneeSelect value={quote.assigneeId ?? null} onChange={setAssignee} className="sm:ml-auto" />
       </div>
       <p className="text-sm text-slate-500 mb-4">
         <Link to={`/customers/${quote.customer.id}`} className="text-brand hover:underline">{quote.customer.name}</Link>

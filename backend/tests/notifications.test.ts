@@ -37,3 +37,10 @@ describe("Benachrichtigungen: Auftrag zugewiesen", () => {
     expect(m.body).toBe("Firma X · A, B u.a.");
   });
 });
+
+describe("Benachrichtigungen: Zuweisung von Angebot und Rechnung", () => {
+  it("benennt die Belegart im Titel", () => {
+    expect(buildAssignmentMessage({ kind: "QUOTE", orderNumber: "AN-2026-0003", customerName: "K", items: [], byName: "Daniel" }).title).toBe("Neues Angebot für dich: AN-2026-0003");
+    expect(buildAssignmentMessage({ kind: "INVOICE", orderNumber: "RE-2026-0009", customerName: "K", items: [], byName: null }).title).toBe("Neue Rechnung für dich: RE-2026-0009");
+  });
+});

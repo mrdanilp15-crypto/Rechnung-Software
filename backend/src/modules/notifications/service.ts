@@ -108,11 +108,14 @@ export async function notify(companyId: string, type: NotificationType, title: s
   }
 }
 
-/** Text der Meldung "Auftrag zugewiesen" (rein, testbar). */
-export function buildAssignmentMessage(o: { orderNumber: string | null; customerName: string; items: string[]; byName: string | null }): { title: string; body: string } {
+export type AssignedKind = "ORDER" | "QUOTE" | "INVOICE";
+const ASSIGNED_TITLE: Record<AssignedKind, string> = { ORDER: "Neuer Auftrag für dich", QUOTE: "Neues Angebot für dich", INVOICE: "Neue Rechnung für dich" };
+
+/** Text der Meldung "zugewiesen" für Auftrag, Angebot oder Rechnung (rein, testbar). */
+export function buildAssignmentMessage(o: { orderNumber: string | null; customerName: string; items: string[]; byName: string | null; kind?: AssignedKind }): { title: string; body: string } {
   const what = o.items.length === 0 ? "" : o.items.length <= 2 ? o.items.join(", ") : `${o.items.slice(0, 2).join(", ")} u.a.`;
   return {
-    title: `Neuer Auftrag für dich${o.orderNumber ? `: ${o.orderNumber}` : ""}`,
+    title: `${ASSIGNED_TITLE[o.kind ?? "ORDER"]}${o.orderNumber ? `: ${o.orderNumber}` : ""}`,
     body: [o.customerName, what, o.byName ? `zugewiesen von ${o.byName}` : ""].filter(Boolean).join(" · "),
   };
 }

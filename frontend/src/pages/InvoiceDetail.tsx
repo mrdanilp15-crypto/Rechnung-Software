@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { DocumentChain } from "../components/DocumentChain";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { AssigneeSelect } from "../components/AssigneeSelect";
 import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
 import { MobileCard, MobileField } from "../components/MobileCard";
@@ -19,6 +20,7 @@ interface InvoiceItem {
 }
 interface Invoice {
   id: string;
+  assigneeId?: string | null;
   invoiceNumber: string | null;
   status: string;
   issueDate: string;
@@ -85,6 +87,15 @@ export default function InvoiceDetail() {
       load();
     } catch (err: any) {
       setActionError(err.response?.data?.error || t("common.error"));
+    }
+  }
+
+  async function setAssignee(userId: string | null) {
+    try {
+      await api.patch(`/invoices/${id}/assignee`, { assigneeId: userId });
+      load();
+    } catch (err: any) {
+      setActionError(err.response?.data?.error || "Zuständigkeit konnte nicht geändert werden");
     }
   }
 
@@ -165,6 +176,7 @@ export default function InvoiceDetail() {
             {invoice.isCancellationDocument && <span className="text-red-600">Korrekturbeleg </span>}
             {numberLabel}
           </h1>
+          {!invoice.isCancellationDocument && <AssigneeSelect value={invoice.assigneeId ?? null} onChange={setAssignee} className="mt-1" />}
           {invoice.correctsInvoice && (
             <p className="text-sm text-slate-500">
               Korrektur zu Rechnung{" "}

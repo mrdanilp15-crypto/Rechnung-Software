@@ -20,9 +20,11 @@ interface Material {
   supplierId?: string | null;
   minStock?: number | null;
   sku?: string | null;
+  /** FILAMENT = Druckmaterial, PART = Zukaufteil (Schrauben, Magnete ...) */
+  kind?: string;
 }
 
-const emptyForm = { sku: "", name: "", unit: "g", stockQuantity: "0", initialCostEur: "", costPerUnitEur: "", supplierId: "", minStock: "" };
+const emptyForm = { kind: "FILAMENT", sku: "", name: "", unit: "g", stockQuantity: "0", initialCostEur: "", costPerUnitEur: "", supplierId: "", minStock: "" };
 const emptyRestock = { quantity: "", totalCostEur: "", vendor: "" };
 
 const formatEuro = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
@@ -39,6 +41,7 @@ export default function Materials() {
   const [reorderOpen, setReorderOpen] = useState(() => new URLSearchParams(window.location.search).get("reorder") === "1");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [kindFilter, setKindFilter] = useState<"ALL" | "FILAMENT" | "PART">("ALL");
   const [restockingId, setRestockingId] = useState<string | null>(null);
   const [restockForm, setRestockForm] = useState(emptyRestock);
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
@@ -76,6 +79,7 @@ export default function Materials() {
   function startEdit(m: Material) {
     setEditingId(m.id);
     setForm({
+      kind: m.kind ?? "FILAMENT",
       sku: m.sku ?? "",
       name: m.name,
       unit: m.unit,
@@ -92,7 +96,7 @@ export default function Materials() {
     e.preventDefault();
     setError(null);
     const stockQuantity = parseFloat(form.stockQuantity) || 0;
-    const payload: Record<string, unknown> = { sku: form.sku.trim() || null, name: form.name, unit: form.unit, stockQuantity, supplierId: form.supplierId || null, minStock: parseFloat(form.minStock) > 0 ? parseFloat(form.minStock) : null };
+    const payload: Record<string, unknown> = { kind: form.kind, sku: form.sku.trim() || null, name: form.name, unit: form.unit, stockQuantity, supplierId: form.supplierId || null, minStock: parseFloat(form.minStock) > 0 ? parseFloat(form.minStock) : null };
     if (editingId) {
       if (form.costPerUnitEur) payload.costPerUnitCents = parseFloat(form.costPerUnitEur) * 100;
     } else {
@@ -162,6 +166,7 @@ export default function Materials() {
         <p>Trage beim Anlegen direkt ein, wie viel du hast und was du dafür insgesamt bezahlt hast (z.B. 1000g für 24,99€) - der Preis pro Einheit wird automatisch berechnet und eine passende Ausgabe angelegt (Finanzen → Ausgaben), du musst den Einkauf also nicht doppelt eintragen. Käufst du später nach, geht das genauso über <strong>"Nachbestellen"</strong>.</p>
 <p><strong>Wichtig für die Kalkulation:</strong> Beim Nachbestellen rechnet die Software mit dem <em>gleitenden Durchschnittspreis</em>: Reste der alten Spule behalten ihren alten Preis, die neue Lieferung ihren neuen - daraus entsteht ein gemeinsamer Preis pro Einheit (z.B. 500 g Rest zu 0,02 € + 1000 g für 30 € ergeben rund 0,0267 €/g). Rabatte und Versandkosten gehören in den Gesamtpreis, damit der echte Einkaufspreis stimmt. Bei "Bearbeiten" können Sie den Preis auch von Hand korrigieren.</p>
         <p>Bei <strong>Produkte</strong> kannst du hinterlegen, wie viel von welchem Material ein Produkt pro Stück verbraucht (z.B. "15g Filament pro Druck"). Beim Erstellen einer Rechnung wird der Bestand hier automatisch entsprechend reduziert.</p>
+        <p><strong>Zukaufteile</strong> (Schrauben, Magnete, Federn ...) legst du hier mit der Art <em>Zukaufteil</em> an: Einkaufspreis, Lieferant, Bestand und Mindestbestand wie beim Filament. Beim Produkt wählst du nur die Menge je verkaufter Einheit; der Preis kommt aus dem Lager, beim Verkauf wird abgebucht.</p>
       </InfoBox>
 
       {reorderOpen && <ReorderDialog onClose={() => setReorderOpen(false)} />}
@@ -169,6 +174,15 @@ export default function Materials() {
 
       {showForm && (
         <form onSubmit={handleCreate} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="sm:col-span-3">
+            <label className="block text-sm mb-1">Art</label>
+            <div className="inline-flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden text-sm" role="radiogroup" aria-label="Art des Materials">
+              {([["FILAMENT", "Druckmaterial (Filament)"], ["PART", "Zukaufteil (Schrauben, Magnete ...)"]] as const).map(([k, label]) => (
+                <button key={k} type="button" role="radio" aria-checked={form.kind === k} onClick={() => setForm((f) => ({ ...f, kind: k, unit: k === "PART" && (f.unit === "g" || f.unit === "kg") ? "Stk." : k === "FILAMENT" && f.unit === "Stk." ? "g" : f.unit }))} className={`px-3 py-2 ${form.kind === k ? "bg-brand text-white" : "bg-white dark:bg-slate-800"}`}>{label}</button>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">{form.kind === "PART" ? "Zukaufteile kaufst du fertig ein und verbaust sie: Preis, Lieferant und Bestand pflegst du hier, beim Produkt wählst du nur die Menge je verkaufter Einheit (ohne Ausschuss, nicht je Druckplatte). Beim Verkauf werden sie abgebucht." : "Druckmaterial wird gedruckt: Verbrauch in Gramm je Platte, mit Ausschuss, Spulen und AMS-Zuordnung."}</p>
+          </div>
           <SkuField kind="materials" value={form.sku} onChange={(v) => setForm((f) => ({ ...f, sku: v }))} selfId={editingId} />
           <div>
             <label className="block text-sm mb-1">Name *</label>
@@ -217,6 +231,13 @@ export default function Materials() {
         </form>
       )}
 
+      {materials.some((m) => m.kind === "PART") && (
+        <div className="flex gap-2 mb-3 text-sm" role="group" aria-label="Materialart filtern">
+          {([["ALL", "Alle"], ["FILAMENT", "Druckmaterial"], ["PART", "Zukaufteile"]] as const).map(([k, label]) => (
+            <button key={k} type="button" onClick={() => setKindFilter(k)} aria-pressed={kindFilter === k} className={`px-3 py-1.5 rounded-full border ${kindFilter === k ? "bg-brand text-white border-brand" : "border-slate-300 dark:border-slate-600"}`}>{label}</button>
+          ))}
+        </div>
+      )}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
         <div className="hidden xl:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
           <span>Name</span>
@@ -224,7 +245,7 @@ export default function Materials() {
           <span className="text-right">Preis/Einheit</span>
           <span></span>
         </div>
-        {materials.map((m) => {
+        {materials.filter((m) => kindFilter === "ALL" || (m.kind ?? "FILAMENT") === kindFilter).map((m) => {
           const low = !!m.minStock && m.minStock > 0 && m.stockQuantity <= m.minStock;
           const stockValue = (
             <span className={m.stockQuantity < 0 ? "text-red-600 font-medium" : ""}>
@@ -249,13 +270,13 @@ export default function Materials() {
           <div key={m.id}>
             {/* Desktop */}
             <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
-              <span className="min-w-0"><span className="block font-medium truncate">{m.name}{m.amsMeasured && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-normal" title={(m.amsSources ?? []).join(", ") + " - der Verbrauch wird aus dem AMS gemessen und automatisch abgebucht, nicht über Rechnungs-Rezepte"}>AMS-gemessen</span>}</span>{(m.sku || m.supplierId) && <span className="block text-xs text-slate-500 truncate">{[m.sku, suppliers.find((s) => s.id === m.supplierId)?.name].filter(Boolean).join(" · ")}</span>}</span>
+              <span className="min-w-0"><span className="block font-medium truncate">{m.name}{m.kind === "PART" && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 font-normal">Zukaufteil</span>}{m.amsMeasured && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-normal" title={(m.amsSources ?? []).join(", ") + " - der Verbrauch wird aus dem AMS gemessen und automatisch abgebucht, nicht über Rechnungs-Rezepte"}>AMS-gemessen</span>}</span>{(m.sku || m.supplierId) && <span className="block text-xs text-slate-500 truncate">{[m.sku, suppliers.find((s) => s.id === m.supplierId)?.name].filter(Boolean).join(" · ")}</span>}</span>
               <span className="text-right">{stockValue}</span>
               <span className="text-right text-slate-500">{formatUnitPrice(m.costPerUnitCents)}/{m.unit}</span>
               {actions}
             </div>
             {/* Mobile */}
-            <MobileCard title={m.name} subtitle={m.sku || undefined} actions={actions}>
+            <MobileCard title={m.name} subtitle={[m.kind === "PART" ? "Zukaufteil" : "", m.sku].filter(Boolean).join(" · ") || undefined} actions={actions}>
               <MobileField label="Bestand" value={stockValue} />
               <MobileField label="Preis/Einheit" value={`${formatUnitPrice(m.costPerUnitCents)}/${m.unit}`} />
             </MobileCard>

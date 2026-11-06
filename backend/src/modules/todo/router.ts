@@ -57,8 +57,8 @@ todoRouter.get("/", async (req, res) => {
 
   const items = buildTodo({
     now,
-    overdueInvoices: overdue.map((i) => ({ id: i.id, number: i.invoiceNumber, customer: i.customer.name, totalCents: i.totalCents, dueDate: i.dueDate })),
-    openQuotes: quotes.map((q) => ({ id: q.id, number: q.quoteNumber, customer: q.customer.name, issueDate: q.issueDate, emailSentAt: q.emailSentAt, validUntil: q.validUntil, hasFollowUp: quotesWithFollowUp.has(q.id) })),
+    overdueInvoices: overdue.map((i) => ({ id: i.id, number: i.invoiceNumber, customer: i.customer.name, totalCents: i.totalCents, dueDate: i.dueDate, assigneeId: i.assigneeId })),
+    openQuotes: quotes.map((q) => ({ id: q.id, number: q.quoteNumber, customer: q.customer.name, issueDate: q.issueDate, emailSentAt: q.emailSentAt, validUntil: q.validUntil, hasFollowUp: quotesWithFollowUp.has(q.id), assigneeId: q.assigneeId })),
     orders: orders.map((o) => ({ id: o.id, number: o.confirmationNumber, customer: o.customer.name, productionStatus: o.productionStatus, expectedDeliveryDate: o.expectedDeliveryDate, shippedAt: o.shippedAt, hasInvoice: ordersWithInvoice.has(o.id), assigneeId: o.assigneeId, itemNames: o.items.map((x) => x.description.split("\n")[0]), runningJobs: running.get(o.id) ?? 0, finishedJobs: finished.get(o.id) ?? 0 })),
     oldDrafts: draftCounts.reduce((a, b) => a + b, 0),
     lowStock: materials.filter((m) => m.minStock !== null && m.stockQuantity <= m.minStock).map((m) => m.name),

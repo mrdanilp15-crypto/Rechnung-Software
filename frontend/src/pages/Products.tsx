@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Fragment, FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Fuse from "fuse.js";
@@ -18,6 +19,8 @@ interface Material {
   name: string;
   unit: string;
   costPerUnitCents?: number;
+  /** FILAMENT (Druckmaterial) oder PART (Zukaufteil wie Schrauben, Magnete) */
+  kind?: string;
 }
 
 type Rates = CostRates;
@@ -98,6 +101,8 @@ export default function Products() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [materialRows, setMaterialRows] = useState<MaterialUsageRow[]>([]);
+  // Zukaufteile aus dem Lager (Materialart PART): Menge je verkaufter Einheit (nicht je Druckplatte), ohne Ausschuss
+  const [stockPartRows, setStockPartRows] = useState<MaterialUsageRow[]>([]);
   // Bauteile (Produkt aus mehreren 3MF): ihre Summe bestimmt Druckzeit und Material des Produkts
   const [partRows, setPartRows] = useState<PartRow[]>([]);
   const partsMode = partRows.length > 0;
@@ -162,6 +167,7 @@ export default function Products() {
     setEditingId(null);
     setForm(emptyForm);
     setMaterialRows([]);
+    setStockPartRows([]);
     setPartRows([]);
     setTierRows([]);
     setExtraRows([]);
@@ -192,7 +198,8 @@ export default function Products() {
     setExtraRows((p.extraCosts ?? []).map((x) => (x.quantity && x.unitCents != null ? { label: x.label, qty: String(x.quantity), amountEur: (x.unitCents / 100).toFixed(2) } : { label: x.label, qty: "1", amountEur: (x.amountCents / 100).toFixed(2) })));
     setTierRows((p.priceTiers ?? []).map((t) => ({ minQuantity: String(t.minQuantity), priceEur: (t.unitPriceCents / 100).toFixed(2) })));
     setCalcQty("1");
-    setMaterialRows(p.materials.map((m) => ({ materialId: m.materialId, quantityPerUnit: field(m.quantityPerUnit * n), override: m.costOverrideCents != null ? field(m.costOverrideCents / 100) : "" })));
+    setStockPartRows(p.materials.filter((m) => m.material.kind === "PART").map((m) => ({ materialId: m.materialId, quantityPerUnit: field(m.quantityPerUnit), override: m.costOverrideCents != null ? field(m.costOverrideCents / 100) : "" })));
+    setMaterialRows(p.materials.filter((m) => m.material.kind !== "PART").map((m) => ({ materialId: m.materialId, quantityPerUnit: field(m.quantityPerUnit * n), override: m.costOverrideCents != null ? field(m.costOverrideCents / 100) : "" })));
     setPartRows((p.parts ?? []).map((x) => ({ key: newPartKey(), name: x.name, qty: String(x.quantityPerProduct), pieces: String(x.piecesPerPlate), minutes: String(x.printMinutes), documentId: x.documentId, fileName: x.fileName, materials: (x.materials ?? []).map((m) => ({ materialId: m.materialId, quantity: String(m.quantity) })) })));
     setShowForm(true);
   }
@@ -214,8 +221,12 @@ export default function Products() {
   }
 
   function addMaterialRow() {
-    if (materials.length === 0) return;
-    setMaterialRows((rows) => [...rows, { materialId: materials[0].id, quantityPerUnit: "", override: "" }]);
+    if (filamentMats.length === 0) return;
+    setMaterialRows((rows) => [...rows, { materialId: filamentMats[0].id, quantityPerUnit: "", override: "" }]);
+  }
+  function addStockPartRow() {
+    if (partMats.length === 0) return;
+    setStockPartRows((rows) => [...rows, { materialId: partMats[0].id, quantityPerUnit: "1", override: "" }]);
   }
   // Werte aus einer fertig geslicten 3MF: Druckzeit und Materialverbrauch gelten für die ganze Platte
   function applyFrom3mf(r: Applied3mf) {
@@ -264,7 +275,11 @@ export default function Products() {
         printMinutes: parseFloat(p.minutes.replace(",", ".")) || 0,
         materials: p.materials.filter((m) => m.materialId && parseFloat(m.quantity) > 0).map((m) => ({ materialId: m.materialId, quantity: parseFloat(m.quantity.replace(",", ".")) })),
       })),
-      materials: validMaterialRows.map((r) => ({ materialId: r.materialId, quantityPerUnit: parseFloat(r.quantityPerUnit) / n, costOverrideCents: r.override.trim() !== "" && parseFloat(r.override) >= 0 ? parseFloat(r.override) * 100 : null })),
+      materials: [
+        ...validMaterialRows.map((r) => ({ materialId: r.materialId, quantityPerUnit: parseFloat(r.quantityPerUnit) / n, costOverrideCents: r.override.trim() !== "" && parseFloat(r.override) >= 0 ? parseFloat(r.override) * 100 : null })),
+        // Zukaufteile: Menge je verkaufter Einheit, nicht durch die Stück pro Platte geteilt
+        ...stockPartRows.filter((r) => r.materialId && parseFloat(r.quantityPerUnit.replace(",", ".")) > 0).map((r) => ({ materialId: r.materialId, quantityPerUnit: parseFloat(r.quantityPerUnit.replace(",", ".")), costOverrideCents: r.override.trim() !== "" && parseFloat(r.override) >= 0 ? parseFloat(r.override) * 100 : null })),
+      ],
     };
     try {
       await run(async () => {
@@ -300,9 +315,15 @@ export default function Products() {
   function formExtras(quantity: number) {
     return { extraCostsCents: extraTotalCents, setupMinutes: parseFloat(form.setupMinutes) || 0, packagingCents: Math.round((parseFloat(form.packagingEur) || 0) * 100), extraMaterialPercent: parseFloat(form.extraMaterialPercent) || 0, quantity };
   }
+  const filamentMats = materials.filter((m) => m.kind !== "PART");
+  const partMats = materials.filter((m) => m.kind === "PART");
+  const livePartsUsed = stockPartRows
+    .map((r) => ({ quantityPerUnit: parseFloat(r.quantityPerUnit.replace(",", ".")) || 0, part: true, costPerUnitCents: r.override.trim() !== "" && parseFloat(r.override) >= 0 ? parseFloat(r.override) * 100 : materials.find((m) => m.id === r.materialId)?.costPerUnitCents ?? 0 }))
+    .filter((r) => r.quantityPerUnit > 0);
   const liveUsed = materialRows
     .map((r) => ({ quantityPerUnit: (parseFloat(r.quantityPerUnit) || 0) / pieces, costPerUnitCents: r.override.trim() !== "" && parseFloat(r.override) >= 0 ? parseFloat(r.override) * 100 : materials.find((m) => m.id === r.materialId)?.costPerUnitCents ?? 0 }))
-    .filter((r) => r.quantityPerUnit > 0);
+    .filter((r) => r.quantityPerUnit > 0)
+    .concat(livePartsUsed as never[]);
   const costAtQuantity = (q: number) =>
     calcCost(liveUsed, (parseFloat(form.printTimeMinutes) || 0) / pieces, parseFloat(form.laborMinutes) || 0, rates, printers.find((pr) => pr.id === form.printerId), formExtras(q));
   const liveCost = costAtQuantity(Math.max(1, parseFloat(calcQty) || 1));
@@ -373,14 +394,14 @@ export default function Products() {
           </div>
 
           {editingId ? (
-            <ProductFiles productId={editingId} productName={form.name} materials={materials} onApply={applyFrom3mf} parts={partRows.map((p) => ({ key: p.key, name: p.name || "Bauteil" }))} onApplyPart={applyPart} imageDocumentId={products.find((p) => p.id === editingId)?.imageDocumentId} onSetImage={async (docId) => { try { await api.patch(`/products/${editingId}`, { imageDocumentId: docId }); load(); } catch (e: any) { setError(e?.response?.data?.error || "Produktbild konnte nicht gesetzt werden"); } }} />
+            <ProductFiles productId={editingId} productName={form.name} materials={filamentMats} onApply={applyFrom3mf} parts={partRows.map((p) => ({ key: p.key, name: p.name || "Bauteil" }))} onApplyPart={applyPart} imageDocumentId={products.find((p) => p.id === editingId)?.imageDocumentId} onSetImage={async (docId) => { try { await api.patch(`/products/${editingId}`, { imageDocumentId: docId }); load(); } catch (e: any) { setError(e?.response?.data?.error || "Produktbild konnte nicht gesetzt werden"); } }} />
           ) : (
             <p className="text-xs text-slate-500">Dateien (STL, 3MF, STEP) mit Versionen lassen sich zuordnen, sobald das Produkt einmal gespeichert ist. Aus einer 3MF kannst du dann Druckzeit und Materialverbrauch übernehmen.</p>
           )}
 
           {partsMode ? (
             <>
-              <ProductParts rows={partRows} setRows={setPartRows} materials={materials} />
+              <ProductParts rows={partRows} setRows={setPartRows} materials={filamentMats} />
               {materialRows.length > 0 && (
                 <div>
                   <label className="block text-sm mb-1">Materialverbrauch pro {form.unit || "Einheit"} (Summe der Bauteile)</label>
@@ -417,16 +438,16 @@ export default function Products() {
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="block text-sm">Materialverbrauch {pieces > 1 ? "pro Druckplatte" : `pro ${form.unit || "Einheit"}`} (optional)</label>
-              <button type="button" onClick={addMaterialRow} disabled={materials.length === 0} className="text-brand hover:underline text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+              <button type="button" onClick={addMaterialRow} disabled={filamentMats.length === 0} className="text-brand hover:underline text-sm disabled:opacity-50 disabled:cursor-not-allowed">
                 + Material hinzufügen
               </button>
             </div>
             <p className="text-xs text-slate-500 mb-2">Wie viel Material ein Stück verbraucht - den Wert zeigt Ihr Slicer (Bambu Studio, Cura, PrusaSlicer) nach dem Slicen an, <strong>inklusive Stützstrukturen, Skirt und Purge</strong>. Beim Erstellen einer Rechnung wird der Bestand automatisch um diese Menge verringert.</p>
-            {materials.length === 0 && <p className="text-xs text-slate-500">Noch kein Material angelegt - siehe Katalog → Material (Lager).</p>}
+            {filamentMats.length === 0 && <p className="text-xs text-slate-500">Noch kein Material angelegt - siehe Katalog → Material (Lager).</p>}
             {materialRows.map((row, idx) => (
               <div key={idx} className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_130px_150px_auto] gap-2 mb-2">
                 <select value={row.materialId} onChange={(e) => updateMaterialRow(idx, { materialId: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
-                  {materials.map((m) => (
+                  {filamentMats.map((m) => (
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
                 </select>
@@ -460,6 +481,33 @@ export default function Products() {
               </div>
             </>
           )}
+
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-sm">Zukaufteile aus dem Lager pro {form.unit || "Einheit"} (optional)</label>
+              <button type="button" onClick={addStockPartRow} disabled={partMats.length === 0} className="text-brand hover:underline text-sm disabled:opacity-50 disabled:cursor-not-allowed">+ Zukaufteil hinzufügen</button>
+            </div>
+            <p className="text-xs text-slate-500 mb-2">Teile, die du einkaufst und mit verbaust (Schrauben, Magnete, Federn ...): einmal unter <Link to="/catalog?tab=materials" className="text-brand hover:underline">Katalog → Material</Link> mit Einkaufspreis, Lieferant und Bestand anlegen (Art: Zukaufteil), hier nur die <strong>Menge je verkaufter Einheit</strong> wählen. Der Preis kommt aus dem Lager, ändert sich der Einkaufspreis, passen sich alle Produkte an. Beim Verkauf werden sie vom Bestand abgebucht, bei knappem Bestand kommt die Nachbestellung.</p>
+            {partMats.length === 0 && <p className="text-xs text-slate-500">Noch kein Zukaufteil angelegt - unter Katalog → Material mit Art "Zukaufteil" anlegen. Für einmalige Posten ohne Lager gibt es unten "Zukaufteile &amp; Veredelung".</p>}
+            {stockPartRows.map((row, idx) => {
+              const mat = materials.find((m) => m.id === row.materialId);
+              const unitCents = row.override.trim() !== "" && parseFloat(row.override) >= 0 ? parseFloat(row.override) * 100 : mat?.costPerUnitCents ?? 0;
+              const patch = (p: Partial<MaterialUsageRow>) => setStockPartRows((rows) => rows.map((r, i) => (i === idx ? { ...r, ...p } : r)));
+              return (
+                <div key={idx} className="flex flex-wrap items-center gap-2 mb-2">
+                  <select value={row.materialId} onChange={(e) => patch({ materialId: e.target.value })} className="min-w-0 w-full sm:w-auto sm:flex-1 sm:min-w-[160px] px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm">
+                    {partMats.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    {!mat && <option value={row.materialId}>(nicht mehr verfügbar)</option>}
+                  </select>
+                  <input type="number" step="any" min="0" inputMode="decimal" aria-label={`Menge je ${form.unit || "Einheit"} (${mat?.unit ?? "Stk."})`} title={`Menge je verkaufter Einheit in ${mat?.unit ?? "Stk."}`} placeholder="Menge" value={row.quantityPerUnit} onFocus={(e) => e.target.select()} onChange={(e) => patch({ quantityPerUnit: e.target.value })} className="min-w-0 w-20 px-2 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
+                  <span className="text-xs text-slate-500">{mat?.unit ?? "Stk."} à</span>
+                  <input type="number" step="any" min="0" inputMode="decimal" aria-label="Eigener Preis je Einheit in Euro (optional)" title={`Eigener Preis nur für dieses Produkt. Leer = Lagerpreis (${new Intl.NumberFormat("de-DE", { maximumFractionDigits: 4 }).format((mat?.costPerUnitCents ?? 0) / 100)} €)`} placeholder={`${new Intl.NumberFormat("de-DE", { maximumFractionDigits: 4 }).format((mat?.costPerUnitCents ?? 0) / 100)} €`} value={row.override} onFocus={(e) => e.target.select()} onChange={(e) => patch({ override: e.target.value })} className={`min-w-0 w-24 px-2 py-2 rounded border bg-white dark:bg-slate-800 text-sm ${row.override.trim() !== "" ? "border-brand" : "border-slate-300 dark:border-slate-600"}`} />
+                  <span className="text-xs text-slate-500 whitespace-nowrap ml-auto">= {formatPrice((parseFloat(row.quantityPerUnit.replace(",", ".")) || 0) * unitCents)}</span>
+                  <button type="button" onClick={() => setStockPartRows((rows) => rows.filter((_, i) => i !== idx))} className="text-red-500 px-1" aria-label="Zukaufteil entfernen">✕</button>
+                </div>
+              );
+            })}
+          </div>
 
           <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-3">
             <div className="text-sm font-medium">Kalkulation (optional)</div>
@@ -529,6 +577,7 @@ export default function Products() {
                   <input id="calc-qty" type="number" min="1" step="1" value={calcQty} onFocus={(e) => e.target.select()} onChange={(e) => setCalcQty(e.target.value)} className="w-20 px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-right" />
                 </div>
                 <div className="flex justify-between"><span className="text-slate-500">Material (inkl. {rates.materialWastePercent + (parseFloat(form.extraMaterialPercent) || 0)}% Ausschuss/Verlust)</span><span>{formatPrice(liveCost.material)}</span></div>
+                {liveCost.purchased > 0 && <div className="flex justify-between"><span className="text-slate-500">Zukaufteile aus dem Lager</span><span>{formatPrice(liveCost.purchased)}</span></div>}
                 {form.printerId ? (
                   <>
                     <div className="flex justify-between"><span className="text-slate-500">Strom</span><span>{formatPrice(liveCost.electricity)}</span></div>
@@ -679,7 +728,7 @@ export default function Products() {
                   )}
                   {(() => {
                     const cost = calcCost(
-                      p.materials.map((m) => ({ quantityPerUnit: m.quantityPerUnit, costPerUnitCents: m.costOverrideCents ?? m.material.costPerUnitCents ?? 0 })),
+                      p.materials.map((m) => ({ quantityPerUnit: m.quantityPerUnit, costPerUnitCents: m.costOverrideCents ?? m.material.costPerUnitCents ?? 0, part: m.material.kind === "PART" })),
                       p.printTimeMinutes ?? 0,
                       p.laborMinutes ?? 0,
                       rates,

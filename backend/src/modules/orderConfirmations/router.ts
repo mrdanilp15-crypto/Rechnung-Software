@@ -292,6 +292,7 @@ orderConfirmationsRouter.post("/:id/convert-to-invoice", async (req, res) => {
       vatNoticeKey: financials.vatNoticeKey,
       sourceOrderConfirmationId: source.id,
       sourceQuoteId: source.sourceQuoteId,
+      assigneeId: source.assigneeId,
       introText: company.invoiceIntroText,
       closingText: company.invoiceClosingText,
       footerText: company.invoiceFooterText,
