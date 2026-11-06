@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { AssigneeSelect } from "../components/AssigneeSelect";
 import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
+import { StatusChip } from "../components/StatusChip";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { useToast } from "../components/Toast";
 import { DunningPanel } from "../components/DunningPanel";
@@ -296,7 +297,7 @@ export default function InvoiceDetail() {
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 text-sm grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1">
         <p><strong>{t("invoices.customer")}:</strong> {invoice.customer.name}</p>
         <p><strong>E-Mail:</strong> {invoice.customer.email || <span className="text-slate-400">keine hinterlegt</span>}</p>
-        <p><strong>{t("invoices.status")}:</strong> {invoice.status}</p>
+        <p><strong>{t("invoices.status")}:</strong> <StatusChip status={invoice.status} kind="INVOICE" isCancellationDocument={invoice.isCancellationDocument} emailed={invoice.emailStatus === "SENT"} /></p>
         <p><strong>Rechnungsdatum:</strong> {new Date(invoice.issueDate).toLocaleDateString("de-DE")}</p>
         <p><strong>{t("invoices.dueDate")}:</strong> {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString("de-DE") : "-"}</p>
         <p>

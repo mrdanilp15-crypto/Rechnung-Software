@@ -124,7 +124,7 @@ export default function Invoices() {
           {invoices.map((inv) => {
             // Korrekturbelege (Storno/Gutschrift) erhalten statt "Versendet" eine eigene Kennzeichnung -
             // sonst sind sie in der Liste nicht von normalen Rechnungen zu unterscheiden.
-            const statusBadge = <StatusChip status={inv.status} kind="INVOICE" isCancellationDocument={inv.isCancellationDocument} />;
+            const statusBadge = <StatusChip status={inv.status} kind="INVOICE" isCancellationDocument={inv.isCancellationDocument} emailed={inv.emailStatus === "SENT"} />;
             const emailStatus = inv.emailStatus === "SENT" ? "✓ gesendet" : inv.emailStatus === "FAILED" ? "✕ Fehler" : "-";
             const checkbox = (
               <input

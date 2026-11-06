@@ -197,7 +197,7 @@ export default function Dashboard() {
 
   const ringParts = [
     { label: "Entwurf", count: invoices.filter((r) => r.status === "DRAFT").length, color: "#f59e0b" },
-    { label: "Versendet", count: invoices.filter((r) => r.status === "SENT").length, color: "#3b82f6" },
+    { label: "Offen", count: invoices.filter((r) => r.status === "SENT").length, color: "#3b82f6" },
     { label: "Überfällig", count: overdue.length, color: "#ef4444" },
     { label: "Bezahlt", count: invoices.filter((r) => r.status === "PAID").length, color: "#22c55e" },
   ];

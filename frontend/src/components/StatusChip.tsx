@@ -17,7 +17,9 @@ export function statusInfo(status: string, opts: { kind?: string; isCancellation
   switch (status) {
     case "DRAFT": return { label: "Entwurf", tone: "amber" };
     case "SENT":
-      if (!opts.kind || opts.kind === "INVOICE") return { label: "Versendet", tone: "blue" };
+      // Rechnung: "Versendet" nur, wenn wirklich eine E-Mail raus ist - sonst "Offen" (ausgestellt, noch nicht bezahlt)
+      if (opts.kind === "INVOICE") return opts.emailed ? { label: "Versendet", tone: "blue" } : { label: "Offen", tone: "blue" };
+      if (!opts.kind) return { label: "Versendet", tone: "blue" };
       // Angebot/Auftrag/Lieferschein: "Fertig" heißt nur fertiggestellt - "Versendet" erst, wenn tatsächlich eine E-Mail verschickt wurde
       return opts.emailed ? { label: "Versendet", tone: "blue" } : { label: "Fertig", tone: "green" };
     case "PAID": return { label: "Bezahlt", tone: "green" };
