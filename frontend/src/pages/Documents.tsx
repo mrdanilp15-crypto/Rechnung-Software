@@ -52,7 +52,11 @@ const kindLabel = (row: { kind: Kind; invoiceKind?: string }) =>
 const money = (cents: number | null) => (cents === null ? "-" : new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100));
 const formatDate = (iso?: string | null) => (iso ? new Intl.DateTimeFormat("de-DE").format(new Date(iso)) : "-");
 
-const ROW_COLUMNS = "90px 130px 1fr 90px 100px 110px 300px";
+/** Rechnung ausgestellt, aber noch nicht bezahlt (offen oder überfällig), ohne Korrekturbelege */
+const isOpenInvoice = (r: { kind: Kind; status: string; isCancellationDocument?: boolean }) =>
+  r.kind === "INVOICE" && !r.isCancellationDocument && (r.status === "SENT" || r.status === "OVERDUE");
+
+const ROW_COLUMNS ="90px 130px 1fr 90px 100px 110px 300px";
 
 /** Alle Belegarten in einer Liste - Entwürfe zuerst, Filter nach Art/Entwurf, Suche, Weiterführen zum nächsten Beleg. */
 export default function Documents() {
@@ -117,7 +121,7 @@ export default function Documents() {
   }, [newOpen]);
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { ALL: rows.length, DRAFT: rows.filter((r) => r.status === "DRAFT").length };
+    const c: Record<string, number> = { ALL: rows.length, DRAFT: rows.filter((r) => r.status === "DRAFT").length, OPEN_INVOICE: rows.filter(isOpenInvoice).length };
     for (const k of KIND_ORDER) c[k] = rows.filter((r) => r.kind === k).length;
     return c;
   }, [rows]);
@@ -126,7 +130,8 @@ export default function Documents() {
     const needle = q.trim().toLowerCase();
     return rows.filter((r) => {
       if (filter === "DRAFT" && r.status !== "DRAFT") return false;
-      if (filter !== "ALL" && filter !== "DRAFT" && r.kind !== filter) return false;
+      if (filter === "OPEN_INVOICE" && !isOpenInvoice(r)) return false;
+      if (filter !== "ALL" && filter !== "DRAFT" && filter !== "OPEN_INVOICE" && r.kind !== filter) return false;
       if (needle && !`${r.number ?? ""} ${r.customerName}`.toLowerCase().includes(needle)) return false;
       return true;
     });
@@ -365,6 +370,7 @@ export default function Documents() {
       <div className="flex flex-wrap items-center gap-2 mb-4">
         {chip("ALL", "Alle")}
         {chip("DRAFT", "Entwürfe")}
+        {chip("OPEN_INVOICE", "Offene Rechnungen")}
         {KIND_ORDER.map((k) => chip(k, KIND_INFO[k].plural))}
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Suchen (Nummer, Kunde) ..." className="ml-auto w-full sm:w-64 px-3 py-1.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
       </div>

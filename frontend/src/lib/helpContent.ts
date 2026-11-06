@@ -51,7 +51,7 @@ export const HELP: HelpTopic[] = [
     title: "Heute zu tun",
     short: "Alles, was Aufmerksamkeit braucht, in einer Liste. Vorschläge bestätigst du mit einem Klick - es passiert nichts von selbst.",
     body: [
-      "Die Liste sammelt: überfällige Rechnungen (mit Link zur Erinnerung/Mahnung), Angebote ohne Antwort seit 7 Tagen und abgelaufene Angebote (mit vorbereiteter Nachfass-Mail), versandbereite Aufträge, Liefertermine, versendete Aufträge ohne Rechnung, knappes Material und Fertigteile, fällige Wartung, nicht zugeordnete Zahlungseingänge und Drucke ohne Auftrag.",
+      "Die Liste sammelt: überfällige Rechnungen (mit Link zur Erinnerung/Mahnung), Rechnungen, die schon über 14 Tage offen sind (schon bezahlt, aber nicht abgehakt?), Angebote ohne Antwort seit 7 Tagen und abgelaufene Angebote (mit vorbereiteter Nachfass-Mail), versandbereite Aufträge, Liefertermine, versendete Aufträge ohne Rechnung, knappes Material und Fertigteile, fällige Wartung, nicht zugeordnete Zahlungseingänge und Drucke ohne Auftrag.",
       "Manche Punkte haben einen Knopf (z.B. \"Auf In Produktion setzen\" oder \"Druck dem Auftrag zuordnen\"): erst dein Klick führt die Aktion aus. Mit \"Nur meine\" siehst du nur Punkte zu Aufträgen, Angeboten und Rechnungen, für die du zuständig bist.",
     ],
     keywords: "aufgaben todo erinnerung vorschläge",

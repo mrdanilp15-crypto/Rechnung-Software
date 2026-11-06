@@ -45,6 +45,8 @@ export interface TodoOrder {
 export interface TodoInput {
   now: Date;
   overdueInvoices: { id: string; number: string | null; customer: string; totalCents: number; dueDate: Date | null; assigneeId?: string | null }[];
+  /** Ausgestellte, noch nicht überfällige Rechnungen, die schon länger als LONG_OPEN_DAYS offen sind (evtl. bezahlt, aber nicht abgehakt) */
+  longOpenInvoices?: { count: number; totalCents: number };
   /** Versendete oder abgelaufene Angebote */
   openQuotes: { id: string; number: string; customer: string; issueDate: Date; emailSentAt: Date | null; validUntil: Date | null; hasFollowUp: boolean; assigneeId?: string | null }[];
   /** Aufträge (nicht ungültig, fertiggestellt) */
@@ -63,6 +65,7 @@ export interface TodoInput {
 const DAY = 86_400_000;
 const FOLLOW_UP_DAYS = 7;
 const SOON_DAYS = 3;
+export const LONG_OPEN_DAYS = 14;
 const SHIPPED_WITHOUT_INVOICE_DAYS = 60;
 
 const eur = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100).replace(/ /g, " ");
@@ -91,9 +94,22 @@ export function buildTodo(i: TodoInput): TodoItem[] {
       kind: "overdue",
       severity: "high",
       title: `Rechnung ${inv.number ?? ""} überfällig`.replace("  ", " "),
-      detail: `${inv.customer} · ${eur(inv.totalCents)}${late ? ` · seit ${late} ${plural(late, "Tag", "Tagen")}` : ""} - Erinnerung oder Mahnung vorbereiten`,
+      detail: `${inv.customer} · ${eur(inv.totalCents)}${late ? ` · seit ${late} ${plural(late, "Tag", "Tagen")}` : ""} - schon bezahlt? Dann als bezahlt markieren, sonst Erinnerung oder Mahnung vorbereiten`,
       link: `/invoices/${inv.id}?dunning=1`,
       assigneeId: inv.assigneeId ?? null,
+    });
+  }
+
+  // Lange offene Rechnungen (noch nicht überfällig): oft schon bezahlt, aber nicht abgehakt - dann fehlt der Betrag im Umsatz
+  if (i.longOpenInvoices && i.longOpenInvoices.count > 0) {
+    const n = i.longOpenInvoices.count;
+    items.push({
+      id: "long-open-invoices",
+      kind: "long-open-invoices",
+      severity: "normal",
+      title: `${n} ${plural(n, "Rechnung ist", "Rechnungen sind")} seit über ${LONG_OPEN_DAYS} Tagen offen (${eur(i.longOpenInvoices.totalCents)})`,
+      detail: "Schon bezahlt? Dann als bezahlt markieren (oder im Zahlungsabgleich zuordnen) - sonst fehlt der Betrag im Umsatz",
+      link: "/documents?type=OPEN_INVOICE",
     });
   }
 

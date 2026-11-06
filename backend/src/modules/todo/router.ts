@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../../db/prisma";
 import { requireAuth } from "../../middleware/auth";
 import { printerHours, taskStatus } from "../maintenance/service";
-import { buildTodo } from "./build";
+import { buildTodo, LONG_OPEN_DAYS } from "./build";
 
 /** "Heute zu tun" (Startseite): sammelt alles, was Aufmerksamkeit braucht. Nur lesend. */
 export const todoRouter = Router();
@@ -14,8 +14,9 @@ todoRouter.get("/", async (req, res) => {
   const companyId = req.auth!.companyId;
   const now = new Date();
 
-  const [overdue, quotes, orders, draftCounts, materials, tasks, unassignedPrints, trackedProducts, unmatchedPayments] = await Promise.all([
+  const [overdue, longOpen, quotes, orders, draftCounts, materials, tasks, unassignedPrints, trackedProducts, unmatchedPayments] = await Promise.all([
     prisma.invoice.findMany({ where: { companyId, status: "OVERDUE", isCancellationDocument: false }, include: { customer: { select: { name: true } } }, orderBy: { dueDate: "asc" } }),
+    prisma.invoice.aggregate({ where: { companyId, status: "SENT", isCancellationDocument: false, issueDate: { lt: new Date(now.getTime() - LONG_OPEN_DAYS * DAY) } }, _count: { _all: true }, _sum: { totalCents: true } }),
     prisma.quote.findMany({ where: { companyId, status: { in: ["SENT", "EXPIRED"] } }, include: { customer: { select: { name: true } } }, orderBy: { issueDate: "asc" } }),
     prisma.orderConfirmation.findMany({
       where: { companyId, voidedAt: null, status: { not: "DRAFT" }, OR: [{ productionStatus: { not: "SHIPPED" } }, { shippedAt: { gte: new Date(now.getTime() - 60 * DAY) } }] },
@@ -58,6 +59,7 @@ todoRouter.get("/", async (req, res) => {
   const items = buildTodo({
     now,
     overdueInvoices: overdue.map((i) => ({ id: i.id, number: i.invoiceNumber, customer: i.customer.name, totalCents: i.totalCents, dueDate: i.dueDate, assigneeId: i.assigneeId })),
+    longOpenInvoices: { count: longOpen._count._all, totalCents: longOpen._sum.totalCents ?? 0 },
     openQuotes: quotes.map((q) => ({ id: q.id, number: q.quoteNumber, customer: q.customer.name, issueDate: q.issueDate, emailSentAt: q.emailSentAt, validUntil: q.validUntil, hasFollowUp: quotesWithFollowUp.has(q.id), assigneeId: q.assigneeId })),
     orders: orders.map((o) => ({ id: o.id, number: o.confirmationNumber, customer: o.customer.name, productionStatus: o.productionStatus, expectedDeliveryDate: o.expectedDeliveryDate, shippedAt: o.shippedAt, hasInvoice: ordersWithInvoice.has(o.id), assigneeId: o.assigneeId, itemNames: o.items.map((x) => x.description.split("\n")[0]), runningJobs: running.get(o.id) ?? 0, finishedJobs: finished.get(o.id) ?? 0 })),
     oldDrafts: draftCounts.reduce((a, b) => a + b, 0),

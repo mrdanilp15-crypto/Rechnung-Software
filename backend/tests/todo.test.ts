@@ -19,6 +19,18 @@ describe("Heute zu tun", () => {
     expect(items[0].detail).toContain("119,00");
     expect(items[0].link).toBe("/invoices/i1?dunning=1");
   });
+  it("fragt bei lange offenen (noch nicht überfälligen) Rechnungen nach, ob sie schon bezahlt sind - gesammelt in einem Punkt", () => {
+    expect(buildTodo({ ...base, longOpenInvoices: { count: 0, totalCents: 0 } })).toEqual([]);
+    const items = buildTodo({ ...base, longOpenInvoices: { count: 2, totalCents: 35000 } });
+    expect(items).toHaveLength(1);
+    expect(items[0].kind).toBe("long-open-invoices");
+    expect(items[0].severity).toBe("normal");
+    expect(items[0].title).toContain("2 Rechnungen sind seit über 14 Tagen offen");
+    expect(items[0].title).toContain("350,00");
+    expect(items[0].detail).toContain("bezahlt");
+    expect(items[0].link).toBe("/documents?type=OPEN_INVOICE");
+    expect(buildTodo({ ...base, longOpenInvoices: { count: 1, totalCents: 100 } })[0].title).toContain("1 Rechnung ist seit");
+  });
   it("erinnert an Angebote ohne Antwort ab 7 Tagen (mit vorbereiteter Nachfass-Mail), aber nicht an solche mit Folgebeleg", () => {
     const q = (id: string, age: number, hasFollowUp = false) => ({ id, number: id, customer: "K", issueDate: ago(age), emailSentAt: null, validUntil: null, hasFollowUp });
     const items = buildTodo({ ...base, openQuotes: [q("A", 3), q("B", 8), q("C", 20, true)] });
