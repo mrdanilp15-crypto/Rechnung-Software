@@ -76,7 +76,8 @@ const productSchema = z.object({
   // Fertigteil-Lager (der Bestand selbst wird nur über /:id/stock gebucht)
   trackStock: z.boolean().optional(),
   stockMin: z.number().min(0).max(1_000_000).nullish(),
-  extraCosts: z.array(z.object({ label: z.string().trim().min(1).max(60), amountCents: z.number().int().min(0).max(100_000_000) })).max(10).nullish(),
+  // Zukaufteile/Veredelung je Einheit: amountCents ist der Betrag je verkaufter Einheit (damit rechnet alles); quantity und unitCents merken nur, wie er zustande kam (z.B. 4 Schrauben je 0,05 EUR)
+  extraCosts: z.array(z.object({ label: z.string().trim().min(1).max(60), amountCents: z.number().int().min(0).max(100_000_000), quantity: z.number().positive().max(100_000).optional(), unitCents: z.number().int().min(0).max(100_000_000).optional() })).max(30).nullish(),
   priceTiers: z
     .array(z.object({ minQuantity: z.number().min(2).max(1_000_000), unitPriceCents: z.number().int().min(0) }))
     .max(10)
@@ -125,7 +126,7 @@ function tiersForDb(tiers: { minQuantity: number; unitPriceCents: number }[] | n
 }
 
 // Weitere Kosten je Stück: leere Liste/null löscht sie
-function extraCostsForDb(list: { label: string; amountCents: number }[] | null | undefined) {
+function extraCostsForDb(list: { label: string; amountCents: number; quantity?: number; unitCents?: number }[] | null | undefined) {
   if (list === undefined) return undefined;
   if (!list || list.length === 0) return Prisma.DbNull;
   return list;

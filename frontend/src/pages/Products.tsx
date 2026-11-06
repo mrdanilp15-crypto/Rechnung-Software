@@ -48,7 +48,7 @@ interface Product {
   priceTiers?: PriceTier[] | null;
   piecesPerPlate?: number;
   imageDocumentId?: string | null;
-  extraCosts?: { label: string; amountCents: number }[] | null;
+  extraCosts?: { label: string; amountCents: number; quantity?: number; unitCents?: number }[] | null;
   trackStock?: boolean;
   stockQuantity?: number;
   stockMin?: number | null;
@@ -74,10 +74,15 @@ interface MaterialUsageRow {
 }
 interface ExtraRow {
   label: string;
+  /** Preis je Stück des Zukaufteils (oder Pauschalbetrag) in Euro */
   amountEur: string;
+  /** Anzahl je verkaufter Einheit, z.B. 4 Schrauben */
+  qty: string;
 }
+/** Kosten dieser Zeile je verkaufter Einheit in Cent */
+const rowCents = (r: ExtraRow) => Math.round((parseFloat(r.qty.replace(",", ".")) || 1) * (parseFloat(r.amountEur) || 0) * 100);
 
-const EXTRA_SUGGESTIONS = ["Lackieren / Bemalen", "Klarlack", "Schleifen / Spachteln", "Magnete einkleben", "Gewindeeinsätze", "Montage", "Geschenkverpackung"];
+const EXTRA_SUGGESTIONS = ["Schrauben", "Magnete", "Gewindeeinsätze", "Feder", "Karabiner / Schlüsselring", "Kugellager", "LED / Elektronik", "Gummifüße", "Lackieren / Bemalen", "Klarlack", "Schleifen / Spachteln", "Montage", "Geschenkverpackung"];
 /** Zahl für ein Eingabefeld: ohne Rechenrauschen (z.B. 0.30000000000000004) */
 const field = (n: number) => String(Math.round(n * 10000) / 10000);
 
@@ -184,7 +189,7 @@ export default function Products() {
       trackStock: !!p.trackStock,
       stockMin: p.stockMin != null ? String(p.stockMin) : "",
     });
-    setExtraRows((p.extraCosts ?? []).map((x) => ({ label: x.label, amountEur: (x.amountCents / 100).toFixed(2) })));
+    setExtraRows((p.extraCosts ?? []).map((x) => (x.quantity && x.unitCents != null ? { label: x.label, qty: String(x.quantity), amountEur: (x.unitCents / 100).toFixed(2) } : { label: x.label, qty: "1", amountEur: (x.amountCents / 100).toFixed(2) })));
     setTierRows((p.priceTiers ?? []).map((t) => ({ minQuantity: String(t.minQuantity), priceEur: (t.unitPriceCents / 100).toFixed(2) })));
     setCalcQty("1");
     setMaterialRows(p.materials.map((m) => ({ materialId: m.materialId, quantityPerUnit: field(m.quantityPerUnit * n), override: m.costOverrideCents != null ? field(m.costOverrideCents / 100) : "" })));
@@ -241,7 +246,7 @@ export default function Products() {
       vatRateBps: form.vatRateBps,
       printTimeMinutes: (parseFloat(form.printTimeMinutes) || 0) / n,
       piecesPerPlate: n,
-      extraCosts: extraRows.filter((x) => x.label.trim() && parseFloat(x.amountEur) > 0).map((x) => ({ label: x.label.trim(), amountCents: Math.round(parseFloat(x.amountEur) * 100) })),
+      extraCosts: extraRows.filter((x) => x.label.trim() && rowCents(x) > 0).map((x) => { const q = parseFloat(x.qty.replace(",", ".")) || 1; return { label: x.label.trim(), amountCents: rowCents(x), ...(q !== 1 ? { quantity: q, unitCents: Math.round((parseFloat(x.amountEur) || 0) * 100) } : {}) }; }),
       laborMinutes: parseFloat(form.laborMinutes) || 0,
       printerId: form.printerId || null,
       setupMinutes: parseFloat(form.setupMinutes) || 0,
@@ -291,7 +296,7 @@ export default function Products() {
 
   // Live-Kalkulation für das gerade bearbeitete Produkt
   const pieces = Math.max(1, Math.floor(parseFloat(form.piecesPerPlate) || 1));
-  const extraTotalCents = extraRows.reduce((s, x) => s + Math.round((parseFloat(x.amountEur) || 0) * 100), 0);
+  const extraTotalCents = extraRows.reduce((s, x) => s + rowCents(x), 0);
   function formExtras(quantity: number) {
     return { extraCostsCents: extraTotalCents, setupMinutes: parseFloat(form.setupMinutes) || 0, packagingCents: Math.round((parseFloat(form.packagingEur) || 0) * 100), extraMaterialPercent: parseFloat(form.extraMaterialPercent) || 0, quantity };
   }
@@ -485,15 +490,17 @@ export default function Products() {
             </div>
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="block text-xs text-slate-500">Veredelung / Nachbearbeitung (Kosten pro {form.unit || "Einheit"})</label>
-                <button type="button" onClick={() => setExtraRows((rows) => [...rows, { label: "", amountEur: "" }])} className="text-brand hover:underline text-sm">+ Posten hinzufügen</button>
+                <label className="block text-xs text-slate-500">Zukaufteile &amp; Veredelung (feste Kosten pro {form.unit || "Einheit"})</label>
+                <button type="button" onClick={() => setExtraRows((rows) => [...rows, { label: "", amountEur: "", qty: "1" }])} className="text-brand hover:underline text-sm">+ Zukaufteil / Posten hinzufügen</button>
               </div>
-              <p className="text-xs text-slate-500 mb-2">Zusätzliche Kosten pro Stück, z.B. Lackieren 40 €, Klarlack 2 €, Magnete 0,50 €. Fremdleistungen und Zubehör gehören hierher; Ihre eigene Arbeitszeit tragen Sie oben als Arbeitszeit ein.</p>
+              <p className="text-xs text-slate-500 mb-2">Alles, was du für ein Stück <strong>dazukaufst oder extern machen lässt</strong>: z.B. 4 Schrauben je 0,05 €, 2 Magnete je 0,50 €, Feder, Lackieren 40 €, Klarlack 2 €. Anzahl mal Einzelpreis fließt in die Selbstkosten ein. Deine eigene Arbeitszeit trägst du oben als Arbeitszeit ein.</p>
               {extraRows.map((row, idx) => (
-                <div key={idx} className="grid grid-cols-[1fr_110px_auto] gap-2 mb-2">
-                  <input list="extra-suggestions" placeholder="Bezeichnung" value={row.label} onChange={(e) => setExtraRows((rows) => rows.map((r, i) => (i === idx ? { ...r, label: e.target.value } : r)))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-                  <input type="number" min="0" step="0.01" placeholder="€" value={row.amountEur} onFocus={(e) => e.target.select()} onChange={(e) => setExtraRows((rows) => rows.map((r, i) => (i === idx ? { ...r, amountEur: e.target.value } : r)))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-                  <button type="button" onClick={() => setExtraRows((rows) => rows.filter((_, i) => i !== idx))} className="text-red-500 px-2">✕</button>
+                <div key={idx} className="flex flex-wrap items-center gap-2 mb-2">
+                  <input list="extra-suggestions" placeholder="Bezeichnung, z.B. Schrauben" value={row.label} onChange={(e) => setExtraRows((rows) => rows.map((r, i) => (i === idx ? { ...r, label: e.target.value } : r)))} className="min-w-0 w-full sm:w-auto sm:flex-1 sm:min-w-[140px] px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-transparent text-sm" />
+                  <input type="number" min="0" step="any" inputMode="decimal" aria-label="Anzahl" title="Anzahl je verkaufter Einheit" placeholder="Anz." value={row.qty} onFocus={(e) => e.target.select()} onChange={(e) => setExtraRows((rows) => rows.map((r, i) => (i === idx ? { ...r, qty: e.target.value } : r)))} className="min-w-0 w-16 px-2 py-2 rounded border border-slate-300 dark:border-slate-600 bg-transparent text-sm" />
+                  <input type="number" min="0" step="0.01" inputMode="decimal" aria-label="Preis je Stück in Euro" title="Preis je Stück in Euro" placeholder="€ je Stk." value={row.amountEur} onFocus={(e) => e.target.select()} onChange={(e) => setExtraRows((rows) => rows.map((r, i) => (i === idx ? { ...r, amountEur: e.target.value } : r)))} className="min-w-0 w-24 px-2 py-2 rounded border border-slate-300 dark:border-slate-600 bg-transparent text-sm" />
+                  <span className="text-xs text-slate-500 whitespace-nowrap ml-auto">= {formatPrice(rowCents(row))}</span>
+                  <button type="button" onClick={() => setExtraRows((rows) => rows.filter((_, i) => i !== idx))} className="text-red-500 px-1" aria-label="Posten entfernen">✕</button>
                 </div>
               ))}
               <datalist id="extra-suggestions">{EXTRA_SUGGESTIONS.map((x) => <option key={x} value={x} />)}</datalist>
@@ -533,8 +540,8 @@ export default function Products() {
                 )}
                 {rates.failRatePercent > 0 && <div className="flex justify-between"><span className="text-slate-500">Fehldrucke ({rates.failRatePercent}% auf Maschinenzeit)</span><span>{formatPrice(liveCost.failures)}</span></div>}
                 <div className="flex justify-between"><span className="text-slate-500">Arbeit{liveCost.setup > 0 ? ` (davon Rüstzeit ${formatPrice(liveCost.setup)})` : ""}</span><span>{formatPrice(liveCost.labor)}</span></div>
-                {extraRows.filter((x) => x.label.trim() && parseFloat(x.amountEur) > 0).map((x, i) => (
-                  <div key={i} className="flex justify-between"><span className="text-slate-500">{x.label}</span><span>{formatPrice(Math.round(parseFloat(x.amountEur) * 100))}</span></div>
+                {extraRows.filter((x) => x.label.trim() && rowCents(x) > 0).map((x, i) => (
+                  <div key={i} className="flex justify-between"><span className="text-slate-500">{x.label}{(parseFloat(x.qty.replace(",", ".")) || 1) !== 1 ? ` (${x.qty}×)` : ""}</span><span>{formatPrice(rowCents(x))}</span></div>
                 ))}
                 {liveCost.packaging > 0 && <div className="flex justify-between"><span className="text-slate-500">Verpackung &amp; Versand</span><span>{formatPrice(liveCost.packaging)}</span></div>}
                 {rates.overheadPercent > 0 && <div className="flex justify-between"><span className="text-slate-500">Gemeinkosten ({rates.overheadPercent}%)</span><span>{formatPrice(liveCost.overhead)}</span></div>}

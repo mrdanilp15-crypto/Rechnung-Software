@@ -156,7 +156,7 @@ In der Rechnungsdetailansicht:
   - **Staffelpreise:** Im Produkt Preise ab einer Mindestmenge hinterlegen (Button "Aus Kalkulation vorschlagen"). In Angeboten, Aufträgen und Rechnungen setzt sich der Stückpreis passend zur Menge automatisch; ein von Hand geänderter Preis bleibt unangetastet.
   - **Druckplatte:** Passen mehrere gleiche Teile auf eine Platte, tragen Sie im Produkt "Stück pro Druckplatte" ein. Druckzeit und Materialverbrauch geben Sie dann
     für die ganze Platte ein (so wie der Slicer sie anzeigt), die Software verteilt sie auf die Stück. Gespeichert und im Lager abgebucht wird je Stück.
-  - **Veredelung / Nachbearbeitung:** Zusatzkosten je Stück als eigene Posten (z.B. Lackieren 40 €, Klarlack 2 €); sie erscheinen einzeln in der Kostenaufstellung.
+  - **Zukaufteile & Veredelung:** feste Kosten je Stück als eigene Posten mit **Anzahl × Einzelpreis** (z.B. 4 Schrauben je 0,05 €, 2 Magnete je 0,50 €, Feder, Lackieren 40 €, Klarlack 2 €). Vorschläge erscheinen beim Tippen; jeder Posten steht einzeln in der Kostenaufstellung und fließt in die Selbstkosten ein.
   - **Materialpreis überschreiben:** Je Materialzeile im Produkt lässt sich ein eigener Preis pro Einheit eintragen (leer = Lagerpreis), z.B. für ein Sondermaterial.
   - **Materialpreis:** Beim Nachbestellen gilt der gleitende Durchschnitt aus Restbestand und neuer Lieferung.
 - **Finanzdiagramm** (*Finanzen → EÜR-Übersicht*): Einnahmen (Monat des Zahlungseingangs), Ausgaben (Monat des Belegdatums) und Gewinn pro Monat, dazu die noch offenen
@@ -353,3 +353,5 @@ Aktionen erlaubt sind:
 
 Ein Konto lässt sich jederzeit deaktivieren (Login wird gesperrt, alle aktiven Sitzungen
 werden ungültig) - Belege und Historie bleiben dabei erhalten.
+
+- **Rechnung gleich fertigstellen (ein Klick):** Beim Auftrag und Angebot (Belegkette auf der Seite, Menü ⋮ in der Belegliste) gibt es neben *→ Rechnung* (Entwurf zum Prüfen) den Knopf **Rechnung gleich fertigstellen**: Die Rechnung wird mit allen Positionen angelegt, fertiggestellt (Rechnungsnummer wird vergeben) und das E-Mail-Formular öffnet sich sofort zum Senden. Vorher kommt eine Rückfrage, weil eine fertiggestellte Rechnung nur noch per Storno korrigiert werden kann.

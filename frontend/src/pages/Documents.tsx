@@ -9,6 +9,7 @@ import { useToast } from "../components/Toast";
 import { RecurringDialog } from "../components/RecurringDialog";
 import { StatusChip } from "../components/StatusChip";
 import { SendDocumentDialog } from "../components/SendDocumentDialog";
+import { createFinalInvoice, QUICK_INVOICE_CONFIRM } from "../lib/quickInvoice";
 import { LinkDocsDialog, type LinkCandidate } from "../components/LinkDocsDialog";
 
 type Kind = "INVOICE" | "QUOTE" | "ORDER_CONFIRMATION" | "DELIVERY_NOTE";
@@ -179,6 +180,18 @@ export default function Documents() {
     }
   }
 
+  /** Rechnung anlegen, fertigstellen und gleich zum Versenden öffnen (ohne Entwurf-Zwischenschritt) */
+  async function convertFinal(row: DocRow) {
+    if (!window.confirm(QUICK_INVOICE_CONFIRM)) return;
+    try {
+      const r = await createFinalInvoice(row.kind === "QUOTE" ? "/quotes" : "/order-confirmations", row.id);
+      showToast(r.message, r.ok ? "success" : "error");
+      navigate(r.path);
+    } catch (err: any) {
+      showToast(err.response?.data?.error || "Rechnung konnte nicht angelegt werden", "error");
+    }
+  }
+
   async function createDownPayment() {
     if (!dpRow) return;
     const percent = parseFloat(dpPercent.replace(",", "."));
@@ -253,6 +266,7 @@ export default function Documents() {
     if ((row.kind === "QUOTE" && row.status !== "DRAFT" && row.status !== "DECLINED") || (row.kind === "ORDER_CONFIRMATION" && row.status !== "DRAFT")) {
       list.push({ label: "→ Anzahlungsrechnung", onClick: () => { setDpPercent("30"); setDpRow(row); } });
       list.push({ label: "→ Rechnung", onClick: () => convert(row, "convert-to-invoice", "/invoices", "Rechnung als Entwurf angelegt") });
+      list.push({ label: "→ Rechnung gleich fertigstellen & senden", onClick: () => convertFinal(row) });
     }
     if (row.kind === "ORDER_CONFIRMATION" && row.status !== "DRAFT") {
       list.push({ label: "→ Lieferschein", onClick: () => convert(row, "convert-to-delivery-note", "/delivery-notes", "Lieferschein als Entwurf angelegt") });

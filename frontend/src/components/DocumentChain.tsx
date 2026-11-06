@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { StatusChip } from "./StatusChip";
 import { PdfLink } from "./PdfLink";
 import { useToast } from "./Toast";
 import { LinkDocsDialog, type LinkCandidate } from "./LinkDocsDialog";
+import { createFinalInvoice, QUICK_INVOICE_CONFIRM } from "../lib/quickInvoice";
 
 /**
  * Vorgangs-Übersicht: die ganze Belegkette zu einem Angebot, Auftrag, Lieferschein oder einer Rechnung (Angebot -> Auftrag -> Lieferschein -> Rechnung).
@@ -104,6 +105,22 @@ export function DocumentChain({ kind, id, onChanged }: { kind: Kind; id: string;
     }
   }
 
+  /** Rechnung aus Auftrag/Angebot in einem Schritt anlegen und fertigstellen, dann gleich zum Senden */
+  async function runFinal(a: Next) {
+    if (!window.confirm(QUICK_INVOICE_CONFIRM)) return;
+    setBusy(a.id);
+    try {
+      const r = await createFinalInvoice(a.from.kind === "QUOTE" ? "/quotes" : "/order-confirmations", a.from.id);
+      showToast(r.message, r.ok ? "success" : "error");
+      onChanged?.();
+      navigate(r.path);
+    } catch (e: any) {
+      showToast(e?.response?.data?.error ?? "Das hat nicht geklappt", "error");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function run(a: Next) {
     setBusy(a.id);
     try {
@@ -177,7 +194,12 @@ export function DocumentChain({ kind, id, onChanged }: { kind: Kind; id: string;
               {actions.length > 0 && (
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   {actions.map((a) => (
-                    <button key={a.id} type="button" disabled={busy !== null} onClick={() => run(a)} title={a.hint} className="px-3 py-1.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-sm disabled:opacity-50">{busy === a.id ? "Wird angelegt ..." : `+ ${a.label}`}</button>
+                    <Fragment key={a.id}>
+                    <button type="button" disabled={busy !== null} onClick={() => run(a)} title={a.hint} className="px-3 py-1.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-sm disabled:opacity-50">{busy === a.id ? "Wird angelegt ..." : `+ ${a.label}`}</button>
+                    {(a.id === "invoice-from-order" || a.id === "invoice-from-quote") && (
+                      <button type="button" disabled={busy !== null} onClick={() => runFinal(a)} title="Rechnung anlegen, fertigstellen und gleich zum Versenden öffnen - ohne Entwurf prüfen" className="px-3 py-1.5 rounded-lg border border-brand text-brand text-sm disabled:opacity-50">Rechnung gleich fertigstellen</button>
+                    )}
+                    </Fragment>
                   ))}
                 </div>
               )}

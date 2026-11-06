@@ -68,6 +68,14 @@ export default function InvoiceDetail() {
   }
   useEffect(load, [id]);
 
+  // Von "Rechnung gleich fertigstellen" kommend (?send=1): das E-Mail-Formular gleich öffnen, sobald die Rechnung geladen ist
+  useEffect(() => {
+    if (!invoice || new URLSearchParams(location.search).get("send") !== "1") return;
+    if (invoice.status === "SENT" && !invoice.emailSentAt) setShowEmailForm(true);
+    navigate(location.pathname, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoice?.id]);
+
   const format = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
 
   async function action(path: string) {
