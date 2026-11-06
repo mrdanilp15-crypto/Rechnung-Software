@@ -14,9 +14,14 @@ describe("Belegkette: nächste Schritte", () => {
     expect(buildNextActions({ quote: node("QUOTE", "AN", "DRAFT"), orders: [], deliveryNotes: [], invoices: [] })).toEqual([]);
     expect(buildNextActions({ quote: node("QUOTE", "AN", "DECLINED"), orders: [], deliveryNotes: [], invoices: [] })).toEqual([]);
   });
-  it("Auftrag ohne alles: Lieferschein, Rechnung und Anzahlung", () => {
+  it("Auftrag ohne alles: Rechnung und Anzahlung zuerst, der Lieferschein zuletzt und als optional gekennzeichnet", () => {
     const n = buildNextActions({ quote: null, orders: [node("ORDER_CONFIRMATION", "AB", "SENT")], deliveryNotes: [], invoices: [] });
-    expect(ids(n)).toEqual(["delivery-note-from-order", "invoice-from-order", "down-payment-from-order"]);
+    expect(ids(n)).toEqual(["invoice-from-order", "down-payment-from-order", "delivery-note-from-order"]);
+    expect(n[2].label).toContain("optional");
+  });
+  it("nach der Rechnung (Vorkasse) bleibt der Lieferschein als optionaler Packzettel wählbar", () => {
+    const n = buildNextActions({ quote: null, orders: [node("ORDER_CONFIRMATION", "AB", "SENT")], deliveryNotes: [], invoices: [node("INVOICE", "RE", "SENT")] });
+    expect(ids(n)).toEqual(["delivery-note-from-order"]);
   });
   it("mit Lieferschein bleibt die Rechnung der nächste Schritt (der Fall aus der Praxis)", () => {
     const n = buildNextActions({ quote: null, orders: [node("ORDER_CONFIRMATION", "AB", "SENT")], deliveryNotes: [node("DELIVERY_NOTE", "LS", "DRAFT")], invoices: [] });

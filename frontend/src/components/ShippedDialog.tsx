@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { TemplatePicker } from "./TemplatePicker";
 import { api } from "../api/client";
 
@@ -21,7 +22,35 @@ const CARRIERS = [
 
 const field = "w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm";
 
-export function ShippedDialog({ orderId, number, customerName, markShipped, initialCarrier, initialTracking, onClose, onDone }: {
+/** Zahlstatus des Auftrags (aus dem Produktionsboard) - nur zur Information vor dem Versand */
+export interface ShipPayment {
+  orderId: string;
+  state: "NONE" | "DRAFT" | "OPEN" | "PARTIAL" | "PAID";
+  openCents: number;
+  invoice: { id: string; number: string | null } | null;
+}
+
+const euro = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
+
+/** Hinweis über dem Versand: Ist die Rechnung noch offen? Sperrt nichts - Firmenkunden mit Zahlungsziel bekommen die Ware ja vor der Zahlung. */
+function PaymentNotice({ payment }: { payment: ShipPayment }) {
+  if (payment.state === "PAID") return <p className="text-xs rounded bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 px-3 py-2">✓ Die Rechnung ist bezahlt.</p>;
+  const link = payment.invoice ? { to: `/invoices/${payment.invoice.id}`, text: payment.invoice.number ? `Rechnung ${payment.invoice.number} ansehen` : "Rechnung ansehen" } : { to: `/orders/${payment.orderId}`, text: "Zum Auftrag (Rechnung schreiben)" };
+  const text =
+    payment.state === "NONE" ? "Zu diesem Auftrag gibt es noch keine Rechnung."
+    : payment.state === "DRAFT" ? "Die Rechnung ist noch ein Entwurf - sie ist weder fertiggestellt noch bezahlt."
+    : payment.state === "PARTIAL" ? `Erst angezahlt: ${payment.openCents > 0 ? `${euro(payment.openCents)} sind noch offen.` : "der Rest ist noch nicht abgerechnet."}`
+    : `Die Rechnung ist noch nicht bezahlt (${euro(payment.openCents)} offen).`;
+  return (
+    <div className="text-xs rounded border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-200 px-3 py-2 space-y-1" role="note">
+      <p><strong>Zahlung prüfen:</strong> {text}</p>
+      <p>Bei Vorkasse erst versenden, wenn das Geld da ist. Bei Kunden mit Zahlungsziel kannst du trotzdem versenden. <Link to={link.to} className="underline font-medium">{link.text}</Link></p>
+    </div>
+  );
+}
+
+export function ShippedDialog({ orderId, number, customerName, markShipped, initialCarrier, initialTracking, payment, onClose, onDone }: {
+  payment?: ShipPayment;
   orderId: string;
   number: string;
   customerName: string;
@@ -29,7 +58,7 @@ export function ShippedDialog({ orderId, number, customerName, markShipped, init
   initialCarrier: string | null;
   initialTracking: string | null;
   onClose: () => void;
-  onDone: (info: { mailSentTo: string | null }) => void;
+  onDone: (info: { mailSentTo: string | null; invoiceDatesSet?: number }) => void;
 }) {
   const [carrier, setCarrier] = useState(initialCarrier ?? "");
   const [tracking, setTracking] = useState(initialTracking ?? "");
@@ -68,9 +97,11 @@ export function ShippedDialog({ orderId, number, customerName, markShipped, init
     setBusy(true);
     setError(null);
     let mailSentTo: string | null = null;
+    let invoiceDatesSet = 0;
     try {
       if (markShipped) {
-        await api.patch(`/production/${orderId}`, { productionStatus: "SHIPPED", carrier: carrier || null, trackingNumber: tracking.trim() || null });
+        const { data } = await api.patch(`/production/${orderId}`, { productionStatus: "SHIPPED", carrier: carrier || null, trackingNumber: tracking.trim() || null });
+        invoiceDatesSet = data?.invoiceDatesSet ?? 0;
       } else {
         await api.patch(`/production/${orderId}`, { carrier: carrier || null, trackingNumber: tracking.trim() || null });
       }
@@ -85,7 +116,7 @@ export function ShippedDialog({ orderId, number, customerName, markShipped, init
           return;
         }
       }
-      onDone({ mailSentTo });
+      onDone({ mailSentTo, invoiceDatesSet });
     } catch (e: any) {
       setError(e?.response?.data?.error ?? "Das hat nicht geklappt.");
       setBusy(false);
@@ -101,6 +132,7 @@ export function ShippedDialog({ orderId, number, customerName, markShipped, init
         </div>
         <div className="p-4 overflow-y-auto space-y-3 text-sm">
           <p className="text-xs text-slate-500">{customerName}</p>
+          {markShipped && payment && <PaymentNotice payment={payment} />}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="block">Versanddienst
               <select value={carrier} onChange={(e) => setCarrier(e.target.value)} className={`${field} mt-1`}>

@@ -506,7 +506,7 @@ export default function Documents() {
       )}
 
       <p className="text-xs text-slate-500 mt-3">
-        Der übliche Ablauf: Angebot → Auftrag → Lieferschein → Rechnung. Über das Menü (⋮) führen Sie einen Beleg mit allen Positionen zum nächsten weiter.{" "}
+        Der übliche Ablauf: Angebot → Auftrag → Rechnung (der Lieferschein ist optional). Über das Menü (⋮) führen Sie einen Beleg mit allen Positionen zum nächsten weiter.{" "}
         <Link to="/invoices" className="text-brand hover:underline">Rechnungen verwalten</Link> (Mehrfachauswahl, E-Mail-Status) · <Link to="/recurring" className="text-brand hover:underline">Wiederkehrende Rechnungen</Link>.
       </p>
     </div>

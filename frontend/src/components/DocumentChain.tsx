@@ -31,11 +31,12 @@ type ActionId = "order-from-quote" | "invoice-from-quote" | "down-payment-from-q
 interface Next { id: ActionId; label: string; hint: string; from: { kind: "QUOTE" | "ORDER_CONFIRMATION"; id: string } }
 interface ChainData { quote: Node | null; orders: Node[]; deliveryNotes: Node[]; invoices: Node[]; next: Next[] }
 
+// Die Rechnung ist der Hauptweg; der Lieferschein steht zuletzt und ist optional (keine Pflicht, bei Vorkasse oft überflüssig)
 const STEPS: { key: "quote" | "orders" | "deliveryNotes" | "invoices"; title: string; kind: Kind }[] = [
   { key: "quote", title: "Angebot", kind: "QUOTE" },
   { key: "orders", title: "Auftrag", kind: "ORDER_CONFIRMATION" },
-  { key: "deliveryNotes", title: "Lieferschein", kind: "DELIVERY_NOTE" },
   { key: "invoices", title: "Rechnung", kind: "INVOICE" },
+  { key: "deliveryNotes", title: "Lieferschein (optional)", kind: "DELIVERY_NOTE" },
 ];
 const STEP_OF: Record<ActionId, "quote" | "orders" | "deliveryNotes" | "invoices"> = {
   "order-from-quote": "orders", "invoice-from-quote": "invoices", "down-payment-from-quote": "invoices",
@@ -190,13 +191,13 @@ export function DocumentChain({ kind, id, onChanged }: { kind: Kind; id: string;
               })}
               {nodes.length === 0 && actions.length === 0 && (step.key === "quote" && chain.orders.length > 0 && chain.orders[0].customerId
                 ? <button type="button" onClick={() => openLink(chain.orders[0])} className="mt-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-sm">+ Mit Angebot verknüpfen</button>
-                : <p className="mt-1 text-sm text-slate-400">noch nicht angelegt</p>)}
+                : <p className="mt-1 text-sm text-slate-400">{step.key === "deliveryNotes" ? "nicht nötig - nur wenn du einen Packzettel oder Begleitschein willst" : "noch nicht angelegt"}</p>)}
               {step.key === "quote" && chain.quote && chain.orders.length === 1 && <button type="button" onClick={() => unlink(chain.orders[0].id)} className="mt-1 text-xs text-slate-500 hover:underline">Verknüpfung mit dem Auftrag lösen</button>}
               {actions.length > 0 && (
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   {actions.map((a) => (
                     <Fragment key={a.id}>
-                    <button type="button" disabled={busy !== null} onClick={() => run(a)} title={a.hint} className="px-3 py-1.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-sm disabled:opacity-50">{busy === a.id ? "Wird angelegt ..." : `+ ${a.label}`}</button>
+                    <button type="button" disabled={busy !== null} onClick={() => run(a)} title={a.hint} className={`px-3 py-1.5 rounded-lg text-sm disabled:opacity-50 ${a.id === "delivery-note-from-order" ? "border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700" : "bg-brand hover:bg-brand-dark text-white"}`}>{busy === a.id ? "Wird angelegt ..." : `+ ${a.label}`}</button>
                     {(a.id === "invoice-from-order" || a.id === "invoice-from-quote") && (
                       <button type="button" disabled={busy !== null} onClick={() => runFinal(a)} title="Rechnung anlegen, fertigstellen und gleich zum Versenden öffnen - ohne Entwurf prüfen" className="px-3 py-1.5 rounded-lg border border-brand text-brand text-sm disabled:opacity-50">Rechnung gleich fertigstellen</button>
                     )}

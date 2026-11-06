@@ -34,7 +34,20 @@ interface Order {
   priority?: number;
   assignee?: { id: string; name: string; avatar: AvatarInfo | null } | null;
   prints: { count: number; minutes: number; grams: number; materialCents: number } | null;
+  payment?: Payment;
 }
+
+type PaymentState = "NONE" | "DRAFT" | "OPEN" | "PARTIAL" | "PAID";
+interface Payment { state: PaymentState; openCents: number; invoice: { id: string; number: string | null } | null }
+
+/** Zahlstatus auf der Karte: so sieht man bei Vorkasse sofort, ob schon bezahlt ist */
+const PAY_BADGE: Record<PaymentState, { label: string; cls: string; title: string }> = {
+  PAID: { label: "bezahlt", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300", title: "Die Rechnung ist bezahlt" },
+  OPEN: { label: "Zahlung offen", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300", title: "Die Rechnung ist ausgestellt, aber noch nicht bezahlt" },
+  PARTIAL: { label: "angezahlt", cls: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300", title: "Nur teilweise bezahlt - es ist noch ein Betrag offen" },
+  DRAFT: { label: "Rechnung im Entwurf", cls: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300", title: "Die Rechnung ist noch nicht fertiggestellt" },
+  NONE: { label: "keine Rechnung", cls: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300", title: "Zu diesem Auftrag gibt es noch keine Rechnung" },
+};
 
 const COLUMNS: { key: ProductionStatus; label: string; dot: string; hint: string }[] = [
   { key: "CREATED", label: "Erstellt", dot: "bg-slate-400", hint: "Angenommen, noch nicht gedruckt" },
@@ -66,7 +79,9 @@ export default function Production() {
   const [overColumn, setOverColumn] = useState<ProductionStatus | null>(null);
   const [tab, setTab] = useState<ProductionStatus>("CREATED"); // Handy: sichtbarer Status
   const [showAllInShipped, setShowAllInShipped] = useState(false);
-  const matchesWho = (o: Order) => who === "all" || (who === "none" ? !o.assignee : o.assignee?.id === (who === "mine" ? me?.id : who));
+  const [unpaidOnly, setUnpaidOnly] = useState(false);
+  const matchesWho = (o: Order) =>
+    (who === "all" || (who === "none" ? !o.assignee : o.assignee?.id === (who === "mine" ? me?.id : who))) && (!unpaidOnly || (o.payment?.state ?? "NONE") !== "PAID");
 
   const load = useCallback(() => {
     api
@@ -124,6 +139,10 @@ export default function Production() {
           <p className="text-sm text-slate-500">Neue Anfrage? Erst ein Angebot - den Auftrag macht man daraus mit einem Klick.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-slate-500" title="Nur Aufträge, bei denen die Rechnung noch nicht bezahlt oder noch nicht geschrieben ist">
+            <input type="checkbox" checked={unpaidOnly} onChange={(e) => setUnpaidOnly(e.target.checked)} />
+            nur nicht bezahlte
+          </label>
           <label className="flex items-center gap-2 text-sm text-slate-500">
             <input type="checkbox" checked={showAllShipped} onChange={(e) => setShowAllShipped(e.target.checked)} />
             auch ältere versendete
@@ -156,12 +175,14 @@ export default function Production() {
           markShipped={shipDialog.markShipped}
           initialCarrier={shipDialog.order.carrier}
           initialTracking={shipDialog.order.trackingNumber}
+          payment={shipDialog.order.payment ? { ...shipDialog.order.payment, orderId: shipDialog.order.id } : undefined}
           onClose={() => { setShipDialog(null); load(); }}
-          onDone={({ mailSentTo }) => {
+          onDone={({ mailSentTo, invoiceDatesSet }) => {
             const n = shipDialog.order.number;
             setShipDialog(null);
             load();
-            showToast(mailSentTo ? `${n} als versendet markiert, Versandmail an ${mailSentTo} gesendet` : `${n} als versendet markiert`, "success");
+            const dateNote = invoiceDatesSet ? ` Das Leistungsdatum ${invoiceDatesSet === 1 ? "des Rechnungsentwurfs" : "der Rechnungsentwürfe"} ist jetzt der Versandtag.` : "";
+            showToast((mailSentTo ? `${n} als versendet markiert, Versandmail an ${mailSentTo} gesendet.` : `${n} als versendet markiert.`) + dateNote, "success");
           }}
         />
       )}
@@ -228,6 +249,11 @@ export default function Production() {
                         <div className="text-xs text-slate-500 truncate" title={o.itemSummary.join(", ")}>{o.customerName}{firstItem ? ` · ${firstItem}${more}` : ""}</div>
                         {o.notes && <p className="mt-1 text-xs rounded bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 px-2 py-0.5 truncate" title={o.notes}>{o.notes}</p>}
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          {o.payment && !(col.key === "SHIPPED" && o.payment.state === "PAID") && (
+                            <Link to={o.payment.invoice ? `/invoices/${o.payment.invoice.id}` : `/orders/${o.id}`} className={`text-xs px-2 py-0.5 rounded-full ${PAY_BADGE[o.payment.state].cls}`} title={`${PAY_BADGE[o.payment.state].title}${o.payment.openCents > 0 ? ` (offen: ${money(o.payment.openCents)})` : ""}`}>
+                              {PAY_BADGE[o.payment.state].label}
+                            </Link>
+                          )}
                           {o.printMinutes > 0 && <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" title="Geschätzte Druckzeit"><Icon name="clock" className="w-3 h-3" />{hours(o.printMinutes)}</span>}
                           {o.prints && <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" title="Zugeordnete Drucke: Anzahl, Druckzeit, Filament">{o.prints.count} {o.prints.count === 1 ? "Druck" : "Drucke"} · {hours(o.prints.minutes)}{o.prints.grams > 0 ? ` · ${o.prints.grams} g` : ""}</span>}
                           {o.expectedDeliveryDate && (

@@ -44,7 +44,7 @@ Entwürfe zuerst, Filter nach Belegart, Suche nach Nummer oder Kunde. **+ Neuer 
 neu an. Alle vier Belegarten nutzen denselben Editor (Kunde direkt anlegen, Auto-Speichern als Entwurf,
 Live-Vorschau, siehe unten); auf Lieferscheinen entfallen Preise.
 
-Der übliche Ablauf ist **Angebot → Auftrag → Lieferschein → Rechnung**. Im Menü (⋮) eines Belegs
+Der übliche Ablauf ist **Angebot → Auftrag → Rechnung** (der Lieferschein ist optional: bei Vorkasse oder Versand per Paketdienst brauchst du ihn meist nicht, bei Firmenkunden oder als Packzettel kann er sinnvoll sein). Im Menü (⋮) eines Belegs
 führen Sie ihn mit einem Klick zum nächsten weiter: Kunde und Positionen werden übernommen, der Folgebeleg
 öffnet sich als Entwurf. Bei Angeboten setzen Sie dort auch "angenommen/abgelehnt". Ein "✓ weitergeführt" in
 der Liste zeigt, dass daraus bereits ein Folgebeleg entstanden ist. Entwürfe von Angebot, Auftrag und

@@ -102,7 +102,7 @@ export const HELP: HelpTopic[] = [
     id: "chain",
     category: "Belege",
     title: "Vorgang (Belegkette)",
-    short: "Zeigt zu einem Beleg die ganze Kette Angebot → Auftrag → Lieferschein → Rechnung. Jeder Beleg ist antippbar, fehlende Schritte kannst du direkt anlegen.",
+    short: "Zeigt zu einem Beleg die ganze Kette Angebot → Auftrag → Rechnung (Lieferschein optional). Jeder Beleg ist antippbar, fehlende Schritte kannst du direkt anlegen.",
     body: [
       "Ein grüner Punkt heißt: Beleg ist vorhanden. Bei einem fehlenden Schritt steht ein Knopf zum Anlegen (z.B. \"Rechnung schreiben\"). Wurde ein Angebot und der Auftrag getrennt angelegt, verknüpfst du beide mit \"+ Mit Angebot verknüpfen\" - das Angebot gilt dann als angenommen und weitergeführt. Falsche Verknüpfungen löst du mit \"Verknüpfung lösen\".",
     ],
@@ -205,6 +205,8 @@ export const HELP: HelpTopic[] = [
     body: [
       "Auf jeder Karte siehst du Kunde, Positionen, Liefertermin, Priorität und den Zuständigen (Profilbild). Oben filterst du nach Mitarbeiter oder \"Nur meine\". Ein Klick auf die Karte öffnet die Auftragsseite.",
       "\"Versendet\" fragt nach Versanddienst und Sendungsnummer und kann gleich den Versandbescheid per E-Mail senden. Importierte Shop-Bestellungen (z.B. Etsy-CSV) legst du hier an.",
+      "Der kleine Zahl-Chip auf der Karte zeigt, wie es mit der Rechnung steht: keine Rechnung, Rechnung im Entwurf, Zahlung offen, angezahlt oder bezahlt. Mit \"nur nicht bezahlte\" oben siehst du nur Aufträge, bei denen noch Geld fehlt. Beim Versenden weist ein Hinweis darauf hin, wenn noch nicht bezahlt ist - bei Vorkasse erst versenden, wenn das Geld da ist. Das Versenden wird dadurch nie gesperrt.",
+      "Wird ein Auftrag versendet und die Rechnung dazu ist noch ein Entwurf, setzt die Software den Versandtag als Leistungsdatum (steht dort noch nichts oder nur der geplante Liefertermin). Schon fertiggestellte Rechnungen bleiben unverändert.",
     ],
     keywords: "board kanban status versand",
   },

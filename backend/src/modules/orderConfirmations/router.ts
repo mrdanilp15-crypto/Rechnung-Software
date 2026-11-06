@@ -295,6 +295,9 @@ orderConfirmationsRouter.post("/:id/convert-to-invoice", async (req, res) => {
       customerId: source.customerId,
       issueDate,
       dueDate: defaultDueDate(company, issueDate),
+      // Leistungsdatum: schon versendet -> Versandtag, sonst der geplante Liefertermin des Auftrags (wird beim Versenden eines noch nicht
+      // fertiggestellten Rechnungsentwurfs auf den echten Versandtag gesetzt); ohne beides bleibt es leer
+      deliveryDate: source.shippedAt ?? source.expectedDeliveryDate ?? undefined,
       isSmallBusiness: financials.isSmallBusiness,
       vatNoticeKey: financials.vatNoticeKey,
       sourceOrderConfirmationId: source.id,

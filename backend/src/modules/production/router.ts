@@ -10,6 +10,7 @@ import { laborCents } from "../timetracking/calc";
 import { emitEvent } from "../plugins/hooks";
 import { avatarOf } from "../users/avatar";
 import { itemProductKey, machineCost, usageWithCosts, type MaterialPrice } from "./actuals";
+import { paymentSummary } from "./payment";
 
 /**
  * Produktionsboard: Aufträge (Auftragsbestätigungen) als Karten in vier Spalten
@@ -63,6 +64,18 @@ productionRouter.get("/", async (req, res) => {
     printsByOrder.set(j.orderConfirmationId!, agg);
   }
 
+  // Zahlstatus je Auftrag aus den Rechnungen, die aus dem Auftrag (oder direkt aus dessen Angebot) entstanden sind
+  const quoteIds = [...new Set(orders.map((o) => o.sourceQuoteId).filter((x): x is string => !!x))];
+  const invoiceRows = orders.length
+    ? await prisma.invoice.findMany({
+        where: { companyId, OR: [{ sourceOrderConfirmationId: { in: orders.map((o) => o.id) } }, ...(quoteIds.length ? [{ sourceQuoteId: { in: quoteIds } }] : [])] },
+        select: { id: true, invoiceNumber: true, status: true, totalCents: true, isCancellationDocument: true, kind: true, issueDate: true, sourceOrderConfirmationId: true, sourceQuoteId: true },
+        orderBy: { issueDate: "asc" },
+      })
+    : [];
+  const paymentOf = (o: { id: string; sourceQuoteId: string | null }) =>
+    paymentSummary(invoiceRows.filter((i) => i.sourceOrderConfirmationId === o.id || (!i.sourceOrderConfirmationId && !!o.sourceQuoteId && i.sourceQuoteId === o.sourceQuoteId)));
+
   res.json({
     shippedVisibleDays: SHIPPED_VISIBLE_DAYS,
     items: orders.map((o) => {
@@ -70,6 +83,7 @@ productionRouter.get("/", async (req, res) => {
       for (const it of o.items) printMinutes += (minutesByName.get(it.description.trim().toLowerCase()) ?? 0) * it.quantity;
       const prints = printsByOrder.get(o.id);
       return {
+        payment: paymentOf(o),
         priority: o.priority,
         assignee: o.assigneeId ? (() => { const u = staffById.get(o.assigneeId); return u ? { id: u.id, name: u.name, avatar: avatarOf(u) } : { id: o.assigneeId, name: "Ehemaliger Benutzer", avatar: null }; })() : null,
         imageDocumentId: o.items.map((it) => imageByName.get(it.description.split(String.fromCharCode(10))[0].trim().toLowerCase())).find(Boolean) ?? null,
@@ -265,9 +279,22 @@ productionRouter.patch("/:id", async (req, res) => {
     },
     select: { id: true, productionStatus: true, productionNote: true, shippedAt: true, carrier: true, trackingNumber: true, shippedMailAt: true },
   });
+  // Wird der Auftrag versendet, ist der Versandtag das Leistungsdatum: Rechnungsentwürfe zu diesem Auftrag, deren Leistungsdatum noch leer
+  // oder nur der geplante Liefertermin ist, bekommen es automatisch. Fertiggestellte Rechnungen bleiben unangetastet (GoBD).
+  let invoiceDatesSet = 0;
+  if (statusChanged && body.productionStatus === "SHIPPED" && updated.shippedAt) {
+    const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
+    const drafts = await prisma.invoice.findMany({ where: { companyId: req.auth!.companyId, sourceOrderConfirmationId: existing.id, status: "DRAFT", isCancellationDocument: false }, select: { id: true, deliveryDate: true } });
+    const planned = day(existing.expectedDeliveryDate);
+    const target = drafts.filter((i) => !i.deliveryDate || day(i.deliveryDate) === planned);
+    if (target.length > 0) {
+      await prisma.invoice.updateMany({ where: { id: { in: target.map((i) => i.id) } }, data: { deliveryDate: updated.shippedAt } });
+      invoiceDatesSet = target.length;
+    }
+  }
   if (statusChanged) {
-    await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "production.status", entityType: "OrderConfirmation", entityId: existing.id, metadata: { from: existing.productionStatus, to: body.productionStatus } });
+    await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "production.status", entityType: "OrderConfirmation", entityId: existing.id, metadata: { from: existing.productionStatus, to: body.productionStatus, ...(invoiceDatesSet ? { invoiceDatesSet } : {}) } });
     void emitEvent("order.status_changed", { companyId: req.auth!.companyId, order: { id: existing.id, number: existing.confirmationNumber, from: existing.productionStatus, to: updated.productionStatus } }).catch(() => undefined);
   }
-  res.json(updated);
+  res.json({ ...updated, invoiceDatesSet });
 });

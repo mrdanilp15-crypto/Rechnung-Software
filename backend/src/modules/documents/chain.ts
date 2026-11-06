@@ -50,15 +50,16 @@ export function buildNextActions(c: ChainInput): NextAction[] {
     out.push({ id: "order-from-quote", label: "Auftrag anlegen", hint: "Alle Positionen aus dem Angebot übernehmen", from: { kind: "QUOTE", id: q.id } });
     out.push({ id: "invoice-from-quote", label: "Gleich Rechnung schreiben", hint: "Ohne Auftrag direkt abrechnen", from: { kind: "QUOTE", id: q.id } });
   }
-  // Der Auftrag führt weiter: Lieferschein (einmal) und Rechnung (solange noch keine Rechnung existiert)
+  // Der Auftrag führt weiter: die Rechnung ist der Hauptweg (solange noch keine existiert); der Lieferschein ist optional und steht zuletzt -
+  // er ist keine Pflicht und bei Vorkasse oft überflüssig, als Packzettel oder für Firmenkunden aber auch nach der Rechnung noch sinnvoll
   const order = activeOrders.find((o) => o.status !== "DRAFT") ?? null;
   if (order) {
-    if (c.deliveryNotes.filter((n) => n.status !== "CANCELLED").length === 0) {
-      out.push({ id: "delivery-note-from-order", label: "Lieferschein anlegen", hint: "Begleitschein ohne Preise für die Sendung", from: { kind: "ORDER_CONFIRMATION", id: order.id } });
-    }
     if (invoices.length === 0) {
       out.push({ id: "invoice-from-order", label: "Rechnung schreiben", hint: "Alle Positionen aus dem Auftrag übernehmen", from: { kind: "ORDER_CONFIRMATION", id: order.id } });
       out.push({ id: "down-payment-from-order", label: "Anzahlungsrechnung", hint: "Nur einen Teil des Betrags vorab berechnen", from: { kind: "ORDER_CONFIRMATION", id: order.id } });
+    }
+    if (c.deliveryNotes.filter((n) => n.status !== "CANCELLED").length === 0) {
+      out.push({ id: "delivery-note-from-order", label: "Lieferschein anlegen (optional)", hint: "Optional: Begleitschein ohne Preise, z.B. als Packzettel oder für Firmenkunden", from: { kind: "ORDER_CONFIRMATION", id: order.id } });
     }
   }
   return out;
