@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 
@@ -9,6 +10,10 @@ interface Item {
   body: string;
   createdAt: string;
   readAt: string | null;
+  /** Seite, die beim Antippen geöffnet wird (z.B. zugewiesener Auftrag) */
+  link?: string | null;
+  /** persönliche Meldung nur für mich */
+  userId?: string | null;
 }
 interface Settings {
   email: string;
@@ -28,6 +33,7 @@ const TONE: Record<string, string> = {
   PRINT_FINISHED: "bg-green-500",
   PRINT_FAILED: "bg-red-500",
   PRINTER_ERROR: "bg-amber-500",
+  ORDER_ASSIGNED: "bg-brand",
 };
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {
@@ -208,7 +214,7 @@ export function NotificationsCard() {
             <li key={n.id} className="py-2 flex gap-3">
               <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${TONE[n.type] ?? "bg-slate-400"}`} />
               <div className="min-w-0">
-                <div className={n.readAt ? "text-slate-600 dark:text-slate-300" : "font-medium"}>{n.title}{n.count > 1 && <span className="ml-2 text-xs text-slate-500 font-normal">×{n.count}</span>}</div>
+                <div className={n.readAt ? "text-slate-600 dark:text-slate-300" : "font-medium"}>{n.link ? <Link to={n.link} className="hover:underline">{n.title}</Link> : n.title}{n.userId && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-brand/10 text-brand font-normal">für dich</span>}{n.count > 1 && <span className="ml-2 text-xs text-slate-500 font-normal">×{n.count}</span>}</div>
                 <div className="text-xs text-slate-500">{n.body}</div>
                 <div className="text-xs text-slate-400">{new Date(n.createdAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
               </div>

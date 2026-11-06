@@ -72,8 +72,9 @@ export async function deliverPush(subs: StoredSubscription[], payload: PushPaylo
   return { sent, expiredIds };
 }
 
-export async function sendPushToCompany(companyId: string, payload: PushPayload): Promise<number> {
-  const subs = await prisma.pushSubscription.findMany({ where: { companyId } });
+/** Push an alle Geräte der Firma - oder, mit userId, nur an die Geräte dieses Mitarbeiters. */
+export async function sendPushToCompany(companyId: string, payload: PushPayload, userId?: string): Promise<number> {
+  const subs = await prisma.pushSubscription.findMany({ where: { companyId, ...(userId ? { userId } : {}) } });
   if (subs.length === 0) return 0;
   const keys = await getVapidKeys(companyId);
   const details = { vapidDetails: { subject: subject(), publicKey: keys.publicKey, privateKey: keys.privateKey }, TTL: 60 * 60 };

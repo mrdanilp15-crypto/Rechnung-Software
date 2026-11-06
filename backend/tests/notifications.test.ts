@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildMessage, formatDuration, formatErrorCode, isEnabled, DEFAULT_SETTINGS } from "../src/modules/notifications/service";
+import { buildAssignmentMessage, buildMessage, formatDuration, formatErrorCode, isEnabled, DEFAULT_SETTINGS } from "../src/modules/notifications/service";
 
 describe("Benachrichtigungen: Texte", () => {
   it("Druck fertig mit Dauer und Verbrauch", () => {
@@ -22,5 +22,18 @@ describe("Benachrichtigungen: Texte", () => {
     expect(isEnabled("PRINT_FINISHED", { ...DEFAULT_SETTINGS, onFinish: false })).toBe(false);
     expect(isEnabled("PRINT_FAILED", DEFAULT_SETTINGS)).toBe(true);
     expect(isEnabled("PRINTER_ERROR", { ...DEFAULT_SETTINGS, onError: false })).toBe(false);
+  });
+});
+
+describe("Benachrichtigungen: Auftrag zugewiesen", () => {
+  it("nennt Auftrag, Kunde, Positionen und wer zugewiesen hat", () => {
+    const m = buildAssignmentMessage({ orderNumber: "AB-2026-0007", customerName: "Max Mustermann", items: ["Tankdeckel"], byName: "Daniel" });
+    expect(m.title).toBe("Neuer Auftrag für dich: AB-2026-0007");
+    expect(m.body).toBe("Max Mustermann · Tankdeckel · zugewiesen von Daniel");
+  });
+  it("kürzt viele Positionen und kommt ohne Nummer und Absender aus", () => {
+    const m = buildAssignmentMessage({ orderNumber: null, customerName: "Firma X", items: ["A", "B", "C"], byName: null });
+    expect(m.title).toBe("Neuer Auftrag für dich");
+    expect(m.body).toBe("Firma X · A, B u.a.");
   });
 });

@@ -10,13 +10,15 @@ export const notificationsRouter = Router();
 notificationsRouter.use(requireAuth);
 
 notificationsRouter.get("/", async (req, res) => {
-  const items = await prisma.notification.findMany({ where: { companyId: req.auth!.companyId }, orderBy: { createdAt: "desc" }, take: 30 });
-  const unread = await prisma.notification.count({ where: { companyId: req.auth!.companyId, readAt: null } });
+  // Meldungen für alle plus die persönlichen des angemeldeten Mitarbeiters
+  const mine = { companyId: req.auth!.companyId, OR: [{ userId: null }, { userId: req.auth!.sub }] };
+  const items = await prisma.notification.findMany({ where: mine, orderBy: { createdAt: "desc" }, take: 30 });
+  const unread = await prisma.notification.count({ where: { ...mine, readAt: null } });
   res.json({ items, unread });
 });
 
 notificationsRouter.post("/read", async (req, res) => {
-  await prisma.notification.updateMany({ where: { companyId: req.auth!.companyId, readAt: null }, data: { readAt: new Date() } });
+  await prisma.notification.updateMany({ where: { companyId: req.auth!.companyId, OR: [{ userId: null }, { userId: req.auth!.sub }], readAt: null }, data: { readAt: new Date() } });
   res.status(204).send();
 });
 

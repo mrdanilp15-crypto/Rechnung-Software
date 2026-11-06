@@ -8,7 +8,7 @@ import { sendPushToCompany } from "./push";
  * zusätzlich als E-Mail über das SMTP-Postfach der Firma. Die Einstellungen liegen in der Tabelle Setting (ein JSON-Wert).
  */
 
-export type NotificationType = "PRINT_FINISHED" | "PRINT_FAILED" | "PRINTER_ERROR" | "LOW_STOCK" | "MAINTENANCE_DUE" | "INVOICE_OVERDUE";
+export type NotificationType = "PRINT_FINISHED" | "PRINT_FAILED" | "PRINTER_ERROR" | "LOW_STOCK" | "MAINTENANCE_DUE" | "INVOICE_OVERDUE" | "ORDER_ASSIGNED";
 
 export interface NotifySettings {
   email: string;
@@ -105,5 +105,37 @@ export async function notify(companyId: string, type: NotificationType, title: s
     await sendMailForCompany(company, { to: settings.email, subject: title, text: `${body}\n\nDiese Nachricht kommt automatisch von Ihrer Rechnungssoftware.` });
   } catch (err) {
     logger.warn({ err: (err as Error).message }, "Benachrichtigung per E-Mail fehlgeschlagen");
+  }
+}
+
+/** Text der Meldung "Auftrag zugewiesen" (rein, testbar). */
+export function buildAssignmentMessage(o: { orderNumber: string | null; customerName: string; items: string[]; byName: string | null }): { title: string; body: string } {
+  const what = o.items.length === 0 ? "" : o.items.length <= 2 ? o.items.join(", ") : `${o.items.slice(0, 2).join(", ")} u.a.`;
+  return {
+    title: `Neuer Auftrag für dich${o.orderNumber ? `: ${o.orderNumber}` : ""}`,
+    body: [o.customerName, what, o.byName ? `zugewiesen von ${o.byName}` : ""].filter(Boolean).join(" · "),
+  };
+}
+
+/**
+ * Persönliche Meldung an einen Mitarbeiter (z.B. Auftrag zugewiesen): erscheint nur in seiner Meldungsliste, geht als Push an seine Geräte
+ * und - wenn "Per E-Mail benachrichtigen" eingeschaltet und ein Postfach eingerichtet ist - an seine eigene E-Mail-Adresse.
+ */
+export async function notifyUser(companyId: string, userId: string, title: string, body: string, link: string | null, type: NotificationType = "ORDER_ASSIGNED"): Promise<void> {
+  await prisma.notification.create({ data: { companyId, userId, type, title, body, link } });
+  sendPushToCompany(companyId, { title, body, url: link ?? "/" }, userId).catch((err) => logger.warn({ err: (err as Error).message }, "Push-Nachricht fehlgeschlagen"));
+  try {
+    const settings = await getNotifySettings(companyId);
+    if (!settings.byMail) return;
+    const [company, user] = await Promise.all([
+      prisma.company.findUnique({ where: { id: companyId } }),
+      prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+    ]);
+    if (!company || !user?.email || !isSmtpConfigured(company)) return;
+    await sendMailForCompany(company, { to: user.email, subject: title, text: `${body}
+
+Diese Nachricht kommt automatisch von Ihrer Rechnungssoftware.` });
+  } catch (err) {
+    logger.warn({ err: (err as Error).message }, "Persönliche Benachrichtigung per E-Mail fehlgeschlagen");
   }
 }

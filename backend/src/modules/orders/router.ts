@@ -7,6 +7,8 @@ import { writeAuditLog } from "../audit/auditLog";
 import { activityLabel, hm } from "../timetracking/calc";
 import { buildTimeline, type TimelineEvent } from "./timeline";
 import { avatarOf } from "../users/avatar";
+import { buildAssignmentMessage, notifyUser } from "../notifications/service";
+import { logger } from "../../utils/logger";
 
 /**
  * Auftragsseite (Auftragsbestätigung als zentrales Objekt): Stammdaten, Positionen, verknüpfte Belege, Drucke, Zeiten, Dateien, Kommentare
@@ -124,6 +126,19 @@ ordersRouter.patch("/:id", async (req, res) => {
     }
     await prisma.orderConfirmation.update({ where: { id: order.id }, data: { assigneeId: body.assigneeId } });
     await writeAuditLog({ req, companyId, userId: req.auth!.sub, action: "order.assign", entityType: "OrderConfirmation", entityId: order.id, metadata: { from: order.assigneeId, to: body.assigneeId, toName } });
+    // Dem zugewiesenen Mitarbeiter Bescheid geben (nicht, wenn man sich den Auftrag selbst gibt)
+    if (body.assigneeId && body.assigneeId !== req.auth!.sub) {
+      try {
+        const [full, by] = await Promise.all([
+          prisma.orderConfirmation.findUnique({ where: { id: order.id }, select: { confirmationNumber: true, customer: { select: { name: true } }, items: { select: { description: true }, orderBy: { position: "asc" }, take: 3 } } }),
+          prisma.user.findUnique({ where: { id: req.auth!.sub }, select: { name: true } }),
+        ]);
+        const msg = buildAssignmentMessage({ orderNumber: full?.confirmationNumber ?? null, customerName: full?.customer.name ?? "", items: (full?.items ?? []).map((i) => i.description), byName: by?.name ?? null });
+        await notifyUser(companyId, body.assigneeId, msg.title, msg.body, `/orders/${order.id}`);
+      } catch (err) {
+        logger.warn({ err: (err as Error).message }, "Benachrichtigung zur Zuweisung fehlgeschlagen");
+      }
+    }
   }
   res.json({ ok: true });
 });

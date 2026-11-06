@@ -1165,10 +1165,15 @@ model Notification {
   title     String
   body      String
   printerId String?
+  // Persönliche Meldung (z.B. Auftrag zugewiesen): nur für diesen Mitarbeiter sichtbar; leer = für alle der Firma
+  userId    String?
+  // Seite, die beim Antippen der Meldung geöffnet wird (z.B. /orders/<id>)
+  link      String?
   createdAt DateTime  @default(now())
   readAt    DateTime?
 
   @@index([companyId, createdAt])
+  @@index([companyId, userId, createdAt])
 }
 
 // ---------- Push-Nachrichten (Web Push) ----------
