@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { currentAppName } from "../theme/appearance";
 import { api } from "../api/client";
@@ -10,6 +10,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const setUser = useAuthStore((s) => s.setUser);
+  const status = useAuthStore((s) => s.status);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [totpToken, setTotpToken] = useState("");
@@ -36,6 +37,12 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Wer schon angemeldet ist (Lesezeichen, App-Start, Neuladen), braucht kein Anmeldeformular - gleich weiter zur gewünschten Seite
+  if (status === "authenticated") {
+    const from = (location.state as { from?: string } | null)?.from;
+    return <Navigate to={from && from.startsWith("/") && !from.startsWith("//") && from !== "/login" ? from : "/"} replace />;
   }
 
   return (
