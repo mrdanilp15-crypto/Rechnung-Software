@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { InfoBox } from "./InfoBox";
+import { EditPanel } from "./EditPanel";
 import { useToast } from "./Toast";
 
 interface Asset {
@@ -122,9 +123,14 @@ export function AssetsPanel({ year, onChanged }: { year: number; onChanged?: () 
       </InfoBox>
 
       {showForm && (
-        <form onSubmit={submit} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-5 space-y-4">
-          <h3 className="font-medium text-sm">{editingId ? "Anlage bearbeiten" : "Neue Anlage"}</h3>
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+        <EditPanel
+          title={editingId ? "Anlage bearbeiten" : "Neue Anlage"}
+          subtitle={editingId ? form.name : undefined}
+          onClose={() => { setShowForm(false); setEditingId(null); setError(null); }}
+          onSubmit={submit}
+          status={busy ? "saving" : "idle"}
+          error={error}
+        >
           <label className="block text-sm">
             Schon als Ausgabe erfasst? (optional)
             <select value={form.expenseId} onChange={(e) => pickExpense(e.target.value)} className={`${inputClass} mt-1`}>
@@ -166,11 +172,7 @@ export function AssetsPanel({ year, onChanged }: { year: number; onChanged?: () 
           <label className="block text-sm">Notiz (optional)
             <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={`${inputClass} mt-1`} />
           </label>
-          <div className="flex gap-2">
-            <button type="submit" disabled={busy} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded disabled:opacity-60">{busy ? "Wird gespeichert ..." : "Speichern"}</button>
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Abbrechen</button>
-          </div>
-        </form>
+        </EditPanel>
       )}
 
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">

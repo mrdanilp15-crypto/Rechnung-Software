@@ -3,7 +3,7 @@ import { Fragment, FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Fuse from "fuse.js";
 import { api } from "../api/client";
-import { SaveButton } from "../components/SaveButton";
+import { EditPanel } from "../components/EditPanel";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
 import { MobileCard, MobileField } from "../components/MobileCard";
@@ -344,10 +344,18 @@ export default function Products() {
       </div>
 
       {stockFor && <ProductStockDialog product={{ id: stockFor.id, name: stockFor.name, unit: stockFor.unit, stockQuantity: stockFor.stockQuantity ?? 0 }} onClose={() => setStockFor(null)} onSaved={() => { setStockFor(null); load(); }} />}
-      {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+      {error && !showForm && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 space-y-4">
+        <EditPanel
+          title={editingId ? "Produkt bearbeiten" : "Neues Produkt"}
+          subtitle={editingId ? form.name : undefined}
+          onClose={() => { setShowForm(false); setEditingId(null); setError(null); }}
+          onSubmit={handleSubmit}
+          status={status}
+          saveLabel={t("common.save")}
+          error={error}
+        >
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2">
               <label className="block text-sm mb-1">{t("products.name")} *</label>
@@ -677,22 +685,7 @@ export default function Products() {
             ))}
           </div>
 
-          <div className="flex gap-2">
-            <SaveButton status={status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">
-              {t("common.save")}
-            </SaveButton>
-            <button
-              type="button"
-              onClick={() => {
-                setShowForm(false);
-                setEditingId(null);
-              }}
-              className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700"
-            >
-              {t("common.cancel")}
-            </button>
-          </div>
-        </form>
+        </EditPanel>
       )}
 
       <input

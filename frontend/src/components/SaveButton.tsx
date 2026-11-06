@@ -14,6 +14,7 @@ export function SaveButton({
   className = "bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm",
   type = "submit",
   onClick,
+  disabled = false,
 }: {
   status: SaveStatus;
   children?: React.ReactNode;
@@ -23,12 +24,14 @@ export function SaveButton({
   className?: string;
   type?: "submit" | "button";
   onClick?: () => void;
+  /** z.B. solange Pflichtfelder fehlen */
+  disabled?: boolean;
 }) {
   return (
     <button
       type={type}
       onClick={onClick}
-      disabled={status === "saving"}
+      disabled={status === "saving" || disabled}
       className={`${className} disabled:opacity-60 inline-flex items-center gap-2 ${status === "error" ? "!bg-red-600 hover:!bg-red-700 !text-white" : ""}`}
     >
       {status === "saving" && (

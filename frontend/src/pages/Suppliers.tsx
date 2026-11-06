@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { InfoBox } from "../components/InfoBox";
+import { EditPanel } from "../components/EditPanel";
 import { useToast } from "../components/Toast";
 
 import { HelpTip } from "../components/HelpTip";
@@ -104,9 +105,13 @@ export default function Suppliers() {
       </InfoBox>
 
       {showForm && (
-        <form onSubmit={submit} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-5 space-y-4">
-          <h2 className="font-medium text-sm">{editingId ? "Lieferant bearbeiten" : "Neuer Lieferant"}</h2>
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+        <EditPanel
+          title={editingId ? "Lieferant bearbeiten" : "Neuer Lieferant"}
+          subtitle={editingId ? form.name : undefined}
+          onClose={() => { setShowForm(false); setEditingId(null); setError(null); }}
+          onSubmit={submit}
+          error={error}
+        >
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {field("Name *", "name", { span: "sm:col-span-2", placeholder: "z.B. Filamentshop GmbH (so wie bei den Ausgaben)" })}
             {field("Ihre Kundennummer dort", "customerNumber")}
@@ -122,11 +127,7 @@ export default function Suppliers() {
           <label className="block text-sm">Notiz
             <textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="z.B. Versandkostenfrei ab 50 €, Rabattcode" className={`${inputClass} mt-1`} />
           </label>
-          <div className="flex gap-2">
-            <button type="submit" className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded">Speichern</button>
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Abbrechen</button>
-          </div>
-        </form>
+        </EditPanel>
       )}
 
       <div className="flex flex-wrap gap-2 mb-3">

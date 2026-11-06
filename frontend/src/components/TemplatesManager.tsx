@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { EmailTemplateRow } from "./TemplatePicker";
 import { useTextLibrary, withExample } from "./TextLibrary";
+import { EditPanel } from "./EditPanel";
 
 /** Einstellungen → Vorlagen: E-Mail-Vorlagen je Anlass (mit Platzhaltern) und Textbausteine für Beleg-Texte. Nur für Administratoren. */
 
@@ -158,7 +159,14 @@ export function TemplatesManager() {
         )}
 
         {form && (
-          <div className="rounded-lg bg-slate-50 dark:bg-slate-900/40 p-3 space-y-2">
+          <EditPanel
+            title={form.id ? "Vorlage bearbeiten" : "Neue Vorlage"}
+            subtitle={form.id ? form.name : undefined}
+            onClose={() => setForm(null)}
+            onSubmit={(e) => { e.preventDefault(); void saveTemplate(); }}
+            saveDisabled={!form.name.trim() || !form.subject.trim() || !form.body.trim()}
+            error={msg && !msg.ok ? msg.text : null}
+          >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <label className="block text-sm">Anlass
                 <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })} className={`${input} mt-1`}>
@@ -185,11 +193,7 @@ export function TemplatesManager() {
               </p>
             )}
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isDefault} onChange={(e) => setForm({ ...form, isDefault: e.target.checked })} /> Standardvorlage für "{KIND_LABELS[form.kind]}" (füllt den Versanddialog automatisch vor)</label>
-            <div className="flex gap-2">
-              <button onClick={saveTemplate} disabled={!form.name.trim() || !form.subject.trim() || !form.body.trim()} className="px-4 py-2 rounded bg-brand text-white text-sm disabled:opacity-50">Speichern</button>
-              <button onClick={() => setForm(null)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700 text-sm">Abbrechen</button>
-            </div>
-          </div>
+          </EditPanel>
         )}
       </div>
 
@@ -249,18 +253,21 @@ export function TemplatesManager() {
           </ul>
         )}
         {snipForm && (
-          <div className="rounded-lg bg-slate-50 dark:bg-slate-900/40 p-3 space-y-2">
+          <EditPanel
+            title={snipForm.id ? "Textbaustein bearbeiten" : "Neuer Textbaustein"}
+            subtitle={snipForm.id ? snipForm.name : undefined}
+            onClose={() => setSnipForm(null)}
+            onSubmit={(e) => { e.preventDefault(); void saveSnippet(); }}
+            saveDisabled={!snipForm.name.trim() || !snipForm.text.trim()}
+            error={msg && !msg.ok ? msg.text : null}
+          >
             <label className="block text-sm">Name
               <input value={snipForm.name} onChange={(e) => setSnipForm({ ...snipForm, name: e.target.value })} placeholder="z.B. Lieferzeit" className={`${input} mt-1`} />
             </label>
             <label className="block text-sm">Text
               <textarea value={snipForm.text} onChange={(e) => setSnipForm({ ...snipForm, text: e.target.value })} rows={3} placeholder="z.B. Die Lieferzeit beträgt ca. 5 Werktage nach Zahlungseingang." className={`${input} mt-1`} />
             </label>
-            <div className="flex gap-2">
-              <button onClick={saveSnippet} disabled={!snipForm.name.trim() || !snipForm.text.trim()} className="px-4 py-2 rounded bg-brand text-white text-sm disabled:opacity-50">Speichern</button>
-              <button onClick={() => setSnipForm(null)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700 text-sm">Abbrechen</button>
-            </div>
-          </div>
+          </EditPanel>
         )}
       </div>
     </div>

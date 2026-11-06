@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { SaveButton } from "../components/SaveButton";
+import { EditPanel } from "../components/EditPanel";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { InfoBox } from "../components/InfoBox";
 import { useToast } from "../components/Toast";
@@ -171,10 +172,19 @@ export default function Materials() {
       </InfoBox>
 
       {reorderOpen && <ReorderDialog onClose={() => setReorderOpen(false)} />}
-      {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+      {error && !showForm && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
       {showForm && (
-        <form onSubmit={handleCreate} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <EditPanel
+          title={editingId ? "Material bearbeiten" : "Neues Material"}
+          subtitle={editingId ? form.name : undefined}
+          onClose={() => { setShowForm(false); setEditingId(null); setError(null); }}
+          onSubmit={handleCreate}
+          status={createSave.status}
+          saveLabel={editingId ? "Speichern" : "Anlegen"}
+          error={error}
+        >
+         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="sm:col-span-3">
             <label className="block text-sm mb-1">Art<HelpTip topic="purchased" className="ml-1.5" /></label>
             <div className="inline-flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden text-sm" role="radiogroup" aria-label="Art des Materials">
@@ -225,11 +235,8 @@ export default function Materials() {
             </select>
             <p className="text-xs text-slate-500 mt-1">Wo Sie dieses Material normalerweise kaufen. Nachbestellungen werden auf diesen Lieferanten gebucht (Lieferanten pflegen Sie unter Katalog → Lieferanten).</p>
           </div>
-          <div className="sm:col-span-3 flex gap-2">
-            <SaveButton status={createSave.status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">{editingId ? "Speichern" : "Anlegen"}</SaveButton>
-            <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Abbrechen</button>
-          </div>
-        </form>
+         </div>
+        </EditPanel>
       )}
 
       {materials.some((m) => m.kind === "PART") && (

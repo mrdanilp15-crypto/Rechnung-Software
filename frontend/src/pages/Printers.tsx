@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useToast } from "../components/Toast";
 import { InfoBox } from "../components/InfoBox";
+import { EditPanel } from "../components/EditPanel";
 import { printerHourlyCost } from "../lib/cost";
 import { useAuthStore } from "../store/authStore";
 import { MaintenancePanel, type MaintenanceTaskRow } from "../components/MaintenancePanel";
@@ -199,9 +200,14 @@ export default function Printers() {
       </InfoBox>
 
       {showForm && (
-        <form onSubmit={submit} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-5 space-y-4">
-          <h2 className="font-medium">{editingId ? "Drucker bearbeiten" : "Neuer Drucker"}</h2>
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+        <EditPanel
+          title={editingId ? "Drucker bearbeiten" : "Neuer Drucker"}
+          subtitle={editingId ? form.name : undefined}
+          onClose={() => { setShowForm(false); setEditingId(null); setError(null); }}
+          onSubmit={submit}
+          status={busy ? "saving" : "idle"}
+          error={error}
+        >
           <label className="block text-sm">
             Name
             <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="z.B. Bambu Lab P1S" className={inputClass} autoFocus />
@@ -295,11 +301,7 @@ export default function Printers() {
             <div className="flex justify-between"><span className="text-slate-500">Verschleiß &amp; Wartung</span><span>{money(live.wear, 3)}</span></div>
             <div className="flex justify-between font-medium border-t border-slate-200 dark:border-slate-700 pt-1"><span>Summe pro Stunde</span><span>{money(live.total, 3)}</span></div>
           </div>
-          <div className="flex gap-2">
-            <button type="submit" disabled={busy} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded disabled:opacity-60">{busy ? "Wird gespeichert ..." : "Speichern"}</button>
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Abbrechen</button>
-          </div>
-        </form>
+        </EditPanel>
       )}
 
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">

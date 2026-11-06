@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Fuse from "fuse.js";
 import { api } from "../api/client";
-import { SaveButton } from "../components/SaveButton";
+import { EditPanel } from "../components/EditPanel";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
 import { MobileCard, MobileField } from "../components/MobileCard";
@@ -155,10 +155,18 @@ export default function Customers() {
         </button>
       </div>
 
-      {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+      {error && !showForm && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 space-y-4">
+        <EditPanel
+          title={editingId ? "Kunde bearbeiten" : "Neuer Kunde"}
+          subtitle={editingId ? form.name : undefined}
+          onClose={() => { setShowForm(false); setEditingId(null); setError(null); }}
+          onSubmit={handleSubmit}
+          status={status}
+          saveLabel={t("customers.save")}
+          error={error}
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm mb-1">{t("customers.name")} *</label>
@@ -203,22 +211,7 @@ export default function Customers() {
             />
           </div>
 
-          <div className="flex gap-2">
-            <SaveButton status={status} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded justify-center">
-              {t("customers.save")}
-            </SaveButton>
-            <button
-              type="button"
-              onClick={() => {
-                setShowForm(false);
-                setEditingId(null);
-              }}
-              className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700"
-            >
-              {t("common.cancel")}
-            </button>
-          </div>
-        </form>
+        </EditPanel>
       )}
 
       <input
