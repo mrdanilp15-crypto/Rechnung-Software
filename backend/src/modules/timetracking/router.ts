@@ -17,6 +17,8 @@ export const timeRouter = Router();
 timeRouter.use(requireAuth);
 
 const seesAll = (role: string) => role === "ADMIN" || role === "BUCHHALTUNG";
+/** Zeiten anderer nachtragen, ändern und löschen dürfen nur Administratoren (Buchhaltung sieht sie nur). */
+const canEditOthers = (role: string) => role === "ADMIN";
 const MAX_MINUTES = 24 * 60;
 
 async function userNames(companyId: string): Promise<Map<string, string>> {
@@ -60,7 +62,7 @@ function scope(req: import("express").Request) {
 
 timeRouter.get("/meta", async (req, res) => {
   const users = seesAll(req.auth!.role) ? [...(await userNames(req.auth!.companyId)).entries()].map(([id, name]) => ({ id, name })) : [];
-  res.json({ activities: ACTIVITIES, users, seesAll: seesAll(req.auth!.role) });
+  res.json({ activities: ACTIVITIES, users, seesAll: seesAll(req.auth!.role), selfId: req.auth!.sub, canEditOthers: canEditOthers(req.auth!.role) });
 });
 
 // Laufende Zeit des angemeldeten Benutzers (oder null)
@@ -106,23 +108,32 @@ const manualSchema = z.object({
   activity: z.enum(ACTIVITY_KEYS).default("SONSTIGES"),
   note: z.string().trim().max(300).nullish(),
   orderConfirmationId: z.string().nullish(),
+  /** Nachtragen für einen anderen Benutzer - nur Administratoren; ohne Angabe gilt der angemeldete Benutzer. */
+  userId: z.string().nullish(),
 });
 
 timeRouter.post("/", async (req, res) => {
   const companyId = req.auth!.companyId;
   const body = manualSchema.parse(req.body);
   if (body.startedAt.getTime() > Date.now() + 5 * 60_000) throw new HttpError(400, "Der Beginn liegt in der Zukunft.");
+  const own = req.auth!.sub;
+  const forUser = body.userId || own;
+  if (forUser !== own) {
+    if (!canEditOthers(req.auth!.role)) throw new HttpError(403, "Zeiten für andere nachtragen dürfen nur Administratoren.");
+    if (!(await prisma.user.findFirst({ where: { id: forUser, companyId }, select: { id: true } }))) throw new HttpError(400, "Benutzer nicht gefunden.");
+  }
   const created = await prisma.timeEntry.create({
-    data: { companyId, userId: req.auth!.sub, startedAt: body.startedAt, endedAt: new Date(body.startedAt.getTime() + body.minutes * 60_000), minutes: body.minutes, activity: body.activity, note: body.note || null, orderConfirmationId: await validOrderId(companyId, body.orderConfirmationId) },
+    data: { companyId, userId: forUser, startedAt: body.startedAt, endedAt: new Date(body.startedAt.getTime() + body.minutes * 60_000), minutes: body.minutes, activity: body.activity, note: body.note || null, orderConfirmationId: await validOrderId(companyId, body.orderConfirmationId) },
     include,
   });
+  if (forUser !== own) await writeAuditLog({ req, companyId, userId: own, action: "time.create-for", entityType: "TimeEntry", entityId: created.id, metadata: { ofUser: forUser, minutes: body.minutes } });
   res.status(201).json(present(created, await userNames(companyId)));
 });
 
 async function ownedEntry(req: import("express").Request) {
   const e = await prisma.timeEntry.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!e) throw new HttpError(404, "Eintrag nicht gefunden");
-  if (e.userId !== req.auth!.sub && req.auth!.role !== "ADMIN") throw new HttpError(403, "Du darfst nur deine eigenen Zeiten ändern.");
+  if (e.userId !== req.auth!.sub && !canEditOthers(req.auth!.role)) throw new HttpError(403, "Du darfst nur deine eigenen Zeiten ändern.");
   return e;
 }
 

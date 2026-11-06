@@ -364,3 +364,6 @@ werden ungültig) - Belege und Historie bleiben dabei erhalten.
 
 - **Hilfe überall (? und Hilfeseite):** Neben fast jeder Überschrift, jedem Bereich und vielen Feldern steht ein **?**. Antippen (am Computer auch Darüberfahren) zeigt eine kurze Erklärung in einem Satz, mit dem Link **Mehr in der Hilfe** zum ausführlichen Thema. Unter den Reitern von *Einstellungen* und *Finanzen* steht zu jedem Reiter eine Erklärzeile. Das **?** oben in der Kopfzeile öffnet die Hilfe direkt zum Thema der aktuellen Seite; am Handy und in der Seitenleiste gibt es den Menüpunkt **Hilfe**. Die **Hilfeseite** (`/help`) ist nach Bereichen gegliedert und durchsuchbar (z.B. "Zukaufteile", "Bankabgleich").
   *Für die Pflege:* Alle Hilfetexte stehen an einer Stelle, `frontend/src/lib/helpContent.ts` (je Thema Kurztext fürs ? und ausführlicher Text für die Hilfeseite). Ein neues ? setzt man mit `<HelpTip topic="thema-id" />`, bei Panels mit `help="thema-id"`.
+
+### Zeiten für andere nachtragen
+Administratoren können unter Zeit → „Zeit nachtragen“ im Feld „Für wen?“ einen anderen Benutzer wählen und dessen Zeit eintragen (z.B. wenn jemand das Stoppen vergessen hat). Ändern und Löschen fremder Einträge ist ebenfalls nur Administratoren erlaubt; jeder Eintrag für andere wird im Verlauf (Protokoll) vermerkt. Die Buchhaltung sieht alle Zeiten, ändert aber nur eigene.

@@ -434,7 +434,7 @@ export const HELP: HelpTopic[] = [
     category: "Finanzen",
     title: "Zeiterfassung",
     short: "Arbeitszeit mit Start/Stopp oder nachträglich erfassen, nach Tätigkeit und optional einem Auftrag. Monatsübersicht mit Export.",
-    body: ["Pro Mitarbeiter läuft höchstens eine Zeit gleichzeitig. Administratoren sehen alle, Mitarbeiter nur ihre eigene Zeit. Das Stundenblatt gibt es als PDF und CSV."],
+    body: ["Pro Mitarbeiter läuft höchstens eine Zeit gleichzeitig. Administratoren sehen alle und können über „Zeit nachtragen“ → „Für wen?“ auch Zeiten für andere eintragen, ändern und löschen; die Buchhaltung sieht alle nur; Mitarbeiter sehen und erfassen nur ihre eigene Zeit. Das Stundenblatt gibt es als PDF und CSV."],
     keywords: "stunden arbeitszeit stundenzettel",
   },
 

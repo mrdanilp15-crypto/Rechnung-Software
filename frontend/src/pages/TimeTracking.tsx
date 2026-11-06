@@ -23,6 +23,8 @@ interface Meta {
   activities: { key: string; label: string }[];
   users: { id: string; name: string }[];
   seesAll: boolean;
+  selfId?: string;
+  canEditOthers?: boolean;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -69,7 +71,7 @@ export default function TimeTracking() {
   const [running, setRunning] = useState<Entry | null>(null);
   const [now, setNow] = useState(Date.now());
   const [start, setStart] = useState({ activity: "PRODUKTION", orderId: "", note: "" });
-  const [manual, setManual] = useState({ date: localDay(new Date().toISOString()), time: "08:00", duration: "", activity: "NACHARBEIT", orderId: "", note: "" });
+  const [manual, setManual] = useState({ date: localDay(new Date().toISOString()), time: "08:00", duration: "", activity: "NACHARBEIT", orderId: "", note: "", forUser: "" });
   const [showManual, setShowManual] = useState(false);
   const [editing, setEditing] = useState<{ id: string; duration: string; activity: string; note: string; orderId: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -118,11 +120,12 @@ export default function TimeTracking() {
     const minutes = parseDuration(manual.duration);
     if (minutes <= 0) return setError('Bitte eine Dauer angeben, z.B. "1:30", "1,5" oder "90 min".');
     try {
-      await api.post("/time", { startedAt: new Date(`${manual.date}T${manual.time || "08:00"}`).toISOString(), minutes, activity: manual.activity, note: manual.note || null, orderConfirmationId: manual.orderId || null });
+      await api.post("/time", { startedAt: new Date(`${manual.date}T${manual.time || "08:00"}`).toISOString(), minutes, activity: manual.activity, note: manual.note || null, orderConfirmationId: manual.orderId || null, userId: manual.forUser && manual.forUser !== meta?.selfId ? manual.forUser : undefined });
       setManual((m) => ({ ...m, duration: "", note: "" }));
       setShowManual(false);
       load();
-      showToast("Zeit eingetragen", "success");
+      const who = manual.forUser && manual.forUser !== meta?.selfId ? meta?.users.find((u) => u.id === manual.forUser)?.name : null;
+      showToast(who ? `Zeit für ${who} eingetragen` : "Zeit eingetragen", "success");
     } catch (e) { fail(e, "Eintragen hat nicht geklappt."); }
   }
   async function saveEdit() {
@@ -157,7 +160,7 @@ export default function TimeTracking() {
 
       <InfoBox title="So funktioniert die Zeiterfassung">
         <p><strong>Start</strong> drücken, arbeiten, <strong>Stopp</strong> drücken - oder nachträglich über "Zeit nachtragen" eintragen. Wählst du einen <strong>Auftrag</strong>, fließt die Zeit dort in die Ist-Kosten ein (Produktion → Kosten, mit dem Arbeitsstundensatz aus den Einstellungen).</p>
-        <p>Jeder erfasst seine eigene Zeit. Administratoren und Buchhaltung sehen alle Benutzer, laden den <strong>Stundenzettel</strong> als PDF (mit Unterschriftszeilen) und die <strong>CSV</strong> für den Steuerberater. Monate gelten nach deutscher Zeit. Die Zeiterfassung ist eine Hilfe für Nachweise und Kosten; die Lohnabrechnung selbst macht der Steuerberater oder eine Lohnsoftware.</p>
+        <p>Jeder erfasst seine eigene Zeit. Administratoren können unter "Zeit nachtragen" auch <strong>für andere</strong> Zeiten eintragen und deren Einträge ändern. Administratoren und Buchhaltung sehen alle Benutzer, laden den <strong>Stundenzettel</strong> als PDF (mit Unterschriftszeilen) und die <strong>CSV</strong> für den Steuerberater. Monate gelten nach deutscher Zeit. Die Zeiterfassung ist eine Hilfe für Nachweise und Kosten; die Lohnabrechnung selbst macht der Steuerberater oder eine Lohnsoftware.</p>
       </InfoBox>
 
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4">
@@ -195,11 +198,18 @@ export default function TimeTracking() {
             {meta.users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
         )}
-        <button onClick={() => setShowManual((v) => !v)} className="ml-auto px-3 py-1.5 rounded bg-slate-200 dark:bg-slate-700 text-sm">{showManual ? "Abbrechen" : "Zeit nachtragen"}</button>
+        <button onClick={() => { if (!showManual) setManual((m) => ({ ...m, forUser: userId || meta?.selfId || "" })); setShowManual((v) => !v); }} className="ml-auto px-3 py-1.5 rounded bg-slate-200 dark:bg-slate-700 text-sm">{showManual ? "Abbrechen" : "Zeit nachtragen"}</button>
       </div>
 
       {showManual && (
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {meta?.canEditOthers && (
+            <label className="block text-sm col-span-2 sm:col-span-4">Für wen?
+              <select value={manual.forUser || meta.selfId || ""} onChange={(e) => setManual({ ...manual, forUser: e.target.value })} className={`${input} w-full mt-1`}>
+                {meta.users.map((u) => <option key={u.id} value={u.id}>{u.name}{u.id === meta.selfId ? " (du)" : ""}</option>)}
+              </select>
+            </label>
+          )}
           <label className="block text-sm">Datum<input type="date" value={manual.date} onChange={(e) => setManual({ ...manual, date: e.target.value })} className={`${input} w-full mt-1`} /></label>
           <label className="block text-sm">Beginn<input type="time" value={manual.time} onChange={(e) => setManual({ ...manual, time: e.target.value })} className={`${input} w-full mt-1`} /></label>
           <label className="block text-sm">Dauer<input value={manual.duration} onChange={(e) => setManual({ ...manual, duration: e.target.value })} placeholder="1:30" className={`${input} w-full mt-1`} /></label>
@@ -246,7 +256,7 @@ export default function TimeTracking() {
                       {e.order && <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">{e.order.number}</span>}
                       {meta?.seesAll && <span className="text-xs text-slate-500">{e.userName}</span>}
                       {e.note && <span className="text-xs text-slate-500">{e.note}</span>}
-                      {e.endedAt && (
+                      {e.endedAt && (e.userId === meta?.selfId || meta?.canEditOthers || !meta?.seesAll) && (
                         <span className="ml-auto flex gap-3 text-xs">
                           <button onClick={() => setEditing({ id: e.id, duration: hm(e.minutes ?? 0), activity: e.activity, note: e.note ?? "", orderId: e.order?.id ?? "" })} className="text-brand hover:underline">Ändern</button>
                           <button onClick={() => remove(e)} className="text-red-600 hover:underline">Löschen</button>
