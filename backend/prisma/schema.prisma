@@ -311,6 +311,7 @@ model Product {
   files         ProductFile[]
 
   @@index([companyId])
+  parts         ProductPart[]
 }
 
 // ---------- Material-/Lagerverwaltung ----------
@@ -1101,6 +1102,26 @@ model TextSnippet {
 // ---------- Produktdateien mit Versionen (PDM) ----------
 // Verknüpft ein Produkt mit Dateien aus dem Belegarchiv (STL, 3MF, STEP, Bilder ...). Jede Datei ist eine Version (Revision 1, 2, 3 ...)
 // mit Änderungsnotiz; genau eine Version ist die aktuelle Druckdatei. Die Datei selbst liegt im Archiv (Suche, Backup, ZIP-Export dort).
+// Bauteil eines Produkts, das aus mehreren Drucken besteht (z.B. Tankdeckel = Scharnier + Deckel, je eine 3MF). Druckzeit und Material gelten je
+// Druckplatte; die Kalkulation des Produkts ist die Summe aller Bauteile (siehe modules/products/parts.ts).
+model ProductPart {
+  id                 String  @id @default(uuid())
+  product            Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId          String
+  name               String
+  position           Int     @default(0)
+  // Archivdokument (3MF), aus dem die Werte stammen - nur zur Anzeige, ohne Fremdschlüssel
+  documentId         String?
+  fileName           String?
+  quantityPerProduct Float   @default(1)
+  piecesPerPlate     Int     @default(1)
+  printMinutes       Float   @default(0)
+  // [{ materialId, quantity }] in der Einheit des Materials, je Druckplatte
+  materials          Json    @default("[]")
+
+  @@index([productId])
+}
+
 model ProductFile {
   id         String          @id @default(uuid())
   companyId  String

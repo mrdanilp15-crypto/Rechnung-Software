@@ -7,6 +7,7 @@ import { HttpError } from "../../middleware/errorHandler";
 import { writeAuditLog } from "../audit/auditLog";
 import { productFilesRouter } from "./files";
 import { findDuplicate, nextSku } from "../../utils/sku";
+import { aggregateParts, partSchema } from "./parts";
 
 export const productsRouter = Router();
 productsRouter.use(requireAuth);
@@ -42,7 +43,7 @@ productsRouter.get("/", async (req, res) => {
       isArchived: false,
       ...(q ? { OR: [{ name: { contains: q } }, { sku: { contains: q } }] } : {}),
     },
-    include: { materials: { include: { material: true } } },
+    include: { materials: { include: { material: true } }, parts: { orderBy: { position: "asc" } } },
     orderBy: { name: "asc" },
   });
   res.json(products);
@@ -70,6 +71,8 @@ const productSchema = z.object({
   // Staffelpreise: netto je Einheit ab der jeweiligen Menge (aufsteigend, Menge mindestens 2)
   piecesPerPlate: z.number().int().min(1).max(10000).optional(),
   imageDocumentId: z.string().nullish(),
+  // Bauteile (mehrere 3MF je Produkt): ersetzen Druckzeit und Rezept durch die Summe, siehe parts.ts
+  parts: z.array(partSchema).max(20).optional(),
   // Fertigteil-Lager (der Bestand selbst wird nur über /:id/stock gebucht)
   trackStock: z.boolean().optional(),
   stockMin: z.number().min(0).max(1_000_000).nullish(),
@@ -85,6 +88,22 @@ const productSchema = z.object({
 });
 
 // Ein Drucker darf nur aus der eigenen Firma stammen
+/**
+ * Hat ein Produkt Bauteile, gilt deren Summe: Druckzeit je Produkt und Rezept werden daraus berechnet (der Preis pro Material, den man beim Produkt
+ * eingetragen hat, bleibt erhalten). Gibt null zurück, wenn es keine Bauteile gibt.
+ */
+async function derivedFromParts(companyId: string, parts: z.infer<typeof partSchema>[], keepOverrides: Map<string, number | null>) {
+  if (parts.length === 0) return null;
+  const ids = [...new Set(parts.flatMap((p) => p.materials.map((m) => m.materialId)))];
+  if (ids.length > 0 && (await prisma.material.count({ where: { id: { in: ids }, companyId } })) !== ids.length) throw new HttpError(400, "Ein Material der Bauteile wurde nicht gefunden.");
+  const agg = aggregateParts(parts);
+  return {
+    printTimeMinutes: agg.printMinutes,
+    recipe: agg.materials.map((m) => ({ materialId: m.materialId, quantityPerUnit: m.quantity, costOverrideCents: keepOverrides.get(m.materialId) ?? null })),
+  };
+}
+const partsForDb = (parts: z.infer<typeof partSchema>[]) => parts.map((p, i) => ({ name: p.name, position: i, documentId: p.documentId ?? null, fileName: p.fileName ?? null, quantityPerProduct: p.quantityPerProduct, piecesPerPlate: p.piecesPerPlate, printMinutes: p.printMinutes, materials: p.materials }));
+
 async function validPrinterId(companyId: string, printerId: string) {
   const p = await prisma.printer.findFirst({ where: { id: printerId, companyId, isArchived: false }, select: { id: true } });
   if (!p) throw new HttpError(400, "Drucker nicht gefunden");
@@ -114,8 +133,9 @@ function extraCostsForDb(list: { label: string; amountCents: number }[] | null |
 
 productsRouter.post("/", async (req, res) => {
   const body = productSchema.parse(req.body);
-  const { materials, priceTiers, extraCosts, ...productData } = body;
+  const { materials, priceTiers, extraCosts, parts, ...productData } = body;
   await assertSkuFree(req.auth!.companyId, productData.sku);
+  const derived = await derivedFromParts(req.auth!.companyId, parts ?? [], new Map((materials ?? []).map((m) => [m.materialId, m.costOverrideCents ?? null])));
   const product = await prisma.product.create({
     data: {
       ...productData,
@@ -124,9 +144,11 @@ productsRouter.post("/", async (req, res) => {
       extraCosts: extraCostsForDb(extraCosts),
       companyId: req.auth!.companyId,
       ...(productData.printerId ? { printerId: await validPrinterId(req.auth!.companyId, productData.printerId) } : { printerId: null }),
-      materials: materials ? { create: materials } : undefined,
+      ...(derived ? { printTimeMinutes: derived.printTimeMinutes, piecesPerPlate: 1 } : {}),
+      materials: derived ? { create: derived.recipe } : materials ? { create: materials } : undefined,
+      parts: parts && parts.length > 0 ? { create: partsForDb(parts) } : undefined,
     },
-    include: { materials: { include: { material: true } } },
+    include: { materials: { include: { material: true } }, parts: { orderBy: { position: "asc" } } },
   });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "product.create", entityType: "Product", entityId: product.id });
   res.status(201).json(product);
@@ -134,10 +156,14 @@ productsRouter.post("/", async (req, res) => {
 
 productsRouter.patch("/:id", async (req, res) => {
   const body = productSchema.partial().parse(req.body);
-  const { materials, priceTiers, extraCosts, ...productData } = body;
-  const existing = await prisma.product.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
+  const { materials, priceTiers, extraCosts, parts, ...productData } = body;
+  const existing = await prisma.product.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId }, include: { materials: true } });
   if (!existing) throw new HttpError(404, "Produkt nicht gefunden");
   await assertSkuFree(req.auth!.companyId, productData.sku, existing.id);
+  // Preise je Material, die schon beim Produkt stehen, bleiben erhalten, wenn das Rezept aus den Bauteilen neu berechnet wird
+  const overrides = new Map<string, number | null>(existing.materials.map((m) => [m.materialId, m.costOverrideCents ?? null]));
+  for (const m of materials ?? []) overrides.set(m.materialId, m.costOverrideCents ?? null);
+  const derived = parts !== undefined ? await derivedFromParts(req.auth!.companyId, parts, overrides) : null;
   const updated = await prisma.product.update({
     where: { id: existing.id },
     data: {
@@ -149,9 +175,11 @@ productsRouter.patch("/:id", async (req, res) => {
       // Rezept immer komplett ersetzen, wenn mitgeschickt - einfacher und weniger
       // fehleranfällig als einzelne Zeilen abzugleichen (analog zu Positionslisten bei
       // Rechnungen/Angeboten).
-      ...(materials ? { materials: { deleteMany: {}, create: materials } } : {}),
+      ...(derived ? { printTimeMinutes: derived.printTimeMinutes, piecesPerPlate: 1, materials: { deleteMany: {}, create: derived.recipe } } : materials ? { materials: { deleteMany: {}, create: materials } } : {}),
+      // Bauteile komplett ersetzen (leere Liste = alle entfernen; Druckzeit und Rezept bleiben dann, wie sie zuletzt berechnet wurden)
+      ...(parts !== undefined ? { parts: { deleteMany: {}, ...(parts.length > 0 ? { create: partsForDb(parts) } : {}) } } : {}),
     },
-    include: { materials: { include: { material: true } } },
+    include: { materials: { include: { material: true } }, parts: { orderBy: { position: "asc" } } },
   });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "product.update", entityType: "Product", entityId: existing.id, metadata: body });
   res.json(updated);

@@ -8,6 +8,8 @@ import { useToast } from "../components/Toast";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { SkuField } from "../components/SkuField";
 import { ProductStockDialog } from "../components/ProductStockDialog";
+import { ProductParts } from "../components/ProductParts";
+import { aggregateRows, newPartKey, type PartRow } from "../lib/parts";
 import { ProductFiles, type Applied3mf } from "../components/ProductFiles";
 import { calcCost, feesAt, sollParts, type CostRates, type PriceTier, type PrinterCosts } from "../lib/cost";
 
@@ -50,6 +52,7 @@ interface Product {
   trackStock?: boolean;
   stockQuantity?: number;
   stockMin?: number | null;
+  parts?: { id: string; name: string; documentId: string | null; fileName: string | null; quantityPerProduct: number; piecesPerPlate: number; printMinutes: number; materials: { materialId: string; quantity: number }[] }[];
   materials: ProductMaterial[];
 }
 /** Ist-Werte aus Drucken, die Aufträgen mit diesem Produkt zugeordnet sind (GET /production/product-actuals) */
@@ -90,6 +93,9 @@ export default function Products() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [materialRows, setMaterialRows] = useState<MaterialUsageRow[]>([]);
+  // Bauteile (Produkt aus mehreren 3MF): ihre Summe bestimmt Druckzeit und Material des Produkts
+  const [partRows, setPartRows] = useState<PartRow[]>([]);
+  const partsMode = partRows.length > 0;
   const [error, setError] = useState<string | null>(null);
   const [rates, setRates] = useState<Rates>({ machineRateCentsPerHour: 0, laborRateCentsPerHour: 0, materialWastePercent: 5, targetMarginPercent: 30, electricityCentsPerKwh: 35, overheadPercent: 5, failRatePercent: 5, platformFeePercent: 0, priceRounding: "NONE", minPriceCents: 0 });
   const [printers, setPrinters] = useState<PrinterOption[]>([]);
@@ -127,6 +133,14 @@ export default function Products() {
   const fuse = useMemo(() => new Fuse(products, { keys: ["name", "sku", "description"], threshold: 0.35 }), [products]);
   const filtered = query ? fuse.search(query).map((r) => r.item) : products;
 
+  // Mit Bauteilen gilt deren Summe: Druckzeit und Materialverbrauch im Formular folgen den Bauteilen (eigene Preise je Material bleiben erhalten)
+  useEffect(() => {
+    if (partRows.length === 0) return;
+    const agg = aggregateRows(partRows);
+    setForm((f) => ({ ...f, printTimeMinutes: String(agg.printMinutes), piecesPerPlate: "1" }));
+    setMaterialRows((prev) => agg.materials.map((m) => ({ materialId: m.materialId, quantityPerUnit: String(m.quantity), override: prev.find((x) => x.materialId === m.materialId)?.override ?? "" })));
+  }, [partRows]);
+
   // ?new=1 (aus dem Schnellmenü): Formular zum Anlegen sofort öffnen
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -143,6 +157,7 @@ export default function Products() {
     setEditingId(null);
     setForm(emptyForm);
     setMaterialRows([]);
+    setPartRows([]);
     setTierRows([]);
     setExtraRows([]);
     setCalcQty("1");
@@ -173,7 +188,24 @@ export default function Products() {
     setTierRows((p.priceTiers ?? []).map((t) => ({ minQuantity: String(t.minQuantity), priceEur: (t.unitPriceCents / 100).toFixed(2) })));
     setCalcQty("1");
     setMaterialRows(p.materials.map((m) => ({ materialId: m.materialId, quantityPerUnit: field(m.quantityPerUnit * n), override: m.costOverrideCents != null ? field(m.costOverrideCents / 100) : "" })));
+    setPartRows((p.parts ?? []).map((x) => ({ key: newPartKey(), name: x.name, qty: String(x.quantityPerProduct), pieces: String(x.piecesPerPlate), minutes: String(x.printMinutes), documentId: x.documentId, fileName: x.fileName, materials: (x.materials ?? []).map((m) => ({ materialId: m.materialId, quantity: String(m.quantity) })) })));
     setShowForm(true);
+  }
+
+  /** Bisherige Einzelwerte des Produkts (Druckzeit/Material je Platte) als erstes Bauteil übernehmen und auf Bauteile umstellen. */
+  function startParts() {
+    const rows = materialRows.filter((r) => r.materialId && parseFloat(r.quantityPerUnit) > 0).map((r) => ({ materialId: r.materialId, quantity: r.quantityPerUnit }));
+    setPartRows([{ key: newPartKey(), name: form.name ? form.name + " - Teil 1" : "Teil 1", qty: "1", pieces: form.piecesPerPlate || "1", minutes: form.printTimeMinutes, documentId: null, fileName: null, materials: rows }]);
+  }
+
+  /** Werte einer 3MF als Bauteil übernehmen (neues oder vorhandenes). */
+  function applyPart(target: string, name: string, r: Applied3mf, file: { documentId: string; fileName: string }) {
+    const mats = r.rows.map((x) => ({ materialId: x.materialId, quantity: String(x.quantity) }));
+    setPartRows((prev) =>
+      target === "new"
+        ? [...prev, { key: newPartKey(), name, qty: "1", pieces: String(r.pieces ?? 1), minutes: String(r.printMinutes), documentId: file.documentId, fileName: file.fileName, materials: mats }]
+        : prev.map((p) => (p.key === target ? { ...p, minutes: String(r.printMinutes), pieces: r.pieces ? String(r.pieces) : p.pieces, documentId: file.documentId, fileName: file.fileName, materials: mats } : p))
+    );
   }
 
   function addMaterialRow() {
@@ -218,6 +250,15 @@ export default function Products() {
       priceTiers: tierRows
         .map((r) => ({ minQuantity: parseFloat(r.minQuantity), unitPriceCents: Math.round((parseFloat(r.priceEur) || 0) * 100) }))
         .filter((r) => r.minQuantity >= 2 && r.unitPriceCents > 0),
+      parts: partRows.filter((p) => p.name.trim()).map((p) => ({
+        name: p.name.trim(),
+        documentId: p.documentId,
+        fileName: p.fileName,
+        quantityPerProduct: parseFloat(p.qty.replace(",", ".")) > 0 ? parseFloat(p.qty.replace(",", ".")) : 1,
+        piecesPerPlate: Math.max(1, Math.round(parseFloat(p.pieces) || 1)),
+        printMinutes: parseFloat(p.minutes.replace(",", ".")) || 0,
+        materials: p.materials.filter((m) => m.materialId && parseFloat(m.quantity) > 0).map((m) => ({ materialId: m.materialId, quantity: parseFloat(m.quantity.replace(",", ".")) })),
+      })),
       materials: validMaterialRows.map((r) => ({ materialId: r.materialId, quantityPerUnit: parseFloat(r.quantityPerUnit) / n, costOverrideCents: r.override.trim() !== "" && parseFloat(r.override) >= 0 ? parseFloat(r.override) * 100 : null })),
     };
     try {
@@ -327,11 +368,33 @@ export default function Products() {
           </div>
 
           {editingId ? (
-            <ProductFiles productId={editingId} productName={form.name} materials={materials} onApply={applyFrom3mf} imageDocumentId={products.find((p) => p.id === editingId)?.imageDocumentId} onSetImage={async (docId) => { try { await api.patch(`/products/${editingId}`, { imageDocumentId: docId }); load(); } catch (e: any) { setError(e?.response?.data?.error || "Produktbild konnte nicht gesetzt werden"); } }} />
+            <ProductFiles productId={editingId} productName={form.name} materials={materials} onApply={applyFrom3mf} parts={partRows.map((p) => ({ key: p.key, name: p.name || "Bauteil" }))} onApplyPart={applyPart} imageDocumentId={products.find((p) => p.id === editingId)?.imageDocumentId} onSetImage={async (docId) => { try { await api.patch(`/products/${editingId}`, { imageDocumentId: docId }); load(); } catch (e: any) { setError(e?.response?.data?.error || "Produktbild konnte nicht gesetzt werden"); } }} />
           ) : (
             <p className="text-xs text-slate-500">Dateien (STL, 3MF, STEP) mit Versionen lassen sich zuordnen, sobald das Produkt einmal gespeichert ist. Aus einer 3MF kannst du dann Druckzeit und Materialverbrauch übernehmen.</p>
           )}
 
+          {partsMode ? (
+            <>
+              <ProductParts rows={partRows} setRows={setPartRows} materials={materials} />
+              {materialRows.length > 0 && (
+                <div>
+                  <label className="block text-sm mb-1">Materialverbrauch pro {form.unit || "Einheit"} (Summe der Bauteile)</label>
+                  <p className="text-xs text-slate-500 mb-2">Berechnet aus den Bauteilen. Nur ein eigener Preis je Material lässt sich hier eintragen (leer = Lagerpreis).</p>
+                  {materialRows.map((row, idx) => {
+                    const mat = materials.find((m) => m.id === row.materialId);
+                    return (
+                      <div key={row.materialId} className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_130px_150px] gap-2 mb-2 items-center text-sm">
+                        <span>{mat?.name ?? "Material"}</span>
+                        <span className="text-slate-500">{row.quantityPerUnit} {mat?.unit}</span>
+                        <input type="number" step="any" min="0" placeholder={"Preis €/" + (mat?.unit || "Einheit") + " (optional)"} value={row.override} onFocus={(e) => e.target.select()} onChange={(e) => updateMaterialRow(idx, { override: e.target.value })} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
           <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
             <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3 items-start">
               <div>
@@ -387,6 +450,11 @@ export default function Products() {
               </div>
             ))}
           </div>
+              <div>
+                <button type="button" onClick={startParts} className="text-sm text-brand hover:underline">Besteht das Produkt aus mehreren Drucken (z.B. Scharnier und Deckel)? Bauteile verwenden</button>
+              </div>
+            </>
+          )}
 
           <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-3">
             <div className="text-sm font-medium">Kalkulation (optional)</div>
@@ -406,7 +474,7 @@ export default function Products() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Druckzeit {pieces > 1 ? "pro Druckplatte" : `pro ${form.unit || "Einheit"}`} (Minuten)</label>
-                <input type="number" min="0" step="any" value={form.printTimeMinutes} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, printTimeMinutes: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                <input type="number" min="0" step="any" value={form.printTimeMinutes} disabled={partsMode} title={partsMode ? "Summe der Bauteile" : undefined} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, printTimeMinutes: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
                 <p className="text-xs text-slate-500 mt-1">Reine Druckzeit laut Slicer. Beispiel: 2 h 30 min = 150. {pieces > 1 ? "Für die ganze Platte." : "Bei mehreren Teilen pro Platte oben die Stückzahl eintragen."}</p>
               </div>
               <div>
@@ -639,6 +707,9 @@ export default function Products() {
                       Staffelpreise: {p.priceTiers.map((t) => `ab ${t.minQuantity} Stk. ${formatPrice(t.unitPriceCents)}`).join(" · ")}
                     </div>
                   )}
+                  {p.parts && p.parts.length > 0 && (
+                    <div className="text-xs text-slate-500 truncate">Bauteile: {p.parts.map((x) => x.name + (x.quantityPerProduct !== 1 ? " ×" + x.quantityPerProduct : "")).join(" · ")}</div>
+                  )}
                   {p.materials.length > 0 && (
                     <div className="text-xs text-slate-400 truncate">
                       Verbraucht: {p.materials.map((m) => `${m.quantityPerUnit}${m.material.unit} ${m.material.name}`).join(", ")}
@@ -658,6 +729,7 @@ export default function Products() {
                 <MobileField label="Preis" value={`${formatPrice(p.unitPriceCents)} / ${p.unit}`} />
                 <MobileField label="USt." value={`${(p.vatRateBps / 100).toFixed(0)}%`} />
                 {p.trackStock && <MobileField label="Lager" value={`${p.stockQuantity ?? 0} ${p.unit}`} />}
+                {p.parts && p.parts.length > 0 && <MobileField label="Bauteile" value={p.parts.map((x) => x.name + (x.quantityPerProduct !== 1 ? " ×" + x.quantityPerProduct : "")).join(", ")} />}
                 {p.materials.length > 0 && (
                   <MobileField label="Verbraucht" value={p.materials.map((m) => `${m.quantityPerUnit}${m.material.unit} ${m.material.name}`).join(", ")} />
                 )}

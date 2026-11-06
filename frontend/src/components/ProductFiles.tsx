@@ -76,7 +76,7 @@ export function guessMaterial(type: string | null, materials: Material[]): strin
 
 const sel = "px-2 py-1.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm";
 
-export function ProductFiles({ productId, productName, materials, onApply, imageDocumentId, onSetImage }: { productId: string; productName: string; materials: Material[]; onApply: (r: Applied3mf) => void; imageDocumentId?: string | null; onSetImage?: (docId: string | null) => void }) {
+export function ProductFiles({ productId, productName, materials, onApply, imageDocumentId, onSetImage, parts, onApplyPart }: { productId: string; productName: string; materials: Material[]; onApply: (r: Applied3mf) => void; /** Bauteile des Produkts (für "Übernehmen für ...") */ parts?: { key: string; name: string }[]; onApplyPart?: (target: string, name: string, r: Applied3mf, file: { documentId: string; fileName: string }) => void; imageDocumentId?: string | null; onSetImage?: (docId: string | null) => void }) {
   const isAdmin = useAuthStore((s) => s.user?.role) === "ADMIN";
   const [files, setFiles] = useState<PFile[] | null>(null);
   const [note, setNote] = useState("");
@@ -85,7 +85,10 @@ export function ProductFiles({ productId, productName, materials, onApply, image
   const [picking, setPicking] = useState(false);
   const [q, setQ] = useState("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [analysis, setAnalysis] = useState<{ fileId: string; fileName: string; plates: Plate[] } | null>(null);
+  const [analysis, setAnalysis] = useState<{ fileId: string; fileName: string; documentId: string; plates: Plate[] } | null>(null);
+  // Wohin die Werte der 3MF gehen: ganzes Produkt (eine Datei), ein vorhandenes Bauteil oder ein neues Bauteil
+  const [target, setTarget] = useState<string>("product");
+  const [newPartName, setNewPartName] = useState("");
   const [plateIdx, setPlateIdx] = useState(1);
   const [mapping, setMapping] = useState<Record<number, string>>({});
   const [usePieces, setUsePieces] = useState(false);
@@ -169,7 +172,9 @@ export function ProductFiles({ productId, productName, materials, onApply, image
     try {
       const { data } = await api.get(`/products/${productId}/files/${f.id}/analysis`);
       const plates: Plate[] = data.plates;
-      setAnalysis({ fileId: f.id, fileName: f.fileName, plates });
+      setAnalysis({ fileId: f.id, fileName: f.fileName, documentId: f.documentId, plates });
+      setTarget(parts && parts.length > 0 ? "new" : "product");
+      setNewPartName(f.fileName.lastIndexOf(".") > 0 ? f.fileName.slice(0, f.fileName.lastIndexOf(".")) : f.fileName);
       setPlateIdx(plates[0].index);
       setMapping(prefill(plates[0]));
       setUsePieces(false);
@@ -197,8 +202,14 @@ export function ProductFiles({ productId, productName, materials, onApply, image
       if (hit) hit.quantity += qty;
       else rows.push({ materialId, quantity: qty });
     }
-    onApply({ printMinutes: Math.round(plate.predictionSeconds / 60), pieces: usePieces && plate.objectCount && plate.objectCount > 1 ? plate.objectCount : null, rows: rows.map((r) => ({ ...r, quantity: Math.round(r.quantity * 10000) / 10000 })) });
-    setMsg({ ok: true, text: "Übernommen: Druckzeit und Materialverbrauch stehen unten im Formular - bitte prüfen und speichern." });
+    const applied: Applied3mf = { printMinutes: Math.round(plate.predictionSeconds / 60), pieces: usePieces && plate.objectCount && plate.objectCount > 1 ? plate.objectCount : null, rows: rows.map((r) => ({ ...r, quantity: Math.round(r.quantity * 10000) / 10000 })) };
+    if (onApplyPart && target !== "product") {
+      onApplyPart(target, newPartName.trim() || analysis!.fileName, applied, { documentId: analysis!.documentId, fileName: analysis!.fileName });
+      setMsg({ ok: true, text: "Als Bauteil übernommen: Druckzeit und Material stehen im Bereich Bauteile - bitte prüfen und speichern." });
+    } else {
+      onApply(applied);
+      setMsg({ ok: true, text: "Übernommen: Druckzeit und Materialverbrauch stehen unten im Formular - bitte prüfen und speichern." });
+    }
     setAnalysis(null);
   }
 
@@ -293,7 +304,22 @@ export function ProductFiles({ productId, productName, materials, onApply, image
           {plate.objectCount && plate.objectCount > 1 && (
             <label className="flex items-start gap-2 text-xs"><input type="checkbox" className="mt-0.5" checked={usePieces} onChange={(e) => setUsePieces(e.target.checked)} /> Stück pro Druckplatte auf {plate.objectCount} setzen (nur wenn es {plate.objectCount} gleiche Teile sind - bei verschiedenen Teilen nicht anhaken)</label>
           )}
-          <p className="text-xs text-slate-500">Das ersetzt Druckzeit und Materialverbrauch im Formular durch die Werte des Slicers (für die ganze Platte, inklusive Stützen und Spülmenge). Danach prüfen und speichern.</p>
+          {onApplyPart && (
+            <div className="space-y-1.5">
+              <label className="block text-xs">
+                Übernehmen für
+                <select value={target} onChange={(e) => setTarget(e.target.value)} className={`${sel} ml-2`}>
+                  {(!parts || parts.length === 0) && <option value="product">Das ganze Produkt (eine Datei)</option>}
+                  {(parts ?? []).map((p) => <option key={p.key} value={p.key}>Bauteil: {p.name}</option>)}
+                  <option value="new">Neues Bauteil (Produkt aus mehreren Dateien)</option>
+                </select>
+              </label>
+              {target === "new" && (
+                <label className="block text-xs">Name des Bauteils<input value={newPartName} onChange={(e) => setNewPartName(e.target.value)} placeholder="z.B. Scharnier" className={`${sel} ml-2 w-56`} /></label>
+              )}
+            </div>
+          )}
+          <p className="text-xs text-slate-500">{onApplyPart && target !== "product" ? "Druckzeit und Material der Platte gehen in das Bauteil; die Kalkulation des Produkts ist die Summe aller Bauteile (je Platte, inklusive Stützen und Spülmenge)." : "Das ersetzt Druckzeit und Materialverbrauch im Formular durch die Werte des Slicers (für die ganze Platte, inklusive Stützen und Spülmenge). Danach prüfen und speichern."}</p>
           <div className="flex gap-2">
             <button type="button" onClick={apply} disabled={plate.predictionSeconds === null} className="px-3 py-1.5 rounded bg-brand text-white disabled:opacity-50">In die Kalkulation übernehmen</button>
             <button type="button" onClick={() => setAnalysis(null)} className="px-3 py-1.5 rounded bg-slate-200 dark:bg-slate-700">Abbrechen</button>
