@@ -115,7 +115,7 @@ export default function QuoteDetail() {
             {quote.notes && <p className="mt-3 text-sm text-slate-500">{quote.notes}</p>}
           </Panel>
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 order-first lg:order-none">
           <Panel title="Vorgang">
             <DocumentChain key={chainKey} kind="QUOTE" id={quote.id} />
           </Panel>

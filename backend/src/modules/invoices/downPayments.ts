@@ -22,6 +22,7 @@ export async function createDownPaymentInvoice(
     sourceLabel: string; // z.B. "Auftragsbestätigung AB-2026-0001"
     sourceQuoteId?: string | null;
     sourceOrderConfirmationId?: string | null;
+    assigneeId?: string | null; // Zuständig (Standard: wie beim Ausgangsbeleg bzw. wer die Anzahlung anlegt)
   }
 ) {
   const byRate = new Map<number, number>();
@@ -70,6 +71,7 @@ export async function createDownPaymentInvoice(
       vatNoticeKey: financials.vatNoticeKey,
       sourceQuoteId: p.sourceQuoteId ?? undefined,
       sourceOrderConfirmationId: p.sourceOrderConfirmationId ?? undefined,
+      assigneeId: p.assigneeId ?? undefined,
       introText: p.company.invoiceIntroText,
       closingText: p.company.invoiceClosingText,
       footerText: p.company.invoiceFooterText,

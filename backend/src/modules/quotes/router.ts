@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
-import { assignDocument } from "../documents/assignee";
+import { assignDocument, defaultAssigneeId, notifyAssigneeOnCreate } from "../documents/assignee";
 import { prisma } from "../../db/prisma";
 import { requireAuth } from "../../middleware/auth";
 import { HttpError } from "../../middleware/errorHandler";
@@ -37,6 +37,8 @@ const createQuoteSchema = z.object({
   notes: z.string().optional(),
   introText: z.string().max(3000).optional(),
   closingText: z.string().max(3000).optional(),
+  // Zuständig: ohne Angabe der Anlegende selbst, null = niemand (Änderung später über PATCH /:id/assignee)
+  assigneeId: z.string().min(1).nullable().optional(),
   items: z.array(lineItemSchema).min(1),
 });
 
@@ -64,6 +66,7 @@ quotesRouter.post("/", async (req, res) => {
   const customer = await prisma.customer.findFirst({ where: { id: body.customerId, companyId: company.id } });
   if (!customer) throw new HttpError(404, "Kunde nicht gefunden");
   const totals = calculateDocumentTotals(body.items, company.isSmallBusiness);
+  const assigneeId = await defaultAssigneeId(req, body.assigneeId);
 
   const quote = await prisma.$transaction(async (tx) => {
     const quoteNumber = await nextDocumentNumber(company.id, "QUOTE", tx);
@@ -72,6 +75,7 @@ quotesRouter.post("/", async (req, res) => {
         companyId: company.id,
         customerId: customer.id,
         quoteNumber,
+        assigneeId,
         issueDate: body.issueDate ?? new Date(),
         // Ein Angebot ohne Befristung ist ungünstig - Standard: 30 Tage ab Angebotsdatum
         validUntil: body.validUntil ?? new Date((body.issueDate ?? new Date()).getTime() + 30 * 86_400_000),
@@ -99,6 +103,7 @@ quotesRouter.post("/", async (req, res) => {
   });
 
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "quote.create", entityType: "Quote", entityId: quote.id });
+  await notifyAssigneeOnCreate(req, "QUOTE", quote.id, assigneeId);
   await emitEvent("quote.created", { companyId: company.id, quote });
   res.status(201).json(quote);
 });
@@ -192,6 +197,7 @@ quotesRouter.post("/:id/convert-to-invoice", async (req, res) => {
   const deductions = await deductionLinesFor(prisma, company.id, { quoteId: quote.id });
   const financials = buildInvoiceFinancials(company, quote.customer, [...quote.items, ...deductions.items]);
   const issueDate = new Date();
+  const assigneeId = quote.assigneeId ?? (await defaultAssigneeId(req));
   const invoice = await prisma.$transaction(async (tx) => {
     // Wie bei jeder anderen Rechnung wird der Materialbestand schon beim Anlegen abgezogen -
     // sonst würde ein späteres Löschen/Stornieren Material gutschreiben, das nie abgezogen wurde.
@@ -208,7 +214,7 @@ quotesRouter.post("/:id/convert-to-invoice", async (req, res) => {
         isSmallBusiness: financials.isSmallBusiness,
         vatNoticeKey: financials.vatNoticeKey,
         sourceQuoteId: quote.id,
-        assigneeId: quote.assigneeId,
+        assigneeId,
         kind: deductions.items.length > 0 ? "FINAL" : "STANDARD",
         introText: company.invoiceIntroText,
         closingText: company.invoiceClosingText,
@@ -295,6 +301,7 @@ quotesRouter.post("/:id/convert-to-order-confirmation", async (req, res) => {
   const quote = await prisma.quote.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId }, include: { items: true } });
   if (!quote) throw new HttpError(404, "Angebot nicht gefunden");
   const company = await prisma.company.findUniqueOrThrow({ where: { id: quote.companyId } });
+  const assigneeId = quote.assigneeId ?? (await defaultAssigneeId(req));
   const confirmation = await prisma.$transaction(async (tx) => {
     const confirmationNumber = await nextDocumentNumber(company.id, "ORDER_CONFIRMATION", tx);
     return tx.orderConfirmation.create({
@@ -303,7 +310,7 @@ quotesRouter.post("/:id/convert-to-order-confirmation", async (req, res) => {
         customerId: quote.customerId,
         confirmationNumber,
         sourceQuoteId: quote.id,
-        assigneeId: quote.assigneeId,
+        assigneeId,
         subtotalCents: quote.subtotalCents,
         vatTotalCents: quote.vatTotalCents,
         totalCents: quote.totalCents,
@@ -334,6 +341,7 @@ quotesRouter.post("/:id/duplicate", async (req, res) => {
   const company = await prisma.company.findUniqueOrThrow({ where: { id: source.companyId } });
   const totals = calculateDocumentTotals(source.items, company.isSmallBusiness);
   const issueDate = new Date();
+  const assigneeId = await defaultAssigneeId(req);
   const copy = await prisma.$transaction(async (tx) => {
     const quoteNumber = await nextDocumentNumber(company.id, "QUOTE", tx);
     return tx.quote.create({
@@ -341,6 +349,7 @@ quotesRouter.post("/:id/duplicate", async (req, res) => {
         companyId: company.id,
         customerId: source.customerId,
         quoteNumber,
+        assigneeId,
         issueDate,
         validUntil: new Date(issueDate.getTime() + 30 * 86_400_000),
         notes: source.notes,
@@ -376,7 +385,7 @@ quotesRouter.post("/:id/down-payment", async (req, res) => {
   if (!quote) throw new HttpError(404, "Angebot nicht gefunden");
   if (quote.status === "DRAFT") throw new HttpError(409, "Bitte das Angebot zuerst fertigstellen.");
   const company = await prisma.company.findUniqueOrThrow({ where: { id: quote.companyId } });
-  const invoice = await createDownPaymentInvoice(prisma, { company, customer: quote.customer, sourceItems: quote.items, percent: body.percent, netAmountCents: body.netAmountCents, sourceLabel: `Angebot ${quote.quoteNumber}`, sourceQuoteId: quote.id });
+  const invoice = await createDownPaymentInvoice(prisma, { company, customer: quote.customer, sourceItems: quote.items, percent: body.percent, netAmountCents: body.netAmountCents, sourceLabel: `Angebot ${quote.quoteNumber}`, sourceQuoteId: quote.id, assigneeId: quote.assigneeId ?? (await defaultAssigneeId(req)) });
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "quote.down_payment", entityType: "Quote", entityId: quote.id, metadata: { invoiceId: invoice.id } });
   res.status(201).json(invoice);
 });

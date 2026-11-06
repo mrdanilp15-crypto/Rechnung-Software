@@ -5,6 +5,48 @@ import { logger } from "../../utils/logger";
 import { writeAuditLog } from "../audit/auditLog";
 import { buildAssignmentMessage, notifyUser, type AssignedKind } from "../notifications/service";
 
+const itemsSelect = { select: { description: true }, orderBy: { position: "asc" as const }, take: 3 };
+
+/**
+ * Wer soll für einen neu angelegten Beleg zuständig sein? Wer den Beleg gerade anlegt, ist es automatisch -
+ * außer es wird ausdrücklich jemand anderes (oder niemand: null) gewählt. Gibt die ID zurück, die direkt beim Anlegen gesetzt wird.
+ * Eine fremde oder deaktivierte Person wird abgelehnt; ist der eigene Benutzer nicht mehr aktiv (z.B. API-Schlüssel), bleibt es leer.
+ */
+export async function defaultAssigneeId(req: Request, requested?: string | null): Promise<string | null> {
+  if (requested === null) return null;
+  const id = requested ?? req.auth!.sub;
+  const user = await prisma.user.findFirst({ where: { id, companyId: req.auth!.companyId, isActive: true }, select: { id: true } });
+  if (!user) {
+    if (requested) throw new HttpError(400, "Mitarbeiter nicht gefunden oder deaktiviert.");
+    return null;
+  }
+  return user.id;
+}
+
+/**
+ * Nach dem Anlegen: wurde jemand anderes als man selbst gewählt, bekommt diese Person Bescheid (wie bei jeder Zuweisung).
+ * Der Beleg selbst wurde schon mit der richtigen Person angelegt.
+ */
+export async function notifyAssigneeOnCreate(req: Request, kind: AssignedKind, id: string, assigneeId: string | null): Promise<void> {
+  if (!assigneeId || assigneeId === req.auth!.sub) return;
+  try {
+    const companyId = req.auth!.companyId;
+    const by = await prisma.user.findUnique({ where: { id: req.auth!.sub }, select: { name: true } });
+    const doc =
+      kind === "QUOTE"
+        ? await prisma.quote.findFirst({ where: { id, companyId }, select: { quoteNumber: true, customer: { select: { name: true } }, items: itemsSelect } })
+        : kind === "INVOICE"
+          ? await prisma.invoice.findFirst({ where: { id, companyId }, select: { invoiceNumber: true, customer: { select: { name: true } }, items: itemsSelect } })
+          : await prisma.orderConfirmation.findFirst({ where: { id, companyId }, select: { confirmationNumber: true, customer: { select: { name: true } }, items: itemsSelect } });
+    if (!doc) return;
+    const number = "quoteNumber" in doc ? doc.quoteNumber : "invoiceNumber" in doc ? doc.invoiceNumber : doc.confirmationNumber;
+    const msg = buildAssignmentMessage({ kind, orderNumber: number, customerName: doc.customer.name, items: doc.items.map((i) => i.description), byName: by?.name ?? null });
+    await notifyUser(companyId, assigneeId, msg.title, msg.body, kind === "QUOTE" ? `/quotes/${id}` : kind === "INVOICE" ? `/invoices/${id}` : `/orders/${id}`);
+  } catch (err) {
+    logger.warn({ err: (err as Error).message }, "Benachrichtigung zur Zuweisung fehlgeschlagen");
+  }
+}
+
 /**
  * Zuständigen Mitarbeiter für Angebot oder Rechnung setzen/ändern (jederzeit, auch bei fertigen Belegen - das ist kein Beleginhalt).
  * Dem neuen Zuständigen wird Bescheid gegeben, außer man weist sich selbst zu.

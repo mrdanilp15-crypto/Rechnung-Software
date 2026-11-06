@@ -5,6 +5,8 @@ import { LineItem, PricedItemsEditor, TotalsSummary, createEmptyLineItem, withCl
 import { DocumentTexts } from "../components/DocumentTexts";
 import { PdfCanvasViewer, useNeedsCanvasPdf } from "../components/PdfCanvasViewer";
 import { CustomerPicker, PickerCustomer } from "../components/CustomerPicker";
+import { AssigneeSelect } from "../components/AssigneeSelect";
+import { useAuthStore } from "../store/authStore";
 
 import { HelpTip } from "../components/HelpTip";
 export type DocKind = "invoice" | "quote" | "confirmation" | "deliveryNote";
@@ -119,6 +121,11 @@ export default function DocumentEditor({ kind }: { kind: DocKind }) {
   const [customers, setCustomers] = useState<PickerCustomer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customerId, setCustomerId] = useState("");
+  // Zuständig: bei einem neuen Beleg automatisch man selbst (undefined = noch nicht angefasst), jederzeit änderbar
+  const me = useAuthStore((s) => s.user);
+  const [assigneeId, setAssigneeId] = useState<string | null | undefined>(undefined);
+  const assigneeRef = useRef<string | null | undefined>(undefined);
+  const hasAssignee = kind !== "deliveryNote";
   const [dates, setDates] = useState<Partial<Record<DateField, string>>>({});
   const [notes, setNotes] = useState("");
   const [supplyType, setSupplyType] = useState<"GOODS" | "SERVICE">("GOODS");
@@ -174,6 +181,8 @@ export default function DocumentEditor({ kind }: { kind: DocKind }) {
           return;
         }
         setCustomerId(doc.customerId);
+        assigneeRef.current = doc.assigneeId ?? null;
+        setAssigneeId(doc.assigneeId ?? null);
         const loaded: Partial<Record<DateField, string>> = {};
         for (const d of cfg.dates) loaded[d.field] = doc[d.field] ? String(doc[d.field]).slice(0, 10) : "";
         setDates(loaded);
@@ -251,7 +260,7 @@ export default function DocumentEditor({ kind }: { kind: DocKind }) {
       setSaveState("saving");
       try {
         if (!draftIdRef.current) {
-          const res = await api.post(cfg.base, data);
+          const res = await api.post(cfg.base, hasAssignee && assigneeRef.current !== undefined ? { ...data, assigneeId: assigneeRef.current } : data);
           draftIdRef.current = res.data.id;
           setDraftId(res.data.id);
           // URL anpassen, damit ein Neuladen den Entwurf wieder öffnet - ohne die Seite neu aufzubauen
@@ -272,6 +281,24 @@ export default function DocumentEditor({ kind }: { kind: DocKind }) {
     return chain.current;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Zuständigkeit ändern: beim Anlegen wird sie mitgeschickt, bei einem schon gespeicherten Entwurf sofort gesetzt
+  const changeAssignee = async (userId: string | null) => {
+    const previous = assigneeRef.current;
+    assigneeRef.current = userId;
+    setAssigneeId(userId);
+    const id = draftIdRef.current;
+    if (!id) return;
+    try {
+      await chain.current; // ein laufendes Speichern abwarten
+      if (kind === "confirmation") await api.patch(`/orders/${id}`, { assigneeId: userId });
+      else await api.patch(`${cfg.base}/${id}/assignee`, { assigneeId: userId });
+    } catch (err: any) {
+      assigneeRef.current = previous;
+      setAssigneeId(previous);
+      setError(err.response?.data?.error || "Zuständigkeit konnte nicht geändert werden.");
+    }
+  };
 
   useEffect(() => {
     if (!ready) return;
@@ -442,6 +469,11 @@ Abbrechen = weiter bearbeiten`)) navigate("/documents");
       </div>
 
       {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
+      {kind === "confirmation" && !draftId && (
+        <div className="mb-4 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 p-3 text-sm">
+          Das ist ein Auftrag <strong>ohne vorheriges Angebot</strong>. Kommt der Kunde mit einer Anfrage? Dann besser erst ein <Link to="/quotes/new" className="underline font-medium">Angebot erstellen</Link> - nach der Zusage wird daraus mit einem Klick der Auftrag.
+        </div>
+      )}
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-5 items-start">
         <div className="min-w-0">
@@ -475,6 +507,12 @@ Abbrechen = weiter bearbeiten`)) navigate("/documents");
 
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4">
             <div className="text-xs font-medium text-slate-500 mb-2">3 · Daten und Anmerkung</div>
+            {hasAssignee && (
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <AssigneeSelect value={assigneeId === undefined ? me?.id ?? null : assigneeId} onChange={changeAssignee} />
+                <span className="text-xs text-slate-500">{assigneeId === undefined ? "Automatisch du, solange du niemand anderen wählst." : ""}</span>
+              </div>
+            )}
             <div className={`grid grid-cols-1 gap-3 ${cfg.dates.length >= 3 ? "sm:grid-cols-3" : cfg.dates.length === 2 ? "sm:grid-cols-2" : ""}`}>
               {cfg.dates.map((d) => (
                 <div key={d.field}>

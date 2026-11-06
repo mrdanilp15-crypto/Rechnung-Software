@@ -220,9 +220,10 @@ export default function InvoiceDetail() {
           {!invoice.isCancellationDocument && invoice.status !== "DRAFT" && invoice.status !== "CANCELLED" && (
             <button onClick={handleCancel} className="bg-red-100 text-red-700 px-3 py-1.5 rounded text-sm">{t("invoices.cancel")}</button>
           )}
-          {(invoice.status === "DRAFT" || invoice.status === "SENT") && (
-            <button onClick={() => setShowEmailForm((v) => !v)} className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm">
-              Per E-Mail senden
+          {/* Auch bei bezahlten/überfälligen Rechnungen: wer sie noch nie per E-Mail verschickt hat, soll das nachholen können */}
+          {invoice.status !== "CANCELLED" && (
+            <button onClick={() => setShowEmailForm((v) => !v)} className={`px-3 py-1.5 rounded text-sm ${invoice.emailSentAt || invoice.status === "DRAFT" ? "bg-slate-200 dark:bg-slate-700" : "bg-brand text-white"}`}>
+              {invoice.emailSentAt ? "Erneut per E-Mail senden" : "Per E-Mail senden"}
             </button>
           )}
           <PdfLink url={`/invoices/${id}/pdf`} filename={`${numberLabel}.pdf`} className="bg-slate-200 dark:bg-slate-700 px-3 py-1.5 rounded text-sm">

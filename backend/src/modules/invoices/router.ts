@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { assignDocument } from "../documents/assignee";
+import { assignDocument, defaultAssigneeId, notifyAssigneeOnCreate } from "../documents/assignee";
 import { Parser as CsvParser } from "json2csv";
 import { prisma } from "../../db/prisma";
 import { requireAuth, requireRole } from "../../middleware/auth";
@@ -43,6 +43,8 @@ const createInvoiceSchema = z.object({
   supplyType: z.enum(["GOODS", "SERVICE"]).optional(),
   introText: z.string().max(3000).optional(),
   closingText: z.string().max(3000).optional(),
+  // Zuständig: ohne Angabe der Anlegende selbst, null = niemand (Änderung später über PATCH /:id/assignee)
+  assigneeId: z.string().min(1).nullable().optional(),
   items: z.array(lineItemSchema).min(1),
   sourceQuoteId: z.string().optional(),
 });
@@ -93,6 +95,7 @@ invoicesRouter.post("/", async (req, res) => {
   const supplyType = body.supplyType ?? "GOODS";
   const financials = buildInvoiceFinancials(company, customer, body.items, supplyType);
   const issueDate = body.issueDate ?? new Date();
+  const assigneeId = await defaultAssigneeId(req, body.assigneeId);
 
   const invoice = await prisma.$transaction(async (tx) => {
     await deductMaterialStock(tx, body.items);
@@ -100,6 +103,7 @@ invoicesRouter.post("/", async (req, res) => {
       data: {
         companyId: company.id,
         customerId: customer.id,
+        assigneeId,
         // Nummer wird bewusst erst bei finalizeInvoiceNumber() vergeben (siehe dort).
         issueDate,
         // Ohne ausdrückliches Fälligkeitsdatum gilt das in den Firmeneinstellungen hinterlegte
@@ -125,6 +129,7 @@ invoicesRouter.post("/", async (req, res) => {
   });
 
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "invoice.create", entityType: "Invoice", entityId: invoice.id });
+  await notifyAssigneeOnCreate(req, "INVOICE", invoice.id, assigneeId);
   await emitEvent("invoice.created", { companyId: company.id, invoice });
   res.status(201).json(invoice);
 });
@@ -578,12 +583,14 @@ invoicesRouter.post("/:id/duplicate", async (req, res) => {
   const supplyType = (source.supplyType === "SERVICE" ? "SERVICE" : "GOODS") as "GOODS" | "SERVICE";
   const financials = buildInvoiceFinancials(company, source.customer, source.items.map((i) => ({ productId: i.productId, description: i.description, quantity: i.quantity, unit: i.unit, unitPriceCents: i.unitPriceCents, vatRateBps: i.vatRateBps })), supplyType);
   const issueDate = new Date();
+  const assigneeId = await defaultAssigneeId(req);
   const copy = await prisma.$transaction(async (tx) => {
     await deductMaterialStock(tx, source.items);
     return tx.invoice.create({
       data: {
         companyId: company.id,
         customerId: source.customerId,
+        assigneeId,
         issueDate,
         dueDate: defaultDueDate(company, issueDate),
         isSmallBusiness: financials.isSmallBusiness,

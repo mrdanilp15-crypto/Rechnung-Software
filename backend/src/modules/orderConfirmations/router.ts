@@ -15,6 +15,7 @@ import { buildInvoiceFinancials, defaultDueDate } from "../invoices/build";
 import { createDownPaymentInvoice, deductionLinesFor } from "../invoices/downPayments";
 import { previewRateLimiter } from "../../middleware/rateLimit";
 import { checkQuoteLink } from "./link";
+import { defaultAssigneeId, notifyAssigneeOnCreate } from "../documents/assignee";
 
 export const orderConfirmationsRouter = Router();
 orderConfirmationsRouter.use(requireAuth);
@@ -46,6 +47,8 @@ const createSchema = z.object({
   introText: z.string().max(3000).optional(),
   closingText: z.string().max(3000).optional(),
   sourceQuoteId: z.string().optional(),
+  // Zuständig: ohne Angabe der Anlegende selbst, null = niemand (Änderung später über PATCH /orders/:id)
+  assigneeId: z.string().min(1).nullable().optional(),
   items: z.array(lineItemSchema).min(1),
 });
 
@@ -64,6 +67,7 @@ orderConfirmationsRouter.post("/", async (req, res) => {
   const customer = await prisma.customer.findFirst({ where: { id: body.customerId, companyId: company.id } });
   if (!customer) throw new HttpError(404, "Kunde nicht gefunden");
   const totals = calculateDocumentTotals(body.items, company.isSmallBusiness);
+  const assigneeId = await defaultAssigneeId(req, body.assigneeId);
 
   const confirmation = await prisma.$transaction(async (tx) => {
     const confirmationNumber = await nextDocumentNumber(company.id, "ORDER_CONFIRMATION", tx);
@@ -72,6 +76,7 @@ orderConfirmationsRouter.post("/", async (req, res) => {
         companyId: company.id,
         customerId: customer.id,
         confirmationNumber,
+        assigneeId,
         issueDate: body.issueDate ?? new Date(),
         expectedDeliveryDate: body.expectedDeliveryDate,
         notes: body.notes,
@@ -98,6 +103,7 @@ orderConfirmationsRouter.post("/", async (req, res) => {
   });
 
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "order_confirmation.create", entityType: "OrderConfirmation", entityId: confirmation.id });
+  await notifyAssigneeOnCreate(req, "ORDER", confirmation.id, assigneeId);
   res.status(201).json(confirmation);
 });
 
@@ -280,6 +286,7 @@ orderConfirmationsRouter.post("/:id/convert-to-invoice", async (req, res) => {
   const deductions = await deductionLinesFor(prisma, company.id, { orderConfirmationId: source.id, quoteId: source.sourceQuoteId });
   const financials = buildInvoiceFinancials(company, source.customer, [...source.items, ...deductions.items], "GOODS");
   const issueDate = new Date();
+  const assigneeId = source.assigneeId ?? (await defaultAssigneeId(req));
   const invoice = await prisma.$transaction(async (tx) => {
     const created = await tx.invoice.create({
     data: {
@@ -292,7 +299,7 @@ orderConfirmationsRouter.post("/:id/convert-to-invoice", async (req, res) => {
       vatNoticeKey: financials.vatNoticeKey,
       sourceOrderConfirmationId: source.id,
       sourceQuoteId: source.sourceQuoteId,
-      assigneeId: source.assigneeId,
+      assigneeId,
       introText: company.invoiceIntroText,
       closingText: company.invoiceClosingText,
       footerText: company.invoiceFooterText,
@@ -317,6 +324,7 @@ orderConfirmationsRouter.post("/:id/duplicate", async (req, res) => {
   if (!source) throw new HttpError(404, "Auftragsbestätigung nicht gefunden");
   const company = await prisma.company.findUniqueOrThrow({ where: { id: source.companyId } });
   const totals = calculateDocumentTotals(source.items, company.isSmallBusiness);
+  const assigneeId = await defaultAssigneeId(req);
   const copy = await prisma.$transaction(async (tx) => {
     const confirmationNumber = await nextDocumentNumber(company.id, "ORDER_CONFIRMATION", tx);
     return tx.orderConfirmation.create({
@@ -324,6 +332,7 @@ orderConfirmationsRouter.post("/:id/duplicate", async (req, res) => {
         companyId: company.id,
         customerId: source.customerId,
         confirmationNumber,
+        assigneeId,
         notes: source.notes,
         introText: source.introText ?? company.orderConfirmationIntroText,
         closingText: source.closingText ?? company.orderConfirmationClosingText,
@@ -356,7 +365,7 @@ orderConfirmationsRouter.post("/:id/down-payment", async (req, res) => {
   if (!source) throw new HttpError(404, "Auftragsbestätigung nicht gefunden");
   if (source.status === "DRAFT") throw new HttpError(409, "Bitte die Auftragsbestätigung zuerst fertigstellen.");
   const company = await prisma.company.findUniqueOrThrow({ where: { id: source.companyId } });
-  const invoice = await createDownPaymentInvoice(prisma, { company, customer: source.customer, sourceItems: source.items, percent: body.percent, netAmountCents: body.netAmountCents, sourceLabel: `Auftragsbestätigung ${source.confirmationNumber}`, sourceQuoteId: source.sourceQuoteId, sourceOrderConfirmationId: source.id });
+  const invoice = await createDownPaymentInvoice(prisma, { company, customer: source.customer, sourceItems: source.items, percent: body.percent, netAmountCents: body.netAmountCents, sourceLabel: `Auftragsbestätigung ${source.confirmationNumber}`, sourceQuoteId: source.sourceQuoteId, sourceOrderConfirmationId: source.id, assigneeId: source.assigneeId ?? (await defaultAssigneeId(req)) });
   await writeAuditLog({ req, companyId: company.id, userId: req.auth!.sub, action: "order_confirmation.down_payment", entityType: "OrderConfirmation", entityId: source.id, metadata: { invoiceId: invoice.id } });
   res.status(201).json(invoice);
 });

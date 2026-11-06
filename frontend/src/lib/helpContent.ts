@@ -232,7 +232,7 @@ export const HELP: HelpTopic[] = [
     category: "Aufträge und Produktion",
     title: "Zuständigkeit",
     short: "Wer kümmert sich? Der Zuständige bekommt eine persönliche Meldung und sieht den Vorgang unter \"Nur meine\".",
-    body: ["Gilt für Aufträge, Angebote und Rechnungen und wird beim Weiterführen übernommen (Angebot → Auftrag → Rechnung). Sich selbst zuzuweisen löst keine Meldung aus. Profilbilder wählt jeder Mitarbeiter in seinem Konto."],
+    body: ["Gilt für Aufträge, Angebote und Rechnungen. Wer einen Beleg neu anlegt, ist automatisch zuständig - im Beleg lässt sich das gleich oder später ändern (z.B. auf einen Kollegen oder \"Niemand\"). Beim Weiterführen wird die Zuständigkeit übernommen (Angebot → Auftrag → Rechnung). Sich selbst zuzuweisen löst keine Meldung aus. Profilbilder wählt jeder Mitarbeiter in seinem Konto."],
     keywords: "mitarbeiter zuweisen verantwortlich",
   },
   {

@@ -118,7 +118,7 @@ export default function Production() {
       <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Produktion<HelpTip topic="production" className="ml-2" /></h1>
-          <p className="text-sm text-slate-500">Aufträge von der Annahme bis zum Versand</p>
+          <p className="text-sm text-slate-500">Aufträge von der Annahme bis zum Versand. Neue Kundenanfrage? Erst ein Angebot erstellen - den Auftrag macht man dort mit einem Klick daraus.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-sm text-slate-500">
@@ -126,7 +126,8 @@ export default function Production() {
             auch ältere versendete
           </label>
           <button type="button" onClick={() => setShowImport((v) => !v)} className="px-4 py-2 rounded-lg text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">{showImport ? "Import schließen" : "Etsy-Import"}</button>
-          <Link to="/order-confirmations/new" className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-lg text-sm font-medium">+ Neuer Auftrag</Link>
+          <Link to="/order-confirmations/new" title="Nur wenn der Kunde schon fest bestellt hat und kein Angebot nötig ist" className="px-4 py-2 rounded-lg text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">Auftrag ohne Angebot</Link>
+          <Link to="/quotes/new" title="Der übliche Start: Angebot erstellen, nach der Zusage daraus den Auftrag machen" className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-lg text-sm font-medium">+ Neues Angebot</Link>
         </div>
       </div>
 
