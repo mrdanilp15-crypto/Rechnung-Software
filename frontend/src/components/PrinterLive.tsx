@@ -45,7 +45,11 @@ export interface PrinterJobRow {
   minutes: number | null;
   materialUsage?: { materialId: string; name: string; grams: number }[] | null;
   order?: { id: string; number: string; customerName: string } | null;
+  /** bewusst für keinen Auftrag gedruckt (Lager, Test) */
+  noOrder?: boolean;
 }
+
+const NO_ORDER = "__none__";
 
 interface SlotMapping {
   slot: number;
@@ -98,19 +102,26 @@ function Spool({ tray, label }: { tray: Tray; label: string }) {
 /** Zuordnung eines AMS-Fachs zu einem Material: Daraus wird der Verbrauch automatisch vom Bestand abgebucht. */
 function SlotAssign({ tray, mapping, materials, canEdit, onChange }: { tray: Tray; mapping?: SlotMapping; materials: MaterialOption[]; canEdit: boolean; onChange: (slot: number, materialId: string | null) => void }) {
   if (!tray.type || tray.amsSlot === null || tray.amsSlot === undefined) return null;
-  if (!tray.rfid) return <p className="text-[11px] text-slate-500 mt-0.5">Spule ohne Chip: Füllstand nicht messbar, keine automatische Abbuchung.</p>;
-  if (!canEdit) return mapping ? <p className="text-[11px] text-slate-500 mt-0.5">Bucht von: {mapping.material.name}</p> : null;
+  // Spulen ohne Chip: kein Füllstand, aber die Zuordnung braucht es trotzdem - nach ihr bucht die Software den Slicer-Verbrauch ab (Druck über die App senden)
+  const noChip = "Spule ohne Chip: Füllstand nicht messbar. Gebucht wird nach den Slicer-Werten, wenn du den Druck über diese App sendest - bei Drucken aus Bambu Studio oder am Drucker musst du das Material im Druckverlauf festlegen.";
+  if (!canEdit) {
+    if (!mapping) return !tray.rfid ? <p className="text-[11px] text-slate-500 mt-0.5">Spule ohne Chip: keine automatische Abbuchung.</p> : null;
+    return <p className="text-[11px] text-slate-500 mt-0.5">Bucht von: {mapping.material.name}{tray.rfid ? "" : " (nach Slicer-Angabe)"}</p>;
+  }
   return (
-    <select
-      value={mapping?.materialId ?? ""}
-      onChange={(e) => onChange(tray.amsSlot as number, e.target.value || null)}
-      className="mt-0.5 w-full text-[11px] rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-1 py-0.5"
-      title="Material, von dessen Bestand der Verbrauch dieser Spule automatisch abgebucht wird"
-      aria-label="Material für automatische Abbuchung"
-    >
-      <option value="">Keine Abbuchung</option>
-      {materials.map((m) => <option key={m.id} value={m.id}>Bucht von: {m.name}</option>)}
-    </select>
+    <>
+      <select
+        value={mapping?.materialId ?? ""}
+        onChange={(e) => onChange(tray.amsSlot as number, e.target.value || null)}
+        className="mt-0.5 w-full text-[11px] rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-1 py-0.5"
+        title={tray.rfid ? "Material, von dessen Bestand der Verbrauch dieser Spule automatisch abgebucht wird" : noChip}
+        aria-label="Material für automatische Abbuchung"
+      >
+        <option value="">Keine Abbuchung</option>
+        {materials.map((m) => <option key={m.id} value={m.id}>Bucht von: {m.name}</option>)}
+      </select>
+      {!tray.rfid && <p className="text-[11px] text-slate-500 mt-0.5">{mapping ? "Ohne Chip: Abbuchung nach Slicer-Werten (Druck über die App senden)." : "Ohne Chip: Material wählen, damit der Slicer-Verbrauch abgebucht wird."}</p>}
+    </>
   );
 }
 
@@ -178,7 +189,7 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
   }
   async function assignJob(jobId: string, orderId: string) {
     try {
-      await api.patch(`/printers/jobs/${jobId}`, { orderConfirmationId: orderId || null });
+      await api.patch(`/printers/jobs/${jobId}`, orderId === NO_ORDER ? { noOrder: true } : { orderConfirmationId: orderId || null });
       const res = await api.get(`/printers/${printerId}/jobs`);
       setJobs(res.data);
     } catch (err: any) {
@@ -247,7 +258,7 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
             </div>
           ))}
           {slotError && <p className="text-xs text-red-600">{slotError}</p>}
-          {mappings.length > 0 && <p className="text-xs text-slate-500">Der Verbrauch zugeordneter Spulen wird automatisch vom Materialbestand abgebucht (nach Füllstand der Spule).</p>}
+          {mappings.length > 0 && <p className="text-xs text-slate-500">Der Verbrauch zugeordneter Spulen wird automatisch vom Materialbestand abgebucht: bei Spulen mit Chip nach dem Füllstand, bei Spulen ohne Chip nach den Slicer-Werten (nur bei Drucken, die du über diese App sendest).</p>}
           {status.ams.external && <div className="max-w-[12rem]"><Spool tray={status.ams.external} label="Externe Spule" /></div>}
           {status.ams.activeLabel && active && <div className="text-xs text-slate-500">Aktuell in Benutzung: {status.ams.activeLabel}</div>}
         </div>
@@ -282,9 +293,10 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
               <span className="truncate">{j.name ?? "Druckauftrag"}{j.materialUsage && j.materialUsage.length > 0 ? <span className="text-slate-500"> · {j.materialUsage.map((u) => `${u.name} ${Math.round(u.grams)} g`).join(", ")}</span> : null}</span>
               <span className="text-slate-500">{new Date(j.startedAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · {j.endedAt ? `${formatMinutes(j.minutes ?? 0)} · ${resultLabel[j.result ?? "UNKNOWN"] ?? j.result}` : "läuft"}</span>
               <span className="w-full flex flex-wrap items-center gap-x-3 gap-y-1">
+                {j.endedAt && j.result === "FINISHED" && !(j.materialUsage && j.materialUsage.length > 0) && <span className="text-amber-700 dark:text-amber-400 shrink-0" title="Das AMS hat keinen Verbrauch gemeldet und es gab keinen Slicer-Plan (Spule ohne Chip, Fach keinem Material zugeordnet oder Druck nicht über die App gesendet).">kein Material erfasst</span>}
                 {isAdmin && (j.endedAt ? <button type="button" onClick={() => setUsageJob(j)} className="text-brand hover:underline shrink-0" title="Verbrauch festlegen oder korrigieren (z.B. bei Drucken aus Bambu Studio)">{j.materialUsage && j.materialUsage.length > 0 ? "Material ändern" : "Material festlegen"}</button> : <span className="text-slate-500 shrink-0" title="Während des Drucks misst das AMS mit; danach lässt sich der Verbrauch festlegen.">Material nach Druckende</span>)}
                 <span className="text-slate-500 shrink-0">Auftrag:</span>
-                <OrderSelect value={j.order?.id ?? ""} current={j.order} onChange={(id) => assignJob(j.id, id)} className="min-w-0 flex-1 max-w-xs px-1.5 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs" emptyLabel="keinem Auftrag zugeordnet" />
+                <OrderSelect value={j.order?.id ?? (j.noOrder ? NO_ORDER : "")} current={j.order} onChange={(id) => assignJob(j.id, id)} className="min-w-0 flex-1 max-w-xs px-1.5 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs" emptyLabel="noch keinem Auftrag zugeordnet" extraOption={{ value: NO_ORDER, label: "für keinen Auftrag (Lager/Test)" }} />
               </span>
             </li>
           ))}

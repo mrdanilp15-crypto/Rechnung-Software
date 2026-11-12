@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
+import { AddressFields } from "./AddressFields";
 
 export interface PickerCustomer {
   id: string;
@@ -101,10 +102,9 @@ export function CustomerPicker({
         </div>
         <input autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Name" className={inputClass} />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <input value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} placeholder="Straße und Hausnummer" className={`${inputClass} sm:col-span-2`} />
-          <input value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value })} placeholder="PLZ" className={inputClass} />
-          <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Ort" className={inputClass} />
-          <input value={form.country} maxLength={2} onChange={(e) => setForm({ ...form, country: e.target.value.toUpperCase() })} placeholder="Land (DE)" className={inputClass} />
+          <div className="sm:col-span-2">
+            <AddressFields value={{ street: form.street, postalCode: form.postalCode, city: form.city, country: form.country }} onChange={(p) => setForm((f) => ({ ...f, ...p }))} />
+          </div>
           <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="E-Mail (für den Versand)" className={inputClass} />
           {form.type === "GEWERBLICH" && (
             <input value={form.vatId} onChange={(e) => setForm({ ...form, vatId: e.target.value })} placeholder="USt-IdNr. (bei EU-Firmen wichtig)" className={`${inputClass} sm:col-span-2`} />

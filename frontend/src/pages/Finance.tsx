@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
 import { SaveButton } from "../components/SaveButton";
+import { AmountTaxFields } from "../components/AmountTaxFields";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { MobileCard, MobileField } from "../components/MobileCard";
 import { TaxPanel } from "../components/TaxPanel";
@@ -264,18 +265,7 @@ export default function Finance() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm mb-1">Betrag (€, brutto)</label>
-                <input type="number" step="0.01" required value={form.amountEur} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, amountEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">MwSt-Satz</label>
-                <select value={form.vatRateBps} onChange={(e) => setForm((f) => ({ ...f, vatRateBps: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
-                  <option value="1900">19 %</option>
-                  <option value="700">7 %</option>
-                  <option value="0">0 % (steuerfrei)</option>
-                </select>
-              </div>
+              <AmountTaxFields required gross={form.amountEur} vatRateBps={form.vatRateBps} onChange={(p) => setForm((f) => ({ ...f, ...p }))} />
               <div className="sm:col-span-2">
                 <label className="block text-sm mb-1">Beschreibung (optional)</label>
                 <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />

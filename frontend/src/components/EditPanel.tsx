@@ -1,6 +1,10 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { SaveButton } from "./SaveButton";
 import type { SaveStatus } from "../hooks/useSaveStatus";
+
+/** Felder, die sich per Klick füllen (Adressvorschlag, Rechner), melden damit "es wurde etwas geändert" - sonst gäbe es beim Schließen keine Rückfrage. */
+const EditPanelContext = createContext<{ markDirty: () => void }>({ markDirty: () => undefined });
+export const useEditPanelDirty = () => useContext(EditPanelContext).markDirty;
 
 /**
  * Bearbeiten-/Anlegen-Fenster, das von rechts hereingleitet (am Handy: ganzer Bildschirm).
@@ -115,7 +119,9 @@ export function EditPanel({
           </button>
         </header>
         <form onSubmit={onSubmit} onChangeCapture={() => setTouched(true)} className="flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">{children}</div>
+          <EditPanelContext.Provider value={{ markDirty: () => setTouched(true) }}>
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">{children}</div>
+          </EditPanelContext.Provider>
           <footer className="shrink-0 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
             {error && <p role="alert" className="mb-2 text-sm text-red-600">{error}</p>}
             <div className="flex gap-2">

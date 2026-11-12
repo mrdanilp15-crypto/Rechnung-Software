@@ -52,7 +52,7 @@ export const HELP: HelpTopic[] = [
     short: "Alles, was Aufmerksamkeit braucht, in einer Liste. Vorschläge bestätigst du mit einem Klick - es passiert nichts von selbst.",
     body: [
       "Die Liste sammelt: überfällige Rechnungen (mit Link zur Erinnerung/Mahnung), Rechnungen, die schon über 14 Tage offen sind (schon bezahlt, aber nicht abgehakt?), Angebote ohne Antwort seit 7 Tagen und abgelaufene Angebote (mit vorbereiteter Nachfass-Mail), versandbereite Aufträge, Liefertermine, versendete Aufträge ohne Rechnung, knappes Material und Fertigteile, fällige Wartung, nicht zugeordnete Zahlungseingänge und Drucke ohne Auftrag.",
-      "Manche Punkte haben einen Knopf (z.B. \"Auf In Produktion setzen\" oder \"Druck dem Auftrag zuordnen\"): erst dein Klick führt die Aktion aus. Mit \"Nur meine\" siehst du nur Punkte zu Aufträgen, Angeboten und Rechnungen, für die du zuständig bist.",
+      "Manche Punkte haben einen Knopf (z.B. \"Auf In Produktion setzen\" oder \"Druck dem Auftrag zuordnen\"): erst dein Klick führt die Aktion aus. Drucke für Lager oder Test legst du mit \"Kein Auftrag\" ab - dann verschwinden sie aus dieser Liste. Mit \"Nur meine\" siehst du nur Punkte zu Aufträgen, Angeboten und Rechnungen, für die du zuständig bist.",
     ],
     keywords: "aufgaben todo erinnerung vorschläge",
   },
@@ -192,7 +192,7 @@ export const HELP: HelpTopic[] = [
     category: "Belege",
     title: "Kunden",
     short: "Deine Kundenliste mit Adresse, E-Mail und Belegen. Privat oder gewerblich, bei Firmen mit USt-IdNr. und Leitweg-ID.",
-    body: ["Ein Klick auf einen Kunden zeigt alle Aufträge, Angebote und Rechnungen. Datenschutz: Über die Kundenseite kannst du Daten exportieren oder löschen (DSGVO)."],
+    body: ["Ein Klick auf einen Kunden zeigt alle Aufträge, Angebote und Rechnungen. Datenschutz: Über die Kundenseite kannst du Daten exportieren oder löschen (DSGVO).", "Adresse leichter eintragen: Tipp die Straße (mit Hausnummer) - es erscheinen Vorschläge, ein Klick füllt Straße, PLZ, Ort und Land. Gibst du die PLZ ein, ergänzt sich der Ort von selbst (nur wenn er noch leer ist). Eine ganze Adresse kannst du im Straßenfeld einfügen, sie wird auf die Felder verteilt. \"Auf Karte ansehen\" und \"Route planen\" öffnen Google Maps. Die Vorschläge kommen von OpenStreetMap (Photon); dorthin geht nur der getippte Adresstext, keine Namen. Abschalten mit GEO_LOOKUP_DISABLED=1."],
     keywords: "adressen dsgvo",
   },
 
@@ -359,6 +359,7 @@ export const HELP: HelpTopic[] = [
     short: "Deine 3D-Drucker mit Kostenwerten (Strom, Abschreibung, Verschleiß), Wartungsplan und - bei Bambu Lab - Live-Verbindung.",
     body: [
       "Die Kostenwerte bestimmen die Maschinenkosten in der Kalkulation. Mit Live-Verbindung (LAN-Modus, Zugangscode) siehst du Fortschritt, Restzeit, Material und Kamerabild und bekommst Meldungen bei Druckende und Fehlern. Der Wartungsplan meldet sich, wenn eine Aufgabe nach Betriebsstunden oder Tagen fällig ist.",
+      "Material aus dem AMS: Ordne jedem Fach ein Material zu. Bei Bambu-Spulen mit Chip bucht die Software nach dem Füllstand. Bei Spulen ohne Chip bucht sie nach den Slicer-Werten, aber nur bei Drucken, die du über diese App sendest; bei Drucken aus Bambu Studio oder am Drucker legst du das Material im Druckverlauf fest (\"kein Material erfasst\" weist darauf hin). Im Druckverlauf kannst du einen Druck auch als \"für keinen Auftrag (Lager/Test)\" ablegen.",
     ],
     keywords: "bambu lab live kamera wartung ams",
   },
@@ -393,7 +394,7 @@ export const HELP: HelpTopic[] = [
     category: "Finanzen",
     title: "Ausgaben",
     short: "Alle Betriebsausgaben mit Beleg. Einkäufe über \"Nachbestellen\" im Material legen die Ausgabe automatisch an.",
-    body: ["Beleg hochladen (Foto/PDF) - die Software liest Betrag und Händler nach Möglichkeit selbst aus und du prüfst nur. Kategorie, Datum und Lieferant gehören dazu."],
+    body: ["Beleg hochladen (Foto/PDF) - die Software liest Betrag und Händler nach Möglichkeit selbst aus und du prüfst nur. Kategorie, Datum und Lieferant gehören dazu.", "Beträge musst du nicht selbst ausrechnen: Trag ein, was auf dem Beleg steht - brutto, netto oder nur den MwSt-Betrag - und die anderen Felder rechnen sich sofort mit. Ändert sich der Steuersatz, bleibt der zuletzt getippte Wert stehen."],
     keywords: "kosten beleg einkauf",
   },
   {

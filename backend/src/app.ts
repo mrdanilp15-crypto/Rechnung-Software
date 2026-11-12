@@ -57,6 +57,7 @@ import { todoRouter } from "./modules/todo/router";
 import { apiKeysRouter } from "./modules/apikeys/router";
 import { calendarRouter } from "./modules/calendar/router";
 import { systemRouter } from "./modules/system/router";
+import { geoRouter } from "./modules/geo/router";
 
 export function createApp() {
   const app = express();
@@ -151,6 +152,7 @@ export function createApp() {
   app.use("/api/api-keys", apiKeysRouter);
   app.use("/api/calendar", calendarRouter);
   app.use("/api/system", systemRouter);
+  app.use("/api/geo", geoRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

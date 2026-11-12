@@ -16,8 +16,10 @@ interface Item {
   detail?: string;
   link: string;
   assigneeId?: string | null;
-  action?: { label: string; method: "PATCH" | "POST"; url: string; body?: Record<string, unknown> };
+  action?: Action;
+  secondaryAction?: Action;
 }
+type Action = { label: string; method: "PATCH" | "POST"; url: string; body?: Record<string, unknown> };
 
 const DOT: Record<Item["severity"], string> = { high: "bg-red-500", normal: "bg-amber-500", info: "bg-slate-400" };
 const SHOWN = 6;
@@ -37,8 +39,8 @@ export function TodoPanel() {
   useEffect(() => { void load(); }, []);
 
   // Vorschlag mit einem Klick bestätigen (nur Pfade der eigenen API)
-  async function run(it: Item) {
-    const a = it.action;
+  async function run(it: Item, which: "action" | "secondaryAction" = "action") {
+    const a = it[which];
     if (!a || !a.url.startsWith("/") || a.url.startsWith("//")) return;
     setBusy(it.id);
     try {
@@ -81,7 +83,10 @@ export function TodoPanel() {
                   </span>
                   {!it.action && <span className="text-brand text-sm shrink-0 mt-0.5">→</span>}
                 </Link>
-                {it.action && <button type="button" disabled={busy === it.id} onClick={() => run(it)} className="shrink-0 mt-1.5 px-3 py-1 rounded-lg bg-brand hover:bg-brand-dark text-white text-xs font-medium disabled:opacity-50">{busy === it.id ? "..." : it.action.label}</button>}
+                <div className="shrink-0 mt-1.5 flex flex-wrap justify-end gap-1.5">
+                  {it.secondaryAction && <button type="button" disabled={busy === it.id} onClick={() => run(it, "secondaryAction")} className="px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs disabled:opacity-50">{it.secondaryAction.label}</button>}
+                  {it.action && <button type="button" disabled={busy === it.id} onClick={() => run(it)} className="px-3 py-1 rounded-lg bg-brand hover:bg-brand-dark text-white text-xs font-medium disabled:opacity-50">{busy === it.id ? "..." : it.action.label}</button>}
+                </div>
               </li>
             ))}
           </ul>

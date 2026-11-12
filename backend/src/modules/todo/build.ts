@@ -25,6 +25,8 @@ export interface TodoItem {
   link: string;
   /** Vorschlag mit einem Klick bestätigen (sonst führt nur der Link zur Stelle) */
   action?: TodoAction;
+  /** Zweite, zurückhaltende Möglichkeit, z.B. "Kein Auftrag" bei einem Zuordnungsvorschlag */
+  secondaryAction?: TodoAction;
 }
 
 export interface TodoOrder {
@@ -171,11 +173,14 @@ export function buildTodo(i: TodoInput): TodoItem[] {
   const openOrders = i.orders.filter((o) => o.productionStatus !== "SHIPPED");
   const inProduction = openOrders.filter((o) => o.productionStatus === "IN_PRODUCTION");
   let leftover = 0;
+  const leftoverIds: string[] = [];
+  const noOrderAction = (ids: string[], label: string): TodoAction => ({ label, method: "POST", url: "/printers/jobs/mark-no-order", body: { jobIds: ids } });
   for (const j of i.unassignedJobs) {
     const byName = openOrders.filter((o) => jobMatchesOrder(j.name, o.itemNames));
     const pick = byName.length === 1 ? { order: byName[0], why: "Name passt zu einer Position" } : byName.length === 0 && inProduction.length === 1 && i.unassignedJobs.length === 1 ? { order: inProduction[0], why: "einziger Auftrag in Produktion" } : null;
     if (!pick) {
       leftover++;
+      leftoverIds.push(j.id);
       continue;
     }
     items.push({
@@ -186,6 +191,7 @@ export function buildTodo(i: TodoInput): TodoItem[] {
       detail: `${pick.order.customer} - ${pick.why}; Zeit und Material gehen dann in dessen Kosten ein`,
       link: "/catalog?tab=printers",
       action: { label: "Zuordnen", method: "PATCH", url: `/printers/jobs/${j.id}`, body: { orderConfirmationId: pick.order.id } },
+      secondaryAction: { label: "Kein Auftrag", method: "PATCH", url: `/printers/jobs/${j.id}`, body: { noOrder: true } },
     });
   }
 
@@ -203,7 +209,15 @@ export function buildTodo(i: TodoInput): TodoItem[] {
     items.push({ id: "unmatched-payments", kind: "unmatched-payments", severity: "normal", title: `${i.unmatchedPayments} ${plural(i.unmatchedPayments, "Zahlungseingang", "Zahlungseingänge")} noch keiner Rechnung zugeordnet`, detail: "Vorschläge ansehen und mit einem Klick bestätigen", link: "/finance?tab=bank" });
   }
   if (leftover > 0) {
-    items.push({ id: "unassigned-prints", kind: "unassigned-prints", severity: "info", title: `${leftover} ${plural(leftover, "Druck", "Drucke")} der letzten Tage ohne Auftrag`, detail: "Zeit und Material gehen so in keinen Auftrag ein - im Druckverlauf des Druckers zuordnen", link: "/catalog?tab=printers" });
+    items.push({
+      id: "unassigned-prints",
+      kind: "unassigned-prints",
+      severity: "info",
+      title: `${leftover} ${plural(leftover, "Druck", "Drucke")} der letzten Tage ohne Auftrag`,
+      detail: 'Zeit und Material gehen so in keinen Auftrag ein - im Druckverlauf des Druckers zuordnen. Für Lager oder Test: als "für keinen Auftrag" ablegen, dann verschwindet der Hinweis.',
+      link: "/catalog?tab=printers",
+      action: noOrderAction(leftoverIds, leftover === 1 ? "Kein Auftrag" : "Alle: kein Auftrag"),
+    });
   }
   if (i.oldDrafts > 0) {
     items.push({ id: "old-drafts", kind: "old-drafts", severity: "info", title: `${i.oldDrafts} ${plural(i.oldDrafts, "Entwurf liegt", "Entwürfe liegen")} seit über 3 Tagen`, detail: "fertigstellen oder verwerfen", link: "/documents?type=DRAFT" });

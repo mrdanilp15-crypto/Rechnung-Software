@@ -2,6 +2,7 @@ import { DataResetPanel } from "../components/DataResetPanel";
 import { FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { HelpLine, HelpTip } from "../components/HelpTip";
+import { AddressFields } from "../components/AddressFields";
 import { api } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 import { CompanyAssetUpload } from "../components/CompanyAssetUpload";
@@ -340,23 +341,10 @@ export default function Settings() {
               <input type="text" value={company.legalForm || ""} onChange={(e) => setCompany({ ...company, legalForm: e.target.value })} placeholder="z.B. GmbH, e.K., Einzelunternehmen" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               <span className="block text-xs text-slate-500 mt-0.5">Wird in der Fußzeile ergänzt, falls sie nicht schon im Firmennamen steht.</span>
             </label>
-            <label className="block text-sm">
-              Straße und Hausnummer
-              <input type="text" value={company.street || ""} onChange={(e) => setCompany({ ...company, street: e.target.value })} placeholder="" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            </label>
-            <label className="block text-sm">
-              PLZ
-              <input type="text" value={company.postalCode || ""} onChange={(e) => setCompany({ ...company, postalCode: e.target.value })} placeholder="" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            </label>
-            <label className="block text-sm">
-              Ort
-              <input type="text" value={company.city || ""} onChange={(e) => setCompany({ ...company, city: e.target.value })} placeholder="" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            </label>
-            <label className="block text-sm">
-              Land (Ländercode)
-              <input type="text" value={company.country || ""} onChange={(e) => setCompany({ ...company, country: e.target.value })} placeholder="DE" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Zwei Buchstaben, z.B. DE, AT, CH. Bestimmt die Umsatzsteuer-Behandlung bei Auslandskunden (Reverse-Charge/Ausfuhr).</span>
-            </label>
+            <div className="sm:col-span-2 space-y-1">
+              <AddressFields value={{ street: company.street || "", postalCode: company.postalCode || "", city: company.city || "", country: company.country || "" }} onChange={(p) => setCompany({ ...company, ...p })} />
+              <p className="text-xs text-slate-500">Das Land (zwei Buchstaben, z.B. DE, AT, CH) bestimmt die Umsatzsteuer-Behandlung bei Auslandskunden (Reverse-Charge/Ausfuhr).</p>
+            </div>
           </div>
           <h3 className="text-sm font-semibold pt-2">Steuer &amp; Register (Pflichtangaben auf Rechnungen)</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

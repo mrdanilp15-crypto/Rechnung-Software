@@ -19,6 +19,18 @@ describe("Heute zu tun", () => {
     expect(items[0].detail).toContain("119,00");
     expect(items[0].link).toBe("/invoices/i1?dunning=1");
   });
+  it("Drucke ohne passenden Auftrag: ein Sammelpunkt mit Knopf, der alle als 'für keinen Auftrag' ablegt", () => {
+    const items = buildTodo({ ...base, unassignedJobs: [{ id: "j1", name: "Test", printerName: "P1" }, { id: "j2", name: "Xyz", printerName: "P1" }] });
+    const it1 = items.find((x) => x.kind === "unassigned-prints")!;
+    expect(it1.title).toContain("2 Drucke");
+    expect(it1.action).toMatchObject({ method: "POST", url: "/printers/jobs/mark-no-order", body: { jobIds: ["j1", "j2"] } });
+  });
+  it("ein Zuordnungsvorschlag bietet zusätzlich 'Kein Auftrag' an", () => {
+    const o = order("a1", { productionStatus: "IN_PRODUCTION", itemNames: ["Tankdeckel"] });
+    const s = buildTodo({ ...base, orders: [o], unassignedJobs: [{ id: "j1", name: "Tankdeckel", printerName: "P1" }] }).find((x) => x.kind === "suggest-assign-print")!;
+    expect(s.action).toMatchObject({ label: "Zuordnen", url: "/printers/jobs/j1", body: { orderConfirmationId: "a1" } });
+    expect(s.secondaryAction).toMatchObject({ label: "Kein Auftrag", method: "PATCH", url: "/printers/jobs/j1", body: { noOrder: true } });
+  });
   it("fragt bei lange offenen (noch nicht überfälligen) Rechnungen nach, ob sie schon bezahlt sind - gesammelt in einem Punkt", () => {
     expect(buildTodo({ ...base, longOpenInvoices: { count: 0, totalCents: 0 } })).toEqual([]);
     const items = buildTodo({ ...base, longOpenInvoices: { count: 2, totalCents: 35000 } });

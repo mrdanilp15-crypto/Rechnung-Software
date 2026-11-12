@@ -27,7 +27,7 @@ todoRouter.get("/", async (req, res) => {
     ),
     prisma.material.findMany({ where: { companyId, isArchived: false, minStock: { gt: 0 } }, select: { name: true, stockQuantity: true, minStock: true } }),
     prisma.maintenanceTask.findMany({ where: { companyId, printer: { isArchived: false } }, include: { printer: { select: { name: true } } } }),
-    prisma.printerJob.findMany({ where: { companyId, orderConfirmationId: null, result: "FINISHED", endedAt: { gte: new Date(now.getTime() - 3 * DAY) } }, orderBy: { endedAt: "desc" }, take: 20, select: { id: true, name: true, printer: { select: { name: true } } } }),
+    prisma.printerJob.findMany({ where: { companyId, orderConfirmationId: null, noOrder: false, result: "FINISHED", endedAt: { gte: new Date(now.getTime() - 3 * DAY) } }, orderBy: { endedAt: "desc" }, take: 20, select: { id: true, name: true, printer: { select: { name: true } } } }),
     prisma.product.findMany({ where: { companyId, isArchived: false, trackStock: true, stockMin: { not: null } }, select: { id: true, name: true, unit: true, stockQuantity: true, stockMin: true } }),
     prisma.bankTransaction.count({ where: { companyId, amountCents: { gt: 0 }, matchedInvoiceId: null, ignored: false } }),
   ]);

@@ -128,7 +128,7 @@ export function PrintSendDialog({ printerId, printerName, status, onClose, initi
     setBusy(true);
     setError(null);
     try {
-      const { data } = await api.post(`/printers/${printerId}/print`, { documentId: docId, plate: plateIdx, mode, useAms, assignment, confirmPlateClear: clear, orderConfirmationId: orderId || null });
+      const { data } = await api.post(`/printers/${printerId}/print`, { documentId: docId, plate: plateIdx, mode, useAms, assignment, confirmPlateClear: clear, orderConfirmationId: orderId || null, noOrder: !orderId });
       setDone(mode === "start" ? `Druck gestartet (${data.fileName}). Der Fortschritt erscheint in der Druckerkarte.` : `Datei ${data.fileName} liegt auf dem Drucker. Am Drucker unter "SD-Karte" starten.`);
     } catch (e: any) {
       setError(e?.response?.data?.error ?? "Senden hat nicht geklappt.");

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import Fuse from "fuse.js";
 import { api } from "../api/client";
 import { EditPanel } from "../components/EditPanel";
+import { GrossPriceField } from "../components/AmountTaxFields";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
 import { MobileCard, MobileField } from "../components/MobileCard";
@@ -393,6 +394,7 @@ export default function Products() {
             <div>
               <label className="block text-sm mb-1">{t("products.unitPrice")} (€ pro Einheit)</label>
               <input type="number" step="0.01" value={form.unitPriceEur} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, unitPriceEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <GrossPriceField netEur={form.unitPriceEur} vatRateBps={form.vatRateBps} onNetChange={(v) => setForm((f) => ({ ...f, unitPriceEur: v }))} />
               <p className="text-xs text-slate-500 mt-1">Verkaufspreis <strong>netto</strong> (ohne USt.). Den Preisvorschlag aus der Kalkulation unten können Sie mit "Übernehmen" eintragen.</p>
             </div>
             <div>

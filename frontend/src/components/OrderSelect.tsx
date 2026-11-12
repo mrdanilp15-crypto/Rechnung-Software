@@ -15,7 +15,7 @@ function loadOpenOrders(): Promise<OpenOrder[]> {
 }
 
 /** Auswahl eines offenen Auftrags (Auftragsbestätigung), z.B. um einen Druck zuzuordnen. Der aktuell gewählte Auftrag bleibt auch dann sichtbar, wenn er nicht mehr offen ist. */
-export function OrderSelect({ value, current, onChange, className, emptyLabel = "Kein Auftrag" }: { value: string; current?: OpenOrder | null; onChange: (id: string) => void; className?: string; emptyLabel?: string }) {
+export function OrderSelect({ value, current, onChange, className, emptyLabel = "Kein Auftrag", extraOption }: { value: string; current?: OpenOrder | null; onChange: (id: string) => void; className?: string; emptyLabel?: string; /** Zusätzliche feste Auswahl unter "kein Auftrag", z.B. "für keinen Auftrag (Lager/Test)" */ extraOption?: { value: string; label: string } }) {
   const [orders, setOrders] = useState<OpenOrder[]>([]);
   useEffect(() => {
     let alive = true;
@@ -28,6 +28,7 @@ export function OrderSelect({ value, current, onChange, className, emptyLabel = 
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} className={className ?? "px-2 py-1.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"}>
       <option value="">{emptyLabel}</option>
+      {extraOption && <option value={extraOption.value}>{extraOption.label}</option>}
       {list.map((o) => <option key={o.id} value={o.id}>{o.number} · {o.customerName}</option>)}
     </select>
   );

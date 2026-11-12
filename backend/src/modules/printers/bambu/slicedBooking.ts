@@ -83,11 +83,11 @@ export function computePlanBookings(entries: PlanEntry[], factor: number, trays:
 }
 
 /** Beim Senden eines Drucks merken (auch bei "Nur senden", der Start erfolgt dann am Drucker). Alte Pläne desselben Namens werden ersetzt. */
-export async function savePrintPlan(companyId: string, printerId: string, fileName: string, entries: PlanEntry[], orderConfirmationId: string | null = null) {
+export async function savePrintPlan(companyId: string, printerId: string, fileName: string, entries: PlanEntry[], orderConfirmationId: string | null = null, noOrder = false) {
   const jobName = normalizeJobName(fileName);
   await prisma.printPlan.deleteMany({ where: { printerId, OR: [{ jobName }, { createdAt: { lt: new Date(Date.now() - PLAN_VALID_MS) } }] } });
-  if (entries.length === 0 && !orderConfirmationId) return;
-  await prisma.printPlan.create({ data: { companyId, printerId, jobName, entries: entries as unknown as object[], orderConfirmationId } });
+  if (entries.length === 0 && !orderConfirmationId && !noOrder) return;
+  await prisma.printPlan.create({ data: { companyId, printerId, jobName, entries: entries as unknown as object[], orderConfirmationId, noOrder: noOrder && !orderConfirmationId } });
 }
 
 /** Beginnt ein Auftrag am Drucker: passenden Plan (gleicher Name, höchstens 48 h alt) an den Auftrag hängen. */
@@ -97,7 +97,7 @@ export async function attachPlanToJob(printerId: string, jobId: string, jobName:
   if (!plan) return;
   const entries = Array.isArray(plan.entries) ? (plan.entries as unknown[]) : [];
   await prisma.$transaction([
-    prisma.printerJob.update({ where: { id: jobId }, data: { ...(entries.length > 0 ? { slicedPlan: entries as object[] } : {}), ...(plan.orderConfirmationId ? { orderConfirmationId: plan.orderConfirmationId } : {}) } }),
+    prisma.printerJob.update({ where: { id: jobId }, data: { ...(entries.length > 0 ? { slicedPlan: entries as object[] } : {}), ...(plan.orderConfirmationId ? { orderConfirmationId: plan.orderConfirmationId } : plan.noOrder ? { noOrder: true } : {}) } }),
     prisma.printPlan.delete({ where: { id: plan.id } }),
   ]);
 }

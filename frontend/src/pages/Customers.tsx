@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import Fuse from "fuse.js";
 import { api } from "../api/client";
 import { EditPanel } from "../components/EditPanel";
+import { AddressFields } from "../components/AddressFields";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
 import { MobileCard, MobileField } from "../components/MobileCard";
@@ -192,14 +193,7 @@ export default function Customers() {
             {field("phone", "Telefon")}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {field("street", "Straße & Hausnummer", "sm:col-span-2")}
-            {field("postalCode", "Postleitzahl")}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {field("city", t("customers.city"))}
-            {field("country", "Land (ISO-Code, z.B. DE, AT, CH)")}
-          </div>
+          <AddressFields value={{ street: form.street, postalCode: form.postalCode, city: form.city, country: form.country }} onChange={(p) => setForm((f) => ({ ...f, ...p }))} />
 
           <div>
             <label className="block text-sm mb-1">Notizen (nur intern sichtbar)</label>

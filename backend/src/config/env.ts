@@ -18,6 +18,10 @@ const envSchema = z.object({
   RATE_LIMIT_MAX: z.coerce.number().default(1000),
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().default(30),
 
+  // Adressvorschläge beim Tippen (Photon, OpenStreetMap-Daten). Abschalten mit GEO_LOOKUP_DISABLED=1; eigene Photon-Instanz über GEO_LOOKUP_URL.
+  GEO_LOOKUP_URL: z.string().default("https://photon.komoot.io/api"),
+  GEO_LOOKUP_DISABLED: z.string().default(""),
+
   CORS_ORIGINS: z.string().default("http://localhost:5173"),
 
   // Ohne diesen Wert (Default: leer) ist POST /auth/register für jeden im Internet

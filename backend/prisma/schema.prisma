@@ -954,6 +954,8 @@ model PrinterJob {
   // Zugeordneter Auftrag (Auftragsbestätigung): Druckzeit und Material gehen in die Ist-Kosten des Auftrags ein
   orderConfirmation   OrderConfirmation? @relation(fields: [orderConfirmationId], references: [id], onDelete: SetNull)
   orderConfirmationId String?
+  // Bewusst für keinen Auftrag gedruckt (Lager, Test, eigener Bedarf): taucht nicht mehr als "ohne Auftrag" in Heute zu tun und Zuordnungslisten auf
+  noOrder             Boolean   @default(false)
 
   @@index([printerId, startedAt])
   @@index([orderConfirmationId])
@@ -1158,6 +1160,7 @@ model PrintPlan {
   jobName   String // normalisierter Dateiname (ohne .gcode.3mf, kleingeschrieben)
   entries   Json // [{ filament, slot, grams }]
   orderConfirmationId String? // beim Senden gewählter Auftrag, wird an den Druckauftrag weitergegeben
+  noOrder   Boolean  @default(false) // beim Senden "Kein Auftrag (Lagerproduktion)" gewählt: der Druck gilt dann nicht als "ohne Auftrag"
   createdAt DateTime @default(now())
 
   @@index([printerId, jobName])

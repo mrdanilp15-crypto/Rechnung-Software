@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { InfoBox } from "../components/InfoBox";
 import { EditPanel } from "../components/EditPanel";
+import { AddressFields } from "../components/AddressFields";
 import { useToast } from "../components/Toast";
 
 import { HelpTip } from "../components/HelpTip";
@@ -119,11 +120,8 @@ export default function Suppliers() {
             {field("E-Mail", "email", { type: "email" })}
             {field("Telefon", "phone")}
             {field("Webseite", "website", { placeholder: "www.beispiel.de", span: "sm:col-span-3" })}
-            {field("Straße", "street", { span: "sm:col-span-3" })}
-            {field("PLZ", "postalCode")}
-            {field("Ort", "city")}
-            {field("Land", "country")}
           </div>
+          <AddressFields value={{ street: form.street, postalCode: form.postalCode, city: form.city, country: form.country }} onChange={(p) => setForm((f) => ({ ...f, ...p }))} />
           <label className="block text-sm">Notiz
             <textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="z.B. Versandkostenfrei ab 50 €, Rabattcode" className={`${inputClass} mt-1`} />
           </label>

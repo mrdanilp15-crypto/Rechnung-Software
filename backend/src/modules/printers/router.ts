@@ -364,6 +364,7 @@ const printSchema = z.object({
   assignment: z.record(z.string(), z.number().int().min(0).max(254)).default({}), // Filament-Nr. -> AMS-Fach (254 = externe Spule)
   confirmPlateClear: z.boolean().optional(),
   orderConfirmationId: z.string().min(1).nullish(), // Auftrag, für den gedruckt wird (Zeit und Material gehen in dessen Ist-Kosten ein)
+  noOrder: z.boolean().optional(), // ausdrücklich "Kein Auftrag (Lagerproduktion)": der Druck gilt dann nicht als "ohne Auftrag"
 });
 
 printersRouter.post("/:id/print", async (req, res) => {
@@ -410,7 +411,7 @@ printersRouter.post("/:id/print", async (req, res) => {
   }
   // Erwarteten Verbrauch (Slicer-Angabe) für die Abbuchung bei Druckende merken - gilt für Spulen ohne Chip
   const planEntries = body.useAms ? buildPlanEntries(plate.filaments, assignment) : [];
-  await savePrintPlan(req.auth!.companyId, p.id, fileName, planEntries, orderId).catch(() => undefined);
+  await savePrintPlan(req.auth!.companyId, p.id, fileName, planEntries, orderId, body.noOrder === true).catch(() => undefined);
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: body.mode === "start" ? "printer.print.start" : "printer.print.upload", entityType: "Printer", entityId: p.id, metadata: { documentId: doc.id, fileName, plate: plate.index } });
   res.json({ ok: true, fileName, started: body.mode === "start", planned: planEntries.length });
 });
@@ -418,7 +419,7 @@ printersRouter.post("/:id/print", async (req, res) => {
 // Drucke ohne Auftrag aus allen Druckern (auch aus Bambu Studio oder am Drucker gestartete), neueste zuerst - zum Zuordnen von der Auftragsseite aus
 printersRouter.get("/jobs/unassigned", async (req, res) => {
   const jobs = await prisma.printerJob.findMany({
-    where: { companyId: req.auth!.companyId, orderConfirmationId: null, startedAt: { gte: new Date(Date.now() - 90 * 86_400_000) }, printer: { isArchived: false } },
+    where: { companyId: req.auth!.companyId, orderConfirmationId: null, noOrder: false, startedAt: { gte: new Date(Date.now() - 90 * 86_400_000) }, printer: { isArchived: false } },
     orderBy: { startedAt: "desc" },
     take: 60,
     select: { id: true, name: true, startedAt: true, endedAt: true, minutes: true, result: true, materialUsage: true, printer: { select: { name: true } } },
@@ -439,17 +440,27 @@ printersRouter.get("/:id/jobs", async (req, res) => {
 });
 
 // Druckauftrag einem Auftrag (Auftragsbestätigung) zuordnen bzw. lösen - auch für Drucke, die direkt am Drucker oder in Bambu Studio gestartet wurden
+// noOrder: true = bewusst für keinen Auftrag gedruckt (Lager, Test) - der Druck gilt dann nicht mehr als "ohne Auftrag". Ein Auftrag hebt das wieder auf.
 printersRouter.patch("/jobs/:jobId", async (req, res) => {
-  const { orderConfirmationId } = z.object({ orderConfirmationId: z.string().min(1).nullable() }).parse(req.body);
+  const body = z.object({ orderConfirmationId: z.string().min(1).nullish(), noOrder: z.boolean().optional() }).refine((b) => b.orderConfirmationId !== undefined || b.noOrder !== undefined, "Auftrag oder noOrder angeben").parse(req.body);
   const job = await prisma.printerJob.findFirst({ where: { id: req.params.jobId, companyId: req.auth!.companyId } });
   if (!job) throw new HttpError(404, "Druckauftrag nicht gefunden");
-  if (orderConfirmationId) {
-    const order = await prisma.orderConfirmation.findFirst({ where: { id: orderConfirmationId, companyId: req.auth!.companyId, voidedAt: null }, select: { id: true } });
+  if (body.orderConfirmationId) {
+    const order = await prisma.orderConfirmation.findFirst({ where: { id: body.orderConfirmationId, companyId: req.auth!.companyId, voidedAt: null }, select: { id: true } });
     if (!order) throw new HttpError(400, "Auftrag nicht gefunden.");
   }
-  await prisma.printerJob.update({ where: { id: job.id }, data: { orderConfirmationId } });
-  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "printer.job.assign", entityType: "PrinterJob", entityId: job.id, metadata: { orderConfirmationId } });
+  const data = body.noOrder === true ? { orderConfirmationId: null, noOrder: true } : { orderConfirmationId: body.orderConfirmationId ?? null, noOrder: false };
+  await prisma.printerJob.update({ where: { id: job.id }, data });
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "printer.job.assign", entityType: "PrinterJob", entityId: job.id, metadata: { orderConfirmationId: data.orderConfirmationId, noOrder: data.noOrder } });
   res.json({ ok: true });
+});
+
+// Mehrere Drucke auf einmal als "für keinen Auftrag" ablegen (z.B. der Sammelpunkt in Heute zu tun). Nur Drucke ohne Auftrag werden angefasst.
+printersRouter.post("/jobs/mark-no-order", async (req, res) => {
+  const { jobIds } = z.object({ jobIds: z.array(z.string().min(1)).min(1).max(100) }).parse(req.body);
+  const r = await prisma.printerJob.updateMany({ where: { id: { in: jobIds }, companyId: req.auth!.companyId, orderConfirmationId: null }, data: { noOrder: true } });
+  await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "printer.job.no_order", entityType: "PrinterJob", entityId: jobIds[0], metadata: { count: r.count } });
+  res.json({ ok: true, count: r.count });
 });
 
 // Vorschlag für den Materialverbrauch eines Drucks: passt der Druckname zu einer 3MF im Archiv (gleicher Name wie in Bambu Studio),
