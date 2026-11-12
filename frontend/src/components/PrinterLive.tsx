@@ -4,6 +4,7 @@ import { useAuthStore } from "../store/authStore";
 import { PrintSendDialog } from "./PrintSendDialog";
 import { OrderSelect } from "./OrderSelect";
 import { JobUsageDialog } from "./JobUsageDialog";
+import { bookingHint } from "../lib/printBooking";
 
 export interface Tray {
   slot: number;
@@ -35,6 +36,8 @@ export interface LiveStatus {
   wifiSignal: string | null;
   errorCode: number | null;
   ams: { units: { id: number; humidityLevel: number | null; trays: Tray[] }[]; external: Tray | null; activeLabel: string | null };
+  /** Zum laufenden Druck: aus der App gesendet (Slicer-Plan) und welche AMS-Fächer er laut Plan nutzt */
+  booking?: { fromApp: boolean; planSlots: number[] } | null;
 }
 export interface PrinterJobRow {
   id: string;
@@ -204,6 +207,8 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
 
   const resultLabel: Record<string, string> = { FINISHED: "fertig", FAILED: "fehlgeschlagen", CANCELLED: "abgebrochen", UNKNOWN: "unbekannt" };
   const hasAms = status.ams.units.length > 0 || status.ams.external;
+  // Läuft ein Druck: wird das Material abgebucht - und wenn nicht, warum nicht?
+  const booking = online && active && hasAmsNow ? bookingHint({ fromApp: !!status.booking?.fromApp, planSlots: status.booking?.planSlots ?? [], trays: status.ams.units.flatMap((u) => u.trays), mappedSlots: mappings.map((m) => m.slot) }) : null;
 
   return (
     <div className="mt-3 rounded-lg bg-slate-50 dark:bg-slate-900/40 p-3 space-y-3">
@@ -231,6 +236,10 @@ export function PrinterLiveCard({ printerId, status, model, trackedMinutes, life
             {status.layer !== null && status.totalLayers ? <span>Schicht {status.layer} / {status.totalLayers}</span> : null}
             {status.remainingMinutes !== null && <span>noch {formatMinutes(status.remainingMinutes)} · fertig gegen {new Date(Date.now() + status.remainingMinutes * 60000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr</span>}
           </div>
+          <p className="text-xs text-slate-500 mt-1" title="So heißt die Datei im Drucker - der Name kommt aus Bambu Studio, MakerWorld oder der Bambu-App, nicht aus dieser Software">
+            Datei: <span className="font-medium text-slate-700 dark:text-slate-300">{status.jobName ?? "ohne Namen"}</span> · {status.booking?.fromApp ? "über diese App gesendet" : "nicht über diese App gesendet (Bambu Studio, MakerWorld oder am Drucker gestartet)"}
+          </p>
+          {booking && <p className={`mt-1 text-xs rounded px-2 py-1 ${booking.tone === "ok" ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300" : "bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300"}`} role="note">{booking.tone === "ok" ? "✓ " : "⚠ "}{booking.text}</p>}
         </div>
       )}
 

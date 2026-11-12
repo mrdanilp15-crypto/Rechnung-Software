@@ -71,7 +71,15 @@ function present<T extends { accessCodeEncrypted: string | null }>(p: T, jobs?: 
 // Live-Status aller Drucker mit aktiver Verbindung (aus dem Arbeitsspeicher, ohne Netzwerkzugriff)
 printersRouter.get("/live", async (req, res) => {
   const printers = await prisma.printer.findMany({ where: { companyId: req.auth!.companyId, isArchived: false, connectionType: "BAMBU_LAN", liveEnabled: true }, select: { id: true } });
-  res.json(Object.fromEntries(printers.map((p) => [p.id, bambuMonitor.getStatus(p.id)])));
+  // Zum laufenden Druck: kam er aus der App (Slicer-Plan vorhanden) und welche Fächer nutzt er laut Plan? Daraus erklärt die Oberfläche, ob das Material gebucht wird.
+  const open = printers.length ? await prisma.printerJob.findMany({ where: { printerId: { in: printers.map((p) => p.id) }, endedAt: null }, orderBy: { startedAt: "desc" }, select: { printerId: true, slicedPlan: true } }) : [];
+  const bookingOf = (printerId: string) => {
+    const job = open.find((j) => j.printerId === printerId);
+    if (!job) return null;
+    const plan = Array.isArray(job.slicedPlan) ? (job.slicedPlan as { slot?: number }[]) : [];
+    return { fromApp: plan.length > 0, planSlots: plan.map((e) => e.slot).filter((s): s is number => typeof s === "number") };
+  };
+  res.json(Object.fromEntries(printers.map((p) => [p.id, { ...bambuMonitor.getStatus(p.id), booking: bookingOf(p.id) }])));
 });
 
 // Echte Fehldruckquote der letzten Tage aus den erkannten Druckaufträgen (gesamt und je Drucker)
