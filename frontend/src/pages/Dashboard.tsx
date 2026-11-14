@@ -242,7 +242,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6 [&>*:last-child]:col-span-2 md:[&>*:last-child]:col-span-1">
             <Kpi icon="board" tone="brand" label="Aktive Aufträge" value={activeOrders.length} sub={newOrders > 0 ? `+${newOrders} seit gestern` : "keine neuen seit gestern"} subTone={newOrders > 0 ? "good" : "muted"} to="/production" />
             <Kpi icon="printer" tone="green" label="Drucker online" value={livePrinters.length > 0 ? `${onlinePrinters.length} / ${livePrinters.length}` : "-"} sub={livePrinters.length > 0 ? `${Math.round((onlinePrinters.length / livePrinters.length) * 100)} % online` : "keine Live-Verbindung"} subTone={livePrinters.length > 0 && onlinePrinters.length < livePrinters.length ? "warn" : "muted"} to="/catalog?tab=printers" />
-            <Kpi icon="money" tone="violet" label="Umsatz (dieser Monat)" value={eur(monthRevenue)} sub={revenueDelta === null ? `Vormonat ${eur(prevRevenue)}` : `${revenueDelta >= 0 ? "+" : ""}${revenueDelta} % zum Vormonat`} subTone={revenueDelta === null ? "muted" : revenueDelta >= 0 ? "good" : "bad"} to="/finance" />
+            <Kpi icon="money" tone="violet" label="Umsatz bezahlt (Monat)" value={eur(monthRevenue)} sub={revenueDelta === null ? `Vormonat ${eur(prevRevenue)}` : `${revenueDelta >= 0 ? "+" : ""}${revenueDelta} % zum Vormonat`} subTone={revenueDelta === null ? "muted" : revenueDelta >= 0 ? "good" : "bad"} to="/finance" />
             <Kpi icon="filament" tone="amber" label="Materialbestand" value={`${kgTotal.toLocaleString("de-DE", { maximumFractionDigits: 1 })} kg`} sub={materials.length === 0 ? "noch kein Material" : lowCount > 0 ? `${lowCount} Artikel knapp` : "alles ausreichend"} subTone={lowCount > 0 ? "bad" : "good"} to="/catalog?tab=materials" />
             <Kpi icon="receipt" tone={overdue.length > 0 ? "red" : "slate"} label="Offene Rechnungen" value={eur(openTotal)} sub={`${open.length} Rechnung${open.length === 1 ? "" : "en"}${overdue.length > 0 ? ` · ${overdue.length} überfällig` : ""}`} subTone={overdue.length > 0 ? "bad" : "muted"} to="/documents?type=INVOICE" />
           </div>
@@ -267,7 +267,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-x-8 gap-y-2 mb-3">
-                <div><p className="text-2xl font-semibold tracking-tight">{eur(monthRevenue)}</p><p className="text-xs text-slate-500 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-brand" />Umsatz (netto)</p></div>
+                <div><p className="text-2xl font-semibold tracking-tight">{eur(monthRevenue)}</p><p className="text-xs text-slate-500 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-brand" />Umsatz (bezahlt, netto)</p></div>
                 <div><p className="text-2xl font-semibold tracking-tight">{eur(monthExpenses)}</p><p className="text-xs text-slate-500 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500" />Ausgaben</p></div>
                 <div><p className={`text-2xl font-semibold tracking-tight ${monthResult < 0 ? "text-red-500" : ""}`}>{eur(monthResult)}</p><p className="text-xs text-slate-500 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-500" />Ergebnis (vor Steuern)</p></div>
               </div>

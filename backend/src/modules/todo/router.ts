@@ -35,14 +35,26 @@ todoRouter.get("/", async (req, res) => {
   // Folgebelege: zu welchen Angeboten gibt es schon einen Auftrag/eine Rechnung, zu welchen Aufträgen schon eine Rechnung?
   const quoteIds = quotes.map((q) => q.id);
   const orderIds = orders.map((o) => o.id);
+  const orderQuoteIds = [...new Set(orders.map((o) => o.sourceQuoteId).filter((x): x is string => !!x))];
   const [ocFromQuote, invFromQuote, invFromOrder, jobGroups] = await Promise.all([
     quoteIds.length ? prisma.orderConfirmation.findMany({ where: { companyId, sourceQuoteId: { in: quoteIds } }, select: { sourceQuoteId: true } }) : [],
     quoteIds.length ? prisma.invoice.findMany({ where: { companyId, sourceQuoteId: { in: quoteIds } }, select: { sourceQuoteId: true } }) : [],
-    orderIds.length ? prisma.invoice.findMany({ where: { companyId, sourceOrderConfirmationId: { in: orderIds }, status: { not: "CANCELLED" }, isCancellationDocument: false }, select: { sourceOrderConfirmationId: true } }) : [],
+    // Rechnungen zum Auftrag - auch solche, die direkt aus dessen Angebot entstanden sind (wie die Belegkette sie findet)
+    orderIds.length
+      ? prisma.invoice.findMany({
+          where: { companyId, status: { not: "CANCELLED" }, isCancellationDocument: false, OR: [{ sourceOrderConfirmationId: { in: orderIds } }, ...(orderQuoteIds.length ? [{ sourceQuoteId: { in: orderQuoteIds } }] : [])] },
+          select: { sourceOrderConfirmationId: true, sourceQuoteId: true, kind: true },
+        })
+      : [],
     orderIds.length ? prisma.printerJob.groupBy({ by: ["orderConfirmationId", "endedAt"], where: { companyId, orderConfirmationId: { in: orderIds } }, _count: { _all: true } }) : [],
   ]);
   const quotesWithFollowUp = new Set([...ocFromQuote, ...invFromQuote].map((x) => x.sourceQuoteId));
-  const ordersWithInvoice = new Set(invFromOrder.map((x) => x.sourceOrderConfirmationId));
+  // Eine Rechnung des Angebots deckt den Auftrag ab - eine bloße Anzahlung nicht (die Schlussrechnung fehlt dann noch)
+  const ordersWithInvoice = new Set(
+    orders
+      .filter((o) => invFromOrder.some((i) => i.sourceOrderConfirmationId === o.id || (!i.sourceOrderConfirmationId && !!o.sourceQuoteId && i.sourceQuoteId === o.sourceQuoteId && i.kind !== "DOWN_PAYMENT")))
+      .map((o) => o.id)
+  );
 
   // laufende (ohne Ende) und beendete Drucke je Auftrag
   const running = new Map<string, number>();

@@ -41,7 +41,7 @@ documentsRouter.get("/", async (req, res) => {
     prisma.quote.findMany({ where: { companyId }, include: { customer: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 500 }),
     prisma.orderConfirmation.findMany({ where: { companyId, voidedAt: null }, include: { customer: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 500 }),
     prisma.deliveryNote.findMany({ where: { companyId, voidedAt: null }, include: { customer: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 500 }),
-    prisma.invoice.findMany({ where: { companyId, OR: [{ sourceQuoteId: { not: null } }, { sourceOrderConfirmationId: { not: null } }] }, select: { sourceQuoteId: true, sourceOrderConfirmationId: true } }),
+    prisma.invoice.findMany({ where: { companyId, OR: [{ sourceQuoteId: { not: null } }, { sourceOrderConfirmationId: { not: null } }] }, select: { sourceQuoteId: true, sourceOrderConfirmationId: true, kind: true } }),
     prisma.orderConfirmation.findMany({ where: { companyId, sourceQuoteId: { not: null }, voidedAt: null }, select: { sourceQuoteId: true } }),
     prisma.deliveryNote.findMany({ where: { companyId, sourceOrderConfirmationId: { not: null }, voidedAt: null }, select: { sourceOrderConfirmationId: true } }),
   ]);
@@ -49,6 +49,9 @@ documentsRouter.get("/", async (req, res) => {
   const quoteHasOrder = new Set<string>(confirmationSources.map((c) => c.sourceQuoteId).filter((x): x is string => !!x));
   const quoteHasInvoice = new Set<string>(invoiceSources.map((i) => i.sourceQuoteId).filter((x): x is string => !!x));
   const confirmationHasInvoice = new Set<string>(invoiceSources.map((i) => i.sourceOrderConfirmationId).filter((x): x is string => !!x));
+  // Wurde direkt aus dem Angebot abgerechnet, ist auch der daraus entstandene Auftrag abgerechnet (eine bloße Anzahlung zählt nicht)
+  const quoteHasFinalInvoice = new Set<string>(invoiceSources.filter((i) => i.kind !== "DOWN_PAYMENT").map((i) => i.sourceQuoteId).filter((x): x is string => !!x));
+  for (const c of confirmations) if (c.sourceQuoteId && quoteHasFinalInvoice.has(c.sourceQuoteId)) confirmationHasInvoice.add(c.id);
   const quoteHasNext = new Set<string>([
     ...invoiceSources.map((i) => i.sourceQuoteId).filter((x): x is string => !!x),
     ...confirmationSources.map((c) => c.sourceQuoteId).filter((x): x is string => !!x),
@@ -101,11 +104,12 @@ documentsRouter.get("/month-series", async (req, res) => {
   const to = new Date(year, mon + 1, 1);
   const daysInMonth = new Date(year, mon + 1, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => ({ day: i + 1, revenueCents: 0, expenseCents: 0 }));
+  // Umsatz = bezahlte Rechnungen am Tag des Zahlungseingangs (wie in Statistik und EÜR); Offenes zählt nicht
   const invoices = await prisma.invoice.findMany({
-    where: { companyId, isCancellationDocument: false, status: { in: ["SENT", "PAID", "OVERDUE"] }, issueDate: { gte: from, lt: to } },
-    select: { issueDate: true, subtotalCents: true },
+    where: { companyId, isCancellationDocument: false, status: "PAID", paidAt: { gte: from, lt: to } },
+    select: { paidAt: true, subtotalCents: true },
   });
-  for (const inv of invoices) days[inv.issueDate.getDate() - 1].revenueCents += inv.subtotalCents;
+  for (const inv of invoices) if (inv.paidAt) days[inv.paidAt.getDate() - 1].revenueCents += inv.subtotalCents;
   const expenses = await prisma.expense.findMany({ where: { companyId, date: { gte: from, lt: to } }, select: { date: true, amountCents: true } });
   for (const e of expenses) days[e.date.getDate() - 1].expenseCents += e.amountCents;
   res.json({ month: `${year}-${String(mon + 1).padStart(2, "0")}`, days });
@@ -116,10 +120,12 @@ documentsRouter.get("/stats", async (req, res) => {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
   const yearStart = new Date(now.getFullYear(), 0, 1);
-  const invoices = await prisma.invoice.findMany({
-    where: { companyId, isCancellationDocument: false, status: { in: ["SENT", "PAID", "OVERDUE"] }, issueDate: { gte: start < yearStart ? start : yearStart } },
-    select: { issueDate: true, subtotalCents: true, customerId: true, customer: { select: { name: true } } },
+  // Umsatz = bezahlte Rechnungen im Monat des Zahlungseingangs (wie in Statistik und EÜR); ausgestellte, noch offene zählen nicht
+  const paidRows = await prisma.invoice.findMany({
+    where: { companyId, isCancellationDocument: false, status: "PAID", paidAt: { gte: start < yearStart ? start : yearStart } },
+    select: { paidAt: true, subtotalCents: true, customerId: true, customer: { select: { name: true } } },
   });
+  const invoices = paidRows.filter((i): i is typeof i & { paidAt: Date } => i.paidAt !== null).map(({ paidAt, ...rest }) => ({ ...rest, issueDate: paidAt }));
 
   const months: { month: string; revenueCents: number }[] = [];
   for (let i = 0; i < 12; i++) {
