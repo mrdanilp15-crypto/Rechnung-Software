@@ -29,6 +29,11 @@ export function errorHandler(err: unknown, req: Request, res: Response, next: Ne
   if (err instanceof HttpError) {
     return res.status(err.status).json({ error: err.message, details: err.details });
   }
+  // Kaputte Eingaben (Null-Zeichen, ungültige Zeichenfolgen in ID oder Text, fehlerhaft kodierte Adresse) sind ein Fehler des Aufrufers, kein Serverfehler
+  const text = err instanceof Error ? err.message : "";
+  if (err instanceof URIError || /invalid byte sequence|null bytes|0x00|unexpected end of hex escape|Failed to decode param/i.test(text)) {
+    return res.status(400).json({ error: "Ungültige Eingabe." });
+  }
   logger.error({ err, path: req.path, requestId: req.requestId }, "Unbehandelter Fehler");
   res.status(500).json({
     error: "Interner Serverfehler",

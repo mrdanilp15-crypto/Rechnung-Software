@@ -60,7 +60,7 @@ export function PdfCanvasViewer({ url, className = "" }: { url: string; classNam
     (async () => {
       try {
         const [lib, data] = await Promise.all([loadPdfjs(), fetch(url).then((r) => r.arrayBuffer())]);
-        const pdf = await lib.getDocument({ data }).promise;
+        const pdf = await lib.getDocument({ data, isEvalSupported: false }).promise;
         const canvases: HTMLCanvasElement[] = [];
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         for (let n = 1; n <= pdf.numPages; n++) {

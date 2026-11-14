@@ -1,5 +1,6 @@
 import type { Company, Customer, Prisma, PrismaClient } from "@prisma/client";
 import { HttpError } from "../../middleware/errorHandler";
+import { prisma } from "../../db/prisma";
 import { buildInvoiceFinancials, defaultDueDate, InvoiceItemInput } from "./build";
 
 type Db = Prisma.TransactionClient | PrismaClient;
@@ -115,4 +116,23 @@ export async function deductionLinesFor(db: Db, companyId: string, source: { quo
     }
   }
   return { items, downPaymentIds: downPayments.map((d) => d.id) };
+}
+
+/**
+ * Schutz vor doppelter Abrechnung: Gibt es zu diesem Auftrag bzw. Angebot schon eine Rechnung (auch als Entwurf), wird keine zweite angelegt.
+ * Stornierte Rechnungen, Korrekturbelege und Anzahlungsrechnungen zählen nicht - nach einem Storno oder für die Schlussrechnung geht es weiter.
+ */
+export async function assertNotAlreadyInvoiced(companyId: string, source: { orderConfirmationId?: string | null; quoteId?: string | null }) {
+  const or = [
+    ...(source.orderConfirmationId ? [{ sourceOrderConfirmationId: source.orderConfirmationId }] : []),
+    ...(source.quoteId ? [{ sourceQuoteId: source.quoteId }] : []),
+  ];
+  if (or.length === 0) return;
+  const existing = await prisma.invoice.findFirst({
+    where: { companyId, isCancellationDocument: false, status: { not: "CANCELLED" }, kind: { not: "DOWN_PAYMENT" }, OR: or },
+    select: { invoiceNumber: true, status: true },
+  });
+  if (!existing) return;
+  const what = existing.status === "DRAFT" ? "einen Rechnungsentwurf" : `die Rechnung ${existing.invoiceNumber ?? ""}`.trim();
+  throw new HttpError(409, `Zu diesem Vorgang gibt es schon ${what}. Bitte dort weiterarbeiten - oder die Rechnung zuerst stornieren bzw. den Entwurf verwerfen.`);
 }

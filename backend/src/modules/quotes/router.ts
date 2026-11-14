@@ -15,7 +15,7 @@ import { renderSimplePreview, simplePreviewSchema } from "../pdf/docPreview";
 import { previewRateLimiter } from "../../middleware/rateLimit";
 import { emitEvent } from "../plugins/hooks";
 import { buildInvoiceFinancials, defaultDueDate } from "../invoices/build";
-import { createDownPaymentInvoice, deductionLinesFor } from "../invoices/downPayments";
+import { assertNotAlreadyInvoiced, createDownPaymentInvoice, deductionLinesFor } from "../invoices/downPayments";
 import { deductMaterialStock } from "../materials/stock";
 
 export const quotesRouter = Router();
@@ -188,6 +188,8 @@ quotesRouter.post("/:id/convert-to-invoice", async (req, res) => {
     include: { items: true, customer: true },
   });
   if (!quote) throw new HttpError(404, "Angebot nicht gefunden");
+  // auch eine Rechnung aus dem Auftrag dieses Angebots zählt (sie trägt das Angebot als Quelle)
+  await assertNotAlreadyInvoiced(req.auth!.companyId, { quoteId: quote.id });
 
   const company = await prisma.company.findUniqueOrThrow({ where: { id: req.auth!.companyId } });
   // Beträge und USt.-Behandlung werden NEU berechnet (nicht aus dem Angebot übernommen):

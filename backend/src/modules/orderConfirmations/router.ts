@@ -12,7 +12,7 @@ import { renderDocumentPdf } from "../pdf/documentTemplate";
 import { resolvePdfLayout } from "../pdf/layout";
 import { renderSimplePreview, simplePreviewSchema } from "../pdf/docPreview";
 import { buildInvoiceFinancials, defaultDueDate } from "../invoices/build";
-import { createDownPaymentInvoice, deductionLinesFor } from "../invoices/downPayments";
+import { assertNotAlreadyInvoiced, createDownPaymentInvoice, deductionLinesFor } from "../invoices/downPayments";
 import { previewRateLimiter } from "../../middleware/rateLimit";
 import { checkQuoteLink } from "./link";
 import { defaultAssigneeId, notifyAssigneeOnCreate } from "../documents/assignee";
@@ -282,6 +282,7 @@ orderConfirmationsRouter.post("/:id/convert-to-invoice", async (req, res) => {
   const source = await prisma.orderConfirmation.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId, voidedAt: null }, include: { items: true, customer: true } });
   if (!source) throw new HttpError(404, "Auftragsbestätigung nicht gefunden");
   const company = await prisma.company.findUniqueOrThrow({ where: { id: source.companyId } });
+  await assertNotAlreadyInvoiced(source.companyId, { orderConfirmationId: source.id, quoteId: source.sourceQuoteId });
   // Bereits abgerechnete Anzahlungen (zu dieser AB oder dem zugrunde liegenden Angebot) werden abgezogen
   const deductions = await deductionLinesFor(prisma, company.id, { orderConfirmationId: source.id, quoteId: source.sourceQuoteId });
   const financials = buildInvoiceFinancials(company, source.customer, [...source.items, ...deductions.items], "GOODS");

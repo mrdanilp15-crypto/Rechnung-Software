@@ -214,7 +214,7 @@ export async function recognizeReceipt(file: File, opts: { rotation?: number; mo
     if (isPdf(file)) {
       onProgress?.("PDF wird gelesen", 0);
       const lib = await loadPdfjs();
-      const pdf = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+      const pdf = await lib.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false }).promise;
       try {
         const text = await pdfTextLayer(pdf, 3);
         if (text.replace(/\s/g, "").length >= 40) return { text, confidence: 100, method: "pdf-text" };
