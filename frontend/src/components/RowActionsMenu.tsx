@@ -41,7 +41,10 @@ export function RowActionsMenu({ actions }: { actions: RowAction[] }) {
         ⋮
       </button>
       {open && (
-        <div className="absolute right-0 mt-1 w-44 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-10 text-sm">
+        // z-40: muss über der fixen oberen/unteren Navigationsleiste (jeweils z-30, siehe Layout.tsx) liegen, sonst
+        // sind untere Menüpunkte auf dem Handy verdeckt, wenn die Zeile weiter unten auf dem Bildschirm steht.
+        // max-h + overflow-y-auto, damit auch ein langes Menü auf kleinen Bildschirmen nie über den Rand hinausragt.
+        <div className="absolute right-0 mt-1 w-44 max-h-[60vh] overflow-y-auto bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-40 text-sm">
           {actions.map((action, i) => (
             <button
               key={i}
