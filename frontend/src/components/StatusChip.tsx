@@ -12,7 +12,7 @@ const TONES: Record<Tone, string> = {
   red: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
 };
 
-export function statusInfo(status: string, opts: { kind?: string; isCancellationDocument?: boolean; emailed?: boolean } = {}): { label: string; tone: Tone; strike?: boolean } {
+export function statusInfo(status: string, opts: { kind?: string; isCancellationDocument?: boolean; emailed?: boolean } = {}): { label: string; tone: Tone; strike?: boolean; hint?: string } {
   if (opts.isCancellationDocument) return { label: "Korrekturbeleg", tone: "amber" };
   switch (status) {
     case "DRAFT": return { label: "Entwurf", tone: "amber" };
@@ -24,7 +24,8 @@ export function statusInfo(status: string, opts: { kind?: string; isCancellation
       return opts.emailed ? { label: "Versendet", tone: "blue" } : { label: "Fertig", tone: "green" };
     case "PAID": return { label: "Bezahlt", tone: "green" };
     case "OVERDUE": return { label: "Überfällig", tone: "red" };
-    case "CANCELLED": return { label: "Storniert", tone: "gray", strike: true };
+    // Betrifft nur diese Rechnung, nicht den zugrunde liegenden Auftrag - der bleibt bestehen und braucht ggf. eine neue Rechnung
+    case "CANCELLED": return { label: "Storniert", tone: "gray", strike: true, hint: "Nur diese Rechnung ist storniert. Der Auftrag bleibt bestehen - bei Bedarf eine neue Rechnung dafür erstellen." };
     case "ACCEPTED": return { label: "Angenommen", tone: "green" };
     case "DECLINED": return { label: "Abgelehnt", tone: "red" };
     case "EXPIRED": return { label: "Abgelaufen", tone: "gray" };
@@ -34,5 +35,9 @@ export function statusInfo(status: string, opts: { kind?: string; isCancellation
 
 export function StatusChip({ status, kind, isCancellationDocument, emailed, className = "" }: { status: string; kind?: string; isCancellationDocument?: boolean; emailed?: boolean; className?: string }) {
   const info = statusInfo(status, { kind, isCancellationDocument, emailed });
-  return <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${TONES[info.tone]} ${info.strike ? "line-through" : ""} ${className}`}>{info.label}</span>;
+  return (
+    <span title={info.hint} className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${TONES[info.tone]} ${info.strike ? "line-through" : ""} ${className}`}>
+      {info.label}
+    </span>
+  );
 }

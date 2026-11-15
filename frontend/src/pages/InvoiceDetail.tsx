@@ -219,7 +219,7 @@ export default function InvoiceDetail() {
             </>
           )}
           {!invoice.isCancellationDocument && invoice.status !== "DRAFT" && invoice.status !== "CANCELLED" && (
-            <button onClick={handleCancel} className="bg-red-100 text-red-700 px-3 py-1.5 rounded text-sm">{t("invoices.cancel")}</button>
+            <button onClick={handleCancel} title="Storniert nur diese Rechnung, nicht den zugrunde liegenden Auftrag." className="bg-red-100 text-red-700 px-3 py-1.5 rounded text-sm">{t("invoices.cancel")}</button>
           )}
           {/* Auch bei bezahlten/überfälligen Rechnungen: wer sie noch nie per E-Mail verschickt hat, soll das nachholen können */}
           {invoice.status !== "CANCELLED" && (
