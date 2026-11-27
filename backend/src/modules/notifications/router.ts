@@ -67,6 +67,6 @@ notificationsRouter.post("/push/unsubscribe", async (req, res) => {
 });
 
 notificationsRouter.post("/push/test", async (req, res) => {
-  const sent = await sendPushToCompany(req.auth!.companyId, { title: "Test-Nachricht", body: "So sehen Meldungen Ihrer Drucker aus.", url: "/" });
+  const sent = await sendPushToCompany(req.auth!.companyId, { title: "Test-Nachricht", body: "So sehen Meldungen deiner Drucker aus.", url: "/" });
   res.json({ sent });
 });

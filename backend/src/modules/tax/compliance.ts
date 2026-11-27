@@ -45,7 +45,7 @@ export function getInvoiceComplianceWarnings(company: Company, invoice: Pick<Inv
 
   // Grenzüberschreitende Umsätze
   if (invoice.vatNoticeKey === "INTRA_COMMUNITY_SUPPLY" || invoice.vatNoticeKey === "REVERSE_CHARGE") {
-    if (!company.vatId) warnings.push("Für steuerfreie innergemeinschaftliche Umsätze ist Ihre eigene USt-IdNr. Pflicht (§14a UStG) - bitte in den Firmeneinstellungen ergänzen.");
+    if (!company.vatId) warnings.push("Für steuerfreie innergemeinschaftliche Umsätze ist deine eigene USt-IdNr. Pflicht (§14a UStG) - bitte in den Firmeneinstellungen ergänzen.");
     if (customer && !customer.vatId) warnings.push(`Die USt-IdNr. des Kunden "${customer.name}" fehlt (Pflichtangabe bei innergemeinschaftlichen Umsätzen).`);
   }
   if (invoice.vatNoticeKey === "INTRA_COMMUNITY_SUPPLY") {

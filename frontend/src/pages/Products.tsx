@@ -398,11 +398,11 @@ export default function Products() {
               <label className="block text-sm mb-1">{t("products.unitPrice")} (€ pro Einheit)</label>
               <input type="number" step="0.01" value={form.unitPriceEur} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, unitPriceEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
               {smallBusiness ? (
-                <p className="text-xs text-slate-500 mt-1">Das ist der <strong>Endpreis</strong>, den der Kunde zahlt. Als Kleinunternehmer (§19 UStG) kommt keine Umsatzsteuer dazu. Den Preisvorschlag aus der Kalkulation unten können Sie mit "Übernehmen" eintragen.</p>
+                <p className="text-xs text-slate-500 mt-1">Das ist der <strong>Endpreis</strong>, den der Kunde zahlt. Als Kleinunternehmer (§19 UStG) kommt keine Umsatzsteuer dazu. Den Preisvorschlag aus der Kalkulation unten kannst du mit "Übernehmen" eintragen.</p>
               ) : (
                 <>
                   <GrossPriceField netEur={form.unitPriceEur} vatRateBps={form.vatRateBps} onNetChange={(v) => setForm((f) => ({ ...f, unitPriceEur: v }))} />
-                  <p className="text-xs text-slate-500 mt-1">Verkaufspreis <strong>netto</strong> (ohne USt.). Den Preisvorschlag aus der Kalkulation unten können Sie mit "Übernehmen" eintragen.</p>
+                  <p className="text-xs text-slate-500 mt-1">Verkaufspreis <strong>netto</strong> (ohne USt.). Den Preisvorschlag aus der Kalkulation unten kannst du mit "Übernehmen" eintragen.</p>
                 </>
               )}
             </div>
@@ -452,8 +452,8 @@ export default function Products() {
               </div>
               <p className="text-xs text-slate-500 sm:pt-6">
                 {pieces > 1
-                  ? <>Druckzeit und Materialverbrauch unten tragen Sie <strong>für die ganze Platte</strong> ein (so zeigt es der Slicer) - die Software teilt durch {pieces} Stück. Pro Stück: {field((parseFloat(form.printTimeMinutes) || 0) / pieces)} min Druckzeit.</>
-                  : <>Passen mehrere gleiche Teile auf eine Druckplatte, tragen Sie hier die Anzahl ein. Dann gelten Druckzeit und Materialverbrauch unten für die ganze Platte, und die Kosten werden auf die Stück verteilt. Bei 1 gelten die Werte pro Stück.</>}
+                  ? <>Druckzeit und Materialverbrauch unten trägst du <strong>für die ganze Platte</strong> ein (so zeigt es der Slicer) - die Software teilt durch {pieces} Stück. Pro Stück: {field((parseFloat(form.printTimeMinutes) || 0) / pieces)} min Druckzeit.</>
+                  : <>Passen mehrere gleiche Teile auf eine Druckplatte, trag hier die Anzahl ein. Dann gelten Druckzeit und Materialverbrauch unten für die ganze Platte, und die Kosten werden auf die Stück verteilt. Bei 1 gelten die Werte pro Stück.</>}
               </p>
             </div>
           </div>
@@ -465,7 +465,7 @@ export default function Products() {
                 + Material hinzufügen
               </button>
             </div>
-            <p className="text-xs text-slate-500 mb-2">Wie viel Material ein Stück verbraucht - den Wert zeigt Ihr Slicer (Bambu Studio, Cura, PrusaSlicer) nach dem Slicen an, <strong>inklusive Stützstrukturen, Skirt und Purge</strong>. Beim Erstellen einer Rechnung wird der Bestand automatisch um diese Menge verringert.</p>
+            <p className="text-xs text-slate-500 mb-2">Wie viel Material ein Stück verbraucht - den Wert zeigt dein Slicer (Bambu Studio, Cura, PrusaSlicer) nach dem Slicen an, <strong>inklusive Stützstrukturen, Skirt und Purge</strong>. Beim Erstellen einer Rechnung wird der Bestand automatisch um diese Menge verringert.</p>
             {filamentMats.length === 0 && <p className="text-xs text-slate-500">Noch kein Material angelegt - siehe Katalog → Material (Lager).</p>}
             {materialRows.map((row, idx) => (
               <div key={idx} className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_130px_150px_auto] gap-2 mb-2">
@@ -535,7 +535,7 @@ export default function Products() {
           <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-3">
             <div className="text-sm font-medium">Kalkulation (optional)<HelpTip topic="costs" className="ml-1.5" /></div>
             <p className="text-xs text-slate-500 -mt-2">
-              Ergebnis = Material (mit Ausschuss) + Strom + Abschreibung + Verschleiß + Arbeit + Gemeinkosten = <strong>Selbstkosten</strong>. Darauf kommt der Gewinnaufschlag = <strong>Preisvorschlag</strong>. Alle Sätze stehen unter Einstellungen → Firma → Kalkulation, die Maschinenwerte unter Katalog → Drucker.
+              Ergebnis = Material (mit Ausschuss) + Strom + Abschreibung + Verschleiß + Arbeit + Gemeinkosten = <strong>Selbstkosten</strong>. Darauf kommt der Gewinnaufschlag = <strong>Preisvorschlag</strong>. Alle Sätze stehen unter Einstellungen → Kalkulation, die Maschinenwerte unter Katalog → Drucker.
             </p>
             <div>
               <label className="block text-xs text-slate-500 mb-1">Drucker (bestimmt Strom, Abschreibung und Verschleiß)</label>
@@ -545,7 +545,7 @@ export default function Products() {
                   <option key={pr.id} value={pr.id}>{pr.name}</option>
                 ))}
               </select>
-              <p className="text-xs text-slate-500 mt-1">Drucker und ihre Werte pflegen Sie unter Katalog → Drucker.</p>
+              <p className="text-xs text-slate-500 mt-1">Drucker und ihre Werte pflegst du unter Katalog → Drucker.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -556,7 +556,7 @@ export default function Products() {
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Arbeitszeit pro {form.unit || "Einheit"} (Minuten, Nachbearbeitung/Verpackung)</label>
                 <input type="number" min="0" step="any" value={form.laborMinutes} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, laborMinutes: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-                <p className="text-xs text-slate-500 mt-1">Ihre eigene Zeit, in der Sie arbeiten statt der Drucker: Platte vorbereiten, Stützen entfernen, schleifen, verpacken. Typisch 3-10 Minuten. Wird mit dem Arbeitsstundensatz bewertet.</p>
+                <p className="text-xs text-slate-500 mt-1">Deine eigene Zeit, in der du arbeitest statt der Drucker: Platte vorbereiten, Stützen entfernen, schleifen, verpacken. Typisch 3-10 Minuten. Wird mit dem Arbeitsstundensatz bewertet.</p>
               </div>
             </div>
             <div>
@@ -585,7 +585,7 @@ export default function Products() {
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Verpackung &amp; Versand pro {form.unit || "Einheit"} (€)</label>
                 <input type="number" min="0" step="0.01" value={form.packagingEur} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, packagingEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-                <p className="text-xs text-slate-500 mt-1">Karton, Polstermaterial, Etikett. Porto nur eintragen, wenn Sie den Versand <strong>nicht</strong> separat berechnen.</p>
+                <p className="text-xs text-slate-500 mt-1">Karton, Polstermaterial, Etikett. Porto nur eintragen, wenn du den Versand <strong>nicht</strong> separat berechnen.</p>
               </div>
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Zusätzlicher Materialverlust (%)</label>
@@ -629,7 +629,7 @@ export default function Products() {
                 </div>
                 {Math.abs(liveCost.recommended - liveCost.recommendedRaw) > 0.5 && (
                   <p className="text-xs text-slate-500">
-                    {liveCost.recommendedRaw < rates.minPriceCents && liveCost.recommended === rates.minPriceCents ? `Mindestpreis ${formatPrice(rates.minPriceCents)} greift (rechnerisch ${formatPrice(liveCost.recommendedRaw)}).` : `Gerundet von ${formatPrice(liveCost.recommendedRaw)} (Einstellungen → Firma → Kalkulation).`}
+                    {liveCost.recommendedRaw < rates.minPriceCents && liveCost.recommended === rates.minPriceCents ? `Mindestpreis ${formatPrice(rates.minPriceCents)} greift (rechnerisch ${formatPrice(liveCost.recommendedRaw)}).` : `Gerundet von ${formatPrice(liveCost.recommendedRaw)} (Einstellungen → Kalkulation).`}
                   </p>
                 )}
                 {rates.platformFeePercent > 0 && livePriceCents > 0 && <div className="flex justify-between"><span className="text-slate-500">Plattform-/Zahlungsgebühren bei aktuellem Preis ({rates.platformFeePercent}%)</span><span>{formatPrice(liveFees)}</span></div>}
@@ -637,10 +637,10 @@ export default function Products() {
                   <span>Gewinn bei aktuellem Preis ({formatPrice(livePriceCents)})</span>
                   <span>{formatPrice(liveProfit)}{livePriceCents > 0 ? ` (${Math.round((liveProfit / livePriceCents) * 100)}% vom Preis)` : ""}</span>
                 </div>
-                <p className="text-xs text-slate-500 pt-1">"Gewinn" ist vor Steuern und Ihrem Unternehmerlohn - Einkommen-/Gewerbesteuer und Sozialabgaben sind darin nicht berücksichtigt. {liveCost.depreciation > 0 && "Die Abschreibung ist eine Rücklage für den nächsten Drucker, kein Geld, das Sie sofort ausgeben."}</p>
+                <p className="text-xs text-slate-500 pt-1">"Gewinn" ist vor Steuern und deinem Unternehmerlohn - Einkommen-/Gewerbesteuer und Sozialabgaben sind darin nicht berücksichtigt. {liveCost.depreciation > 0 && "Die Abschreibung ist eine Rücklage für den nächsten Drucker, kein Geld, das du sofort ausgibst."}</p>
               </div>
             ) : (
-              <p className="text-xs text-slate-500">Material oben, Druck-/Arbeitszeit hier eintragen und die Stundensätze unter Einstellungen → Firma hinterlegen - dann erscheinen Selbstkosten, Preisvorschlag und Gewinn.</p>
+              <p className="text-xs text-slate-500">Material oben, Druck-/Arbeitszeit hier eintragen und die Stundensätze unter Einstellungen → Kalkulation hinterlegen - dann erscheinen Selbstkosten, Preisvorschlag und Gewinn.</p>
             )}
             {liveCost.total > 0 && (parseFloat(form.setupMinutes) || 0) > 0 && (
               <div className="text-sm bg-slate-50 dark:bg-slate-900/40 rounded p-3">
@@ -657,7 +657,7 @@ export default function Products() {
                     );
                   })}
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Je mehr Stück pro Auftrag, desto kleiner der Rüstzeit-Anteil. Das können Sie unten als Staffelpreis weitergeben.</p>
+                <p className="text-xs text-slate-500 mt-1">Je mehr Stück pro Auftrag, desto kleiner der Rüstzeit-Anteil. Das kannst du unten als Staffelpreis weitergeben.</p>
               </div>
             )}
           </div>

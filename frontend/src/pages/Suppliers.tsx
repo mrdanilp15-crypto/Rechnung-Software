@@ -100,9 +100,9 @@ export default function Suppliers() {
       </div>
 
       <InfoBox title="Wofür sind Lieferanten?">
-        <p>Hier führen Sie Händler und Hersteller, bei denen Sie einkaufen (Filament-Shop, Bambu Store, Verpackung, Elektronik ...) - mit Ansprechpartner, Ihrer Kundennummer dort und Webseite.</p>
-        <p><strong>Zuordnung:</strong> Ausgaben (Finanzen → Ausgaben) werden automatisch zugeordnet, wenn der Händlername genau dem Lieferantennamen entspricht (Groß-/Kleinschreibung egal). Bei Material (Katalog → Material) wählen Sie den Lieferanten im Material - Nachbestellungen werden dann auf diesen Lieferanten gebucht.</p>
-        <p>Die Spalten zeigen, wie viel Sie insgesamt und in diesem Jahr dort ausgegeben haben, und wann zuletzt eingekauft wurde.</p>
+        <p>Hier führst du Händler und Hersteller, bei denen du einkaufst (Filament-Shop, Bambu Store, Verpackung, Elektronik ...) - mit Ansprechpartner, deiner Kundennummer dort und Webseite.</p>
+        <p><strong>Zuordnung:</strong> Ausgaben (Finanzen → Ausgaben) werden automatisch zugeordnet, wenn der Händlername genau dem Lieferantennamen entspricht (Groß-/Kleinschreibung egal). Bei Material (Katalog → Material) wählst du den Lieferanten im Material - Nachbestellungen werden dann auf diesen Lieferanten gebucht.</p>
+        <p>Die Spalten zeigen, wie viel du insgesamt und in diesem Jahr dort ausgegeben haben, und wann zuletzt eingekauft wurde.</p>
       </InfoBox>
 
       {showForm && (
@@ -115,7 +115,7 @@ export default function Suppliers() {
         >
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {field("Name *", "name", { span: "sm:col-span-2", placeholder: "z.B. Filamentshop GmbH (so wie bei den Ausgaben)" })}
-            {field("Ihre Kundennummer dort", "customerNumber")}
+            {field("Deine Kundennummer dort", "customerNumber")}
             {field("Ansprechpartner", "contactName")}
             {field("E-Mail", "email", { type: "email" })}
             {field("Telefon", "phone")}

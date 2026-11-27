@@ -425,7 +425,7 @@ export default function Documents() {
         })}
         {loaded && visible.length === 0 && (
           <div className="px-4 py-10 text-center text-slate-500">
-            <p className="mb-3">{rows.length === 0 ? "Noch keine Belege. Legen Sie Ihre erste Rechnung an." : "Keine Belege für diesen Filter."}</p>
+            <p className="mb-3">{rows.length === 0 ? "Noch keine Belege. Leg deine erste Rechnung an." : "Keine Belege für diesen Filter."}</p>
             {rows.length === 0 && <Link to="/invoices/new" className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">Erste Rechnung erstellen</Link>}
           </div>
         )}
@@ -500,7 +500,7 @@ export default function Documents() {
       )}
 
       <p className="text-xs text-slate-500 mt-3">
-        Der übliche Ablauf: Angebot → Auftrag → Rechnung (der Lieferschein ist optional). Über das Menü (⋮) führen Sie einen Beleg mit allen Positionen zum nächsten weiter.{" "}
+        Der übliche Ablauf: Angebot → Auftrag → Rechnung (der Lieferschein ist optional). Über das Menü (⋮) führst du einen Beleg mit allen Positionen zum nächsten weiter.{" "}
         <Link to="/recurring" className="text-brand hover:underline">Wiederkehrende Rechnungen</Link>.
       </p>
     </div>

@@ -37,8 +37,8 @@ async function seedExamplesOnce(companyId: string) {
   if (existing === 0) {
     await prisma.printer.createMany({
       data: [
-        { companyId, name: "Bambu Lab P1S (Beispiel)", purchasePriceCents: 70000, lifetimeHours: 6000, powerWatts: 110, wearCentsPerHour: 8, notes: "Beispielwerte - bitte an Ihren Drucker anpassen." },
-        { companyId, name: "Creality Ender-3 V3 (Beispiel)", purchasePriceCents: 25000, lifetimeHours: 4000, powerWatts: 150, wearCentsPerHour: 6, notes: "Beispielwerte - bitte an Ihren Drucker anpassen." },
+        { companyId, name: "Bambu Lab P1S (Beispiel)", purchasePriceCents: 70000, lifetimeHours: 6000, powerWatts: 110, wearCentsPerHour: 8, notes: "Beispielwerte - bitte an deinen Drucker anpassen." },
+        { companyId, name: "Creality Ender-3 V3 (Beispiel)", purchasePriceCents: 25000, lifetimeHours: 4000, powerWatts: 150, wearCentsPerHour: 6, notes: "Beispielwerte - bitte an deinen Drucker anpassen." },
       ],
     });
   }
@@ -102,7 +102,7 @@ printersRouter.get("/fail-stats", async (req, res) => {
   });
 });
 
-const hostSchema = z.string().trim().max(100).refine(isAllowedPrinterHost, "Bitte die IP-Adresse aus Ihrem Heimnetz angeben (z.B. 192.168.1.50) - Adressen außerhalb des eigenen Netzes sind nicht erlaubt.");
+const hostSchema = z.string().trim().max(100).refine(isAllowedPrinterHost, "Bitte die IP-Adresse aus deinem Heimnetz angeben (z.B. 192.168.1.50) - Adressen außerhalb des eigenen Netzes sind nicht erlaubt.");
 const printerSchema = z.object({
   name: z.string().min(1).max(120),
   purchasePriceCents: z.number().int().min(0).max(100_000_000),

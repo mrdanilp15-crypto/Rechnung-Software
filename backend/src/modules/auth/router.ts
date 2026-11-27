@@ -313,7 +313,7 @@ authRouter.post("/reset-password", resetPasswordRateLimiter, async (req, res) =>
   }
   const record = await prisma.passwordResetToken.findUnique({ where: { tokenHash: sha256Hex(body.token) }, include: { user: true } });
   if (!record || record.usedAt || record.expiresAt < new Date() || !record.user.isActive) {
-    throw new HttpError(400, "Der Link ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen an.");
+    throw new HttpError(400, "Der Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.");
   }
   const passwordHash = await hashPassword(body.newPassword);
   await prisma.$transaction([

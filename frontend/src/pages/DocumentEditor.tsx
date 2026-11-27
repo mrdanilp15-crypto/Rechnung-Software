@@ -58,7 +58,7 @@ const CONFIG: Record<DocKind, KindConfig> = {
     datesHint: "Leer = heute bzw. 30 Tage Gültigkeit.",
     textKeys: ["quoteIntroText", "quoteClosingText"],
     finalizeLabel: "Fertigstellen",
-    finalizeConfirm: "Angebot fertigstellen?\n\nDas PDF trägt danach kein Entwurfs-Wasserzeichen mehr. Fertigstellen verschickt NOCH NICHTS - im nächsten Schritt können Sie das Angebot direkt per E-Mail an den Kunden senden (oder später in der Belegliste über \"Senden\").",
+    finalizeConfirm: "Angebot fertigstellen?\n\nDas PDF trägt danach kein Entwurfs-Wasserzeichen mehr. Fertigstellen verschickt NOCH NICHTS - im nächsten Schritt kannst du das Angebot direkt per E-Mail an den Kunden senden (oder später in der Belegliste über \"Senden\").",
     notesLabel: "Anmerkung auf dem Angebot (optional)",
   },
   confirmation: {
@@ -73,7 +73,7 @@ const CONFIG: Record<DocKind, KindConfig> = {
     ],
     textKeys: ["orderConfirmationIntroText", "orderConfirmationClosingText"],
     finalizeLabel: "Fertigstellen",
-    finalizeConfirm: "Auftragsbestätigung fertigstellen?\n\nDas PDF trägt danach kein Entwurfs-Wasserzeichen mehr. Fertigstellen verschickt NOCH NICHTS - im nächsten Schritt können Sie sie direkt per E-Mail senden.",
+    finalizeConfirm: "Auftragsbestätigung fertigstellen?\n\nDas PDF trägt danach kein Entwurfs-Wasserzeichen mehr. Fertigstellen verschickt NOCH NICHTS - im nächsten Schritt kannst du sie direkt per E-Mail senden.",
     notesLabel: "Anmerkung auf der Auftragsbestätigung (optional)",
   },
   deliveryNote: {
@@ -85,7 +85,7 @@ const CONFIG: Record<DocKind, KindConfig> = {
     dates: [{ field: "deliveryDate", label: "Lieferdatum" }],
     textKeys: ["deliveryNoteIntroText", "deliveryNoteClosingText"],
     finalizeLabel: "Fertigstellen",
-    finalizeConfirm: "Lieferschein fertigstellen?\n\nDas PDF trägt danach kein Entwurfs-Wasserzeichen mehr. Fertigstellen verschickt NOCH NICHTS - im nächsten Schritt können Sie ihn direkt per E-Mail senden.",
+    finalizeConfirm: "Lieferschein fertigstellen?\n\nDas PDF trägt danach kein Entwurfs-Wasserzeichen mehr. Fertigstellen verschickt NOCH NICHTS - im nächsten Schritt kannst du ihn direkt per E-Mail senden.",
     notesLabel: "Anmerkung auf dem Lieferschein (optional)",
   },
 };
@@ -120,7 +120,7 @@ export default function DocumentEditor({ kind }: { kind: DocKind }) {
 
   const [customers, setCustomers] = useState<PickerCustomer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [customerId, setCustomerId] = useState("");
+  const [customerId, setCustomerId] = useState(() => new URLSearchParams(window.location.search).get("customer") ?? "");
   // Zuständig: bei einem neuen Beleg automatisch man selbst (undefined = noch nicht angefasst), jederzeit änderbar
   const me = useAuthStore((s) => s.user);
   const [assigneeId, setAssigneeId] = useState<string | null | undefined>(undefined);

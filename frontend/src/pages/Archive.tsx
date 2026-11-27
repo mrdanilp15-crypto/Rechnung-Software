@@ -335,11 +335,11 @@ export default function Archive() {
       </div>
 
       <InfoBox title="Wofür ist das Belegarchiv?">
-        <p>Hier legen Sie alle Unterlagen Ihres Unternehmens ab, die nicht in der Rechnungs-Software entstehen: <strong>Eingangsrechnungen, Quittungen, Kontoauszüge, Verträge, Versicherungen, Bescheide vom Finanzamt, Schriftverkehr</strong> - als PDF, Foto/Scan, Excel/Word oder Textdatei.</p>
-        <p><strong>Suche:</strong> Sie finden Dokumente über Titel, Aussteller, Notizen, Tags, Dateiname <em>und über den Text im PDF</em> (bei Scans/Fotos ohne Textebene nur über Titel, Aussteller, Tags und Notizen - deshalb dort bitte einen aussagekräftigen Titel vergeben). Mehrere Suchwörter müssen alle vorkommen.</p>
-        <p><strong>Filtern &amp; Sortieren:</strong> nach Kategorie, Jahr, Zeitraum und Tag; sortieren per Klick auf die Spaltenüberschriften. <strong>Tags</strong> sind eigene Schlagworte (z.B. "strom", "büro", "2026"), per Klick auf einen Tag filtern Sie danach.</p>
-        <p><strong>Aufbewahrung:</strong> Buchungsbelege (Rechnungen, Quittungen, Kontoauszüge) müssen 8 Jahre, Geschäftsbriefe 6 Jahre aufbewahrt werden - jeweils ab Ende des Kalenderjahres des Belegdatums. Das Archiv zeigt die Frist an und warnt vor dem Löschen. Die Dateien sind im täglichen Backup enthalten. Alles Weitere (z.B. Verfahrensdokumentation) klären Sie bitte mit Ihrem Steuerberater.</p>
-        <p>Dieselbe Datei kann nicht doppelt abgelegt werden - die Software erkennt Duplikate. Belege, die Sie bei einer <em>Ausgabe</em> (Finanzen → Ausgaben) hochladen, werden automatisch auch hier abgelegt (Kennzeichnung "aus Ausgabe"); bisherige übernehmen Sie über den Hinweis oben auf dieser Seite.</p>
+        <p>Hier legst du alle Unterlagen deines Unternehmens ab, die nicht in der Rechnungs-Software entstehen: <strong>Eingangsrechnungen, Quittungen, Kontoauszüge, Verträge, Versicherungen, Bescheide vom Finanzamt, Schriftverkehr</strong> - als PDF, Foto/Scan, Excel/Word oder Textdatei.</p>
+        <p><strong>Suche:</strong> Du findest Dokumente über Titel, Aussteller, Notizen, Tags, Dateiname <em>und über den Text im PDF</em> (bei Scans/Fotos ohne Textebene nur über Titel, Aussteller, Tags und Notizen - deshalb dort bitte einen aussagekräftigen Titel vergeben). Mehrere Suchwörter müssen alle vorkommen.</p>
+        <p><strong>Filtern &amp; Sortieren:</strong> nach Kategorie, Jahr, Zeitraum und Tag; sortieren per Klick auf die Spaltenüberschriften. <strong>Tags</strong> sind eigene Schlagworte (z.B. "strom", "büro", "2026"), per Klick auf einen Tag filterst du danach.</p>
+        <p><strong>Aufbewahrung:</strong> Buchungsbelege (Rechnungen, Quittungen, Kontoauszüge) müssen 8 Jahre, Geschäftsbriefe 6 Jahre aufbewahrt werden - jeweils ab Ende des Kalenderjahres des Belegdatums. Das Archiv zeigt die Frist an und warnt vor dem Löschen. Die Dateien sind im täglichen Backup enthalten. Alles Weitere (z.B. Verfahrensdokumentation) kläre bitte mit deinem Steuerberater.</p>
+        <p>Dieselbe Datei kann nicht doppelt abgelegt werden - die Software erkennt Duplikate. Belege, die du bei einer <em>Ausgabe</em> (Finanzen → Ausgaben) hochladen, werden automatisch auch hier abgelegt (Kennzeichnung "aus Ausgabe"); bisherige übernimmst du über den Hinweis oben auf dieser Seite.</p>
       </InfoBox>
 
       {showUpload && (
@@ -371,7 +371,7 @@ export default function Archive() {
             {files.length <= 1 ? (
               <label className="block text-sm sm:col-span-2">Titel
                 <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="z.B. Stromrechnung Oktober 2026 (leer = Dateiname)" className={`${inputClass} mt-1`} />
-                <span className="block text-xs text-slate-500 mt-0.5">Unter diesem Namen finden Sie das Dokument wieder - besonders bei Scans und Fotos wichtig.</span>
+                <span className="block text-xs text-slate-500 mt-0.5">Unter diesem Namen findest du das Dokument wieder - besonders bei Scans und Fotos wichtig.</span>
               </label>
             ) : (
               <p className="text-xs text-slate-500 sm:col-span-2 self-center">Bei mehreren Dateien dient der Dateiname als Titel (später änderbar). Kategorie, Datum, Aussteller, Tags und Notiz gelten für alle.</p>
@@ -397,7 +397,7 @@ export default function Archive() {
             )}
             <label className="block text-sm sm:col-span-3">Tags (optional, mit Komma trennen)
               <input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} list="archive-tags" placeholder="z.B. strom, fixkosten, 2026" className={`${inputClass} mt-1`} />
-              <span className="block text-xs text-slate-500 mt-0.5">Eigene Schlagworte, nach denen Sie später filtern. Vorhandene Tags werden beim Tippen vorgeschlagen.</span>
+              <span className="block text-xs text-slate-500 mt-0.5">Eigene Schlagworte, nach denen du später filterst. Vorhandene Tags werden beim Tippen vorgeschlagen.</span>
             </label>
             <label className="block text-sm sm:col-span-3">Notiz (optional)
               <textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={`${inputClass} mt-1`} />
@@ -420,7 +420,7 @@ export default function Archive() {
       {facets && facets.pendingExpenseReceipts > 0 && (
         <div className="rounded-lg border border-blue-200 dark:border-slate-600 bg-blue-50 dark:bg-slate-800/60 p-3 mb-4 text-sm flex flex-wrap items-center justify-between gap-3">
           <span>
-            <strong>{facets.pendingExpenseReceipts}</strong> Beleg(e) von Ausgaben (Finanzen → Ausgaben) liegen noch nicht im Archiv. Neue Ausgaben mit Beleg werden automatisch abgelegt, die bisherigen übernehmen Sie hier mit einem Klick (die Dateien an den Ausgaben bleiben unverändert).
+            <strong>{facets.pendingExpenseReceipts}</strong> Beleg(e) von Ausgaben (Finanzen → Ausgaben) liegen noch nicht im Archiv. Neue Ausgaben mit Beleg werden automatisch abgelegt, die bisherigen übernimmst du hier mit einem Klick (die Dateien an den Ausgaben bleiben unverändert).
           </span>
           <button type="button" onClick={importExpenseReceipts} disabled={importing} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded disabled:opacity-60 shrink-0">
             {importing ? "Wird übernommen ..." : "Jetzt ins Archiv übernehmen"}
@@ -516,7 +516,7 @@ export default function Archive() {
         })}
         {docs.length === 0 && !loading && (
           <p className="px-4 py-8 text-center text-slate-500 text-sm">
-            {filtersActive ? "Keine Dokumente für diese Suche/Filter gefunden." : 'Noch nichts abgelegt. Mit "+ Dokumente ablegen" laden Sie Ihr erstes Dokument hoch.'}
+            {filtersActive ? "Keine Dokumente für diese Suche/Filter gefunden." : 'Noch nichts abgelegt. Mit "+ Dokumente ablegen" lädst du dein erstes Dokument hoch.'}
           </p>
         )}
       </div>

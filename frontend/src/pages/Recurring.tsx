@@ -67,7 +67,7 @@ export default function RecurringPage() {
         <h1 className="text-2xl font-semibold">Wiederkehrende Rechnungen<HelpTip topic="recurring" className="ml-2" /></h1>
       </div>
       <p className="text-sm text-slate-500 mb-4">
-        Zu jedem Termin legt die Software automatisch einen <strong>Entwurf</strong> an. Sie prüfen ihn und stellen ihn fertig - es wird nie automatisch eine Rechnung ausgestellt oder versendet.
+        Zu jedem Termin legt die Software automatisch einen <strong>Entwurf</strong> an. Du prüfst ihn und stellst ihn fertig - es wird nie automatisch eine Rechnung ausgestellt oder versendet.
         Neu einrichten: bei einer Rechnung im Menü (⋮) auf "Wiederkehrend einrichten" klicken.
       </p>
       <div className="space-y-3">
@@ -95,7 +95,7 @@ export default function RecurringPage() {
         ))}
         {loaded && list.length === 0 && (
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-8 text-center text-slate-500 text-sm">
-            Noch nichts eingerichtet. Öffnen Sie unter "Belege" das Menü (⋮) einer Rechnung und wählen Sie "Wiederkehrend einrichten".
+            Noch nichts eingerichtet. Öffne unter "Belege" das Menü (⋮) einer Rechnung und wähle "Wiederkehrend einrichten".
           </div>
         )}
       </div>

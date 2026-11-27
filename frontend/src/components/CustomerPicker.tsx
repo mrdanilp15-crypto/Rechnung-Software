@@ -110,7 +110,7 @@ export function CustomerPicker({
             <input value={form.vatId} onChange={(e) => setForm({ ...form, vatId: e.target.value })} placeholder="USt-IdNr. (bei EU-Firmen wichtig)" className={`${inputClass} sm:col-span-2`} />
           )}
         </div>
-        <p className="text-xs text-slate-500">Nur der Name ist nötig. Alles andere können Sie jetzt oder später unter "Kunden" ergänzen.</p>
+        <p className="text-xs text-slate-500">Nur der Name ist nötig. Alles andere kannst du jetzt oder später unter "Kunden" ergänzen.</p>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button type="button" onClick={create} disabled={saving} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm disabled:opacity-60">
           {saving ? "Wird angelegt..." : "Kunden anlegen und übernehmen"}

@@ -74,10 +74,10 @@ export function EtsyImport({ onImported }: { onImported: () => void }) {
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 space-y-3">
       <h2 className="font-medium text-sm">Bestellungen aus Etsy übernehmen</h2>
-      <InfoBox title="So holen Sie die Datei aus Etsy">
-        <p>In Etsy: <strong>Shop-Manager → Einstellungen → Optionen → Daten herunterladen</strong>. Wählen Sie <strong>"Bestellte Artikel"</strong> (empfohlen, enthält die einzelnen Artikel) oder "Bestellungen", Zeitraum und Format CSV.</p>
-        <p>Danach laden Sie die Datei hier hoch. Sie sehen erst eine <strong>Vorschau</strong>; angelegt wird nichts, bevor Sie bestätigen. Je Bestellung entsteht ein <strong>Auftrag als Entwurf</strong> (mit Kunde und Lieferadresse, neue Kunden werden angelegt) - er erscheint direkt in der Produktion. Die Etsy-Bestellnummer steht im Auftrag; bereits importierte Bestellungen werden erkannt und nicht doppelt angelegt.</p>
-        <p>Rabatte, Gutscheine und Fremdwährungen werden nicht automatisch umgerechnet - die Vorschau weist darauf hin. Etsy-Gebühren sind nicht Teil dieses Imports (tragen Sie sie als Ausgabe ein). Es gibt keine Live-Verbindung zu Etsy; Preise gelten als Endkundenpreise (bei Kleinunternehmern 1:1, sonst brutto inkl. 19 % USt. und daraus netto berechnet).</p>
+      <InfoBox title="So holst du die Datei aus Etsy">
+        <p>In Etsy: <strong>Shop-Manager → Einstellungen → Optionen → Daten herunterladen</strong>. Wähle <strong>"Bestellte Artikel"</strong> (empfohlen, enthält die einzelnen Artikel) oder "Bestellungen", Zeitraum und Format CSV.</p>
+        <p>Danach lädst du die Datei hier hoch. Du siehst erst eine <strong>Vorschau</strong>; angelegt wird nichts, bevor du bestätigst. Je Bestellung entsteht ein <strong>Auftrag als Entwurf</strong> (mit Kunde und Lieferadresse, neue Kunden werden angelegt) - er erscheint direkt in der Produktion. Die Etsy-Bestellnummer steht im Auftrag; bereits importierte Bestellungen werden erkannt und nicht doppelt angelegt.</p>
+        <p>Rabatte, Gutscheine und Fremdwährungen werden nicht automatisch umgerechnet - die Vorschau weist darauf hin. Etsy-Gebühren sind nicht Teil dieses Imports (trag sie als Ausgabe ein). Es gibt keine Live-Verbindung zu Etsy; Preise gelten als Endkundenpreise (bei Kleinunternehmern 1:1, sonst brutto inkl. 19 % USt. und daraus netto berechnet).</p>
       </InfoBox>
       <input type="file" accept=".csv,text/csv" onChange={(e) => choose(e.target.files?.[0] ?? null)} className="text-sm" />
       {busy && <p className="text-sm text-slate-500">Bitte warten ...</p>}

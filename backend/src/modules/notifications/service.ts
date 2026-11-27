@@ -102,7 +102,7 @@ export async function notify(companyId: string, type: NotificationType, title: s
       logger.warn({ companyId }, "Benachrichtigung per E-Mail nicht möglich: SMTP ist nicht eingerichtet");
       return;
     }
-    await sendMailForCompany(company, { to: settings.email, subject: title, text: `${body}\n\nDiese Nachricht kommt automatisch von Ihrer Rechnungssoftware.` });
+    await sendMailForCompany(company, { to: settings.email, subject: title, text: `${body}\n\nDiese Nachricht kommt automatisch von deiner Rechnungssoftware.` });
   } catch (err) {
     logger.warn({ err: (err as Error).message }, "Benachrichtigung per E-Mail fehlgeschlagen");
   }
@@ -137,7 +137,7 @@ export async function notifyUser(companyId: string, userId: string, title: strin
     if (!company || !user?.email || !isSmtpConfigured(company)) return;
     await sendMailForCompany(company, { to: user.email, subject: title, text: `${body}
 
-Diese Nachricht kommt automatisch von Ihrer Rechnungssoftware.` });
+Diese Nachricht kommt automatisch von deiner Rechnungssoftware.` });
   } catch (err) {
     logger.warn({ err: (err as Error).message }, "Persönliche Benachrichtigung per E-Mail fehlgeschlagen");
   }

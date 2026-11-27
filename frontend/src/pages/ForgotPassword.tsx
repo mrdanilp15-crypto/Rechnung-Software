@@ -35,12 +35,12 @@ export default function ForgotPassword() {
               Falls ein Konto mit dieser Adresse existiert und der E-Mail-Versand unter Einstellungen eingerichtet ist, wurde ein Link zum Zurücksetzen gesendet (eine Stunde gültig). Bitte auch den Spam-Ordner prüfen.
             </p>
             <p className="text-xs text-slate-500 mb-4">
-              Kommt nichts an? Ohne eingerichteten E-Mail-Versand kann ein Administrator unter "Benutzer" ein neues Passwort setzen, oder Sie nutzen den Notfall-Befehl auf dem Server (siehe INSTALL.md).
+              Kommt nichts an? Ohne eingerichteten E-Mail-Versand kann ein Administrator unter "Benutzer" ein neues Passwort setzen, oder du nutzt den Notfall-Befehl auf dem Server (siehe INSTALL.md).
             </p>
           </>
         ) : (
           <>
-            <p className="text-sm text-slate-500 mb-4">Geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen einen Link, mit dem Sie ein neues Passwort vergeben können.</p>
+            <p className="text-sm text-slate-500 mb-4">Gib deine E-Mail-Adresse ein. Wir senden dir einen Link, mit dem du ein neues Passwort vergeben kannst.</p>
             {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
             <label className="block text-sm mb-1">E-Mail</label>
             <input type="email" autoFocus required autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />

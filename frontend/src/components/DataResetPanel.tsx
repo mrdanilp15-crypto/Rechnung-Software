@@ -70,7 +70,7 @@ export function DataResetPanel() {
 
   async function execute() {
     if (!window.confirm(`LETZTE WARNUNG 1/2\n\nJetzt werden ${c.invoicesTotal} Rechnungen, ${c.quotes} Angebote, ${c.confirmations} Aufträge, ${c.deliveryNotes} Lieferscheine${keepMasterData ? "" : `, ${c.customers} Kunden, ${c.products} Produkte`} und alle Ausgaben gelöscht.\n\nWirklich fortfahren?`)) return;
-    if (!window.confirm("LETZTE WARNUNG 2/2\n\nDas kann nicht rückgängig gemacht werden. Sind Sie ABSOLUT sicher?")) return;
+    if (!window.confirm("LETZTE WARNUNG 2/2\n\nDas kann nicht rückgängig gemacht werden. Bist du ABSOLUT sicher?")) return;
     setBusy(true); setError(null);
     try {
       const { data } = await api.post("/reset/execute", {
@@ -85,7 +85,7 @@ export function DataResetPanel() {
   }
 
   async function lockForever() {
-    const pw = window.prompt("Das Zurücksetzen wird DAUERHAFT gesperrt (in der App nicht rückgängig zu machen).\n\nZur Bestätigung Ihr Passwort eingeben:");
+    const pw = window.prompt("Das Zurücksetzen wird DAUERHAFT gesperrt (in der App nicht rückgängig zu machen).\n\nZur Bestätigung dein Passwort eingeben:");
     if (!pw) return;
     try {
       await api.post("/reset/lock", { password: pw, totpToken: preview!.totpEnabled ? window.prompt("2FA-Code:") || undefined : undefined });
@@ -101,13 +101,13 @@ export function DataResetPanel() {
 
       {preview.locked ? (
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          🔒 Das Zurücksetzen ist {preview.lockedByServer ? "serverseitig (DISABLE_DATA_RESET)" : "dauerhaft"} gesperrt. So sind Ihre Rechnungen vor versehentlichem Löschen geschützt.
+          🔒 Das Zurücksetzen ist {preview.lockedByServer ? "serverseitig (DISABLE_DATA_RESET)" : "dauerhaft"} gesperrt. So sind deine Rechnungen vor versehentlichem Löschen geschützt.
         </p>
       ) : result ? (
         <div className="space-y-2 text-sm">
           <p className="text-green-700 dark:text-green-400 font-medium">✓ Zurückgesetzt. Alle Nummernkreise beginnen wieder bei 1.</p>
           <p>Sicherheits-Backup: <code>{result.backupFile}</code> (unter Backups herunterladbar - bitte aufbewahren).</p>
-          <p className="text-amber-700 dark:text-amber-400">Empfehlung: Sperren Sie das Zurücksetzen jetzt, damit es später nicht versehentlich passiert.</p>
+          <p className="text-amber-700 dark:text-amber-400">Empfehlung: Sperre das Zurücksetzen jetzt, damit es später nicht versehentlich passiert.</p>
           <div className="flex gap-2">
             <button onClick={lockForever} className="px-3 py-1.5 rounded bg-slate-800 text-white text-sm">Zurücksetzen dauerhaft sperren</button>
             <button onClick={() => window.location.reload()} className="px-3 py-1.5 rounded bg-slate-200 dark:bg-slate-700 text-sm">Seite neu laden</button>
@@ -116,7 +116,7 @@ export function DataResetPanel() {
       ) : step === 0 ? (
         <>
           <p className="text-sm">
-            Löscht alle Belege, Ausgaben und Bankbuchungen und setzt die Nummernkreise zurück - gedacht für den Moment, <strong>bevor Sie echte Rechnungen schreiben</strong>.
+            Löscht alle Belege, Ausgaben und Bankbuchungen und setzt die Nummernkreise zurück - gedacht für den Moment, <strong>bevor du echte Rechnungen schreiben</strong>.
           </p>
           <ul className="text-sm text-slate-600 dark:text-slate-300 list-disc pl-5">
             <li>{c.invoicesTotal} Rechnungen ({c.invoicesFinal} mit Nummer, {c.invoicesDraft} Entwürfe), {c.quotes} Angebote, {c.confirmations} Aufträge, {c.deliveryNotes} Lieferscheine</li>
@@ -125,7 +125,7 @@ export function DataResetPanel() {
           </ul>
           {c.invoicesFinal > 0 && (
             <p className="text-sm rounded bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 p-2">
-              ⚠ Es gibt {c.invoicesFinal} Rechnung(en) mit fester Nummer. Echte Rechnungen dürfen Sie gesetzlich nicht löschen. Fahren Sie nur fort, wenn das wirklich alles Testrechnungen sind.
+              ⚠ Es gibt {c.invoicesFinal} Rechnung(en) mit fester Nummer. Echte Rechnungen darfst du gesetzlich nicht löschen. Fahre nur fort, wenn das wirklich alles Testrechnungen sind.
             </p>
           )}
           <label className="flex items-start gap-2 text-sm">

@@ -12,7 +12,7 @@ const inputClass = "px-3 py-2 rounded border border-slate-300 dark:border-slate-
 
 /**
  * Richtet aus einer bestehenden Rechnung eine wiederkehrende Rechnung ein: zu jedem Termin entsteht automatisch ein
- * ENTWURF mit denselben Positionen, den Sie prüfen und dann fertigstellen - es wird nie etwas automatisch versendet.
+ * ENTWURF mit denselben Positionen, den du prüfst und dann fertigstellst - es wird nie etwas automatisch versendet.
  */
 export function RecurringDialog({ invoiceId, defaultName, onClose, onCreated }: { invoiceId: string; defaultName: string; onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState(defaultName);
@@ -48,7 +48,7 @@ export function RecurringDialog({ invoiceId, defaultName, onClose, onCreated }: 
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4" onMouseDown={onClose}>
       <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-5 space-y-4" onMouseDown={(e) => e.stopPropagation()}>
         <h2 className="font-medium">Wiederkehrende Rechnung einrichten</h2>
-        <p className="text-sm text-slate-500">Zu jedem Termin legt die Software automatisch einen Entwurf mit denselben Positionen an. Sie prüfen ihn und stellen ihn fertig - es wird nichts automatisch versendet.</p>
+        <p className="text-sm text-slate-500">Zu jedem Termin legt die Software automatisch einen Entwurf mit denselben Positionen an. Du prüfst ihn und stellst ihn fertig - es wird nichts automatisch versendet.</p>
         <label className="block text-sm">
           Bezeichnung
           <input value={name} onChange={(e) => setName(e.target.value)} className={`${inputClass} mt-1 w-full`} />

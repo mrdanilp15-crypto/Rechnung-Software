@@ -178,15 +178,15 @@ export default function Printers() {
         <button onClick={startCreate} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">+ Drucker anlegen</button>
       </div>
       <p className="text-sm text-slate-500 mb-4">
-        Jeder Drucker hat eigene Werte. In der Produktkalkulation wählen Sie, auf welchem Drucker gedruckt wird - daraus rechnet die Software Strom, Abschreibung und Verschleiß automatisch.
-        Der Strompreis ({electricity} ct/kWh) steht unter Einstellungen → Firma → Kalkulation.
+        Jeder Drucker hat eigene Werte. In der Produktkalkulation wählst du, auf welchem Drucker gedruckt wird - daraus rechnet die Software Strom, Abschreibung und Verschleiß automatisch.
+        Der Strompreis ({electricity} ct/kWh) steht unter Einstellungen → Kalkulation.
       </p>
 
       <InfoBox title="So kommen die Zahlen zustande - und wo sie hingehören">
         <p><strong>1. Drucker anlegen</strong> (hier): Anschaffungspreis, Lebensdauer, Watt, Verschleiß. Daraus entstehen die Kosten pro Druckstunde.</p>
-        <p><strong>2. Strompreis, Arbeitsstundensatz, Gemeinkosten, Gewinnaufschlag</strong> stehen einmalig unter Einstellungen → Firma → Kalkulation.</p>
-        <p><strong>3. Material</strong> legen Sie unter "Material (Lager)" an (Gesamtpreis und Menge einer Spule eintragen, der Preis pro Gramm wird berechnet).</p>
-        <p><strong>4. Pro Produkt</strong> tragen Sie Materialverbrauch, Druckzeit und Arbeitszeit ein (Werte aus dem Slicer) und wählen den Drucker - die Software zeigt Selbstkosten, Preisvorschlag und Gewinn.</p>
+        <p><strong>2. Strompreis, Arbeitsstundensatz, Gemeinkosten, Gewinnaufschlag</strong> stehen einmalig unter Einstellungen → Kalkulation.</p>
+        <p><strong>3. Material</strong> legst du unter "Material (Lager)" an (Gesamtpreis und Menge einer Spule eintragen, der Preis pro Gramm wird berechnet).</p>
+        <p><strong>4. Pro Produkt</strong> trägst du Materialverbrauch, Druckzeit und Arbeitszeit ein (Werte aus dem Slicer) und wählen den Drucker - die Software zeigt Selbstkosten, Preisvorschlag und Gewinn.</p>
         <p><strong>Richtwerte:</strong> Lebensdauer eines Bambu/Prusa-Druckers 5.000-10.000 h, einfacher Drucker 3.000-5.000 h. Leistung im Betrieb meist 80-150 W (Datenblatt-Maximalwert liegt höher, da Heizphasen kurz sind). Verschleiß (Düsen, Bett, Riemen, Lager) 5-15 Cent pro Stunde. Ein Strommessgerät zwischen Steckdose und Drucker liefert den genauesten Wert.</p>
         <p>Änderungen an Druckern oder Sätzen wirken auf die Kalkulation in der Produktverwaltung sofort. Bereits erstellte Rechnungen und Angebote ändern sich dadurch <strong>nicht</strong> - dort steht der damals eingetragene Preis.</p>
       </InfoBox>
@@ -194,7 +194,7 @@ export default function Printers() {
       <InfoBox title="Live-Anbindung für Bambu Lab (Fortschritt, Temperaturen, AMS, Kamera)">
         <p>Bei Bambu-Lab-Druckern kann die Software im <strong>LAN-Modus</strong> den Zustand direkt vom Drucker lesen: Fortschritt und Restzeit, Temperaturen, die Spulen im AMS (Material, Farbe, Füllstand), ein Kamerabild und eine Live-Ansicht (P1P, P1S, A1, A1 mini, X1C, X1E, P2S, H2). Aus den erkannten Drucken entstehen außerdem ein <strong>Druckverlauf und die tatsächlichen Betriebsstunden</strong> je Drucker.</p>
         <p><strong>Nur lesend:</strong> Die Software sendet nie Befehle (Pause, Stopp, Start) an den Drucker.</p>
-        <p><strong>Einrichten (am Drucker):</strong> Einstellungen → WLAN/Netzwerk: <em>LAN-Modus</em> aktivieren; dort stehen die <strong>IP-Adresse</strong> und der <strong>Zugangscode</strong> (8 Zeichen). Die <strong>Seriennummer</strong> finden Sie unter Einstellungen → Gerät (oder auf dem Aufkleber). Tragen Sie die drei Werte im Formular unten ein und klicken Sie "Verbindung testen".</p>
+        <p><strong>Einrichten (am Drucker):</strong> Einstellungen → WLAN/Netzwerk: <em>LAN-Modus</em> aktivieren; dort stehen die <strong>IP-Adresse</strong> und der <strong>Zugangscode</strong> (8 Zeichen). Die <strong>Seriennummer</strong> findest du unter Einstellungen → Gerät (oder auf dem Aufkleber). Trag die drei Werte im Formular unten ein und klick auf "Verbindung testen".</p>
         <p><strong>Voraussetzungen:</strong> Der Server, auf dem diese Software läuft, muss den Drucker im Netzwerk erreichen (typisch: gleiches Heimnetz). Läuft die Software in der Cloud oder bei einem Hoster, ist das nicht der Fall - dann ist ein VPN (z.B. Tailscale) nötig. Der Drucker sollte eine feste IP-Adresse haben (im Router reservieren). Je nach Modell und Firmware kann der LAN-Modus die Verbindung zur Bambu-Cloud (Handy-App von unterwegs) einschränken; Bambu ändert dieses Verhalten gelegentlich per Firmware. Bitte beim ersten Einrichten ausprobieren.</p>
         <p>Der Zugangscode wird verschlüsselt gespeichert und nie wieder angezeigt. Einrichten dürfen nur Administratoren.</p>
       </InfoBox>

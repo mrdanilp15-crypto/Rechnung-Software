@@ -84,7 +84,7 @@ export function SendDocumentDialog({
               : "Dieser Entwurf wird beim Senden fertiggestellt (das PDF trägt danach kein Entwurfs-Wasserzeichen mehr)."}
           </p>
         )}
-        {!isDraft && <p className="text-xs text-slate-500">Dieser Beleg ist schon fertig - Sie können ihn beliebig oft erneut verschicken (z.B. wenn die erste E-Mail nicht angekommen ist oder der Kunde sie verloren hat).</p>}
+        {!isDraft && <p className="text-xs text-slate-500">Dieser Beleg ist schon fertig - du kannst ihn beliebig oft erneut verschicken (z.B. wenn die erste E-Mail nicht angekommen ist oder der Kunde sie verloren hat).</p>}
         <label className="block text-sm">
           Empfänger
           <input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="E-Mail-Adresse des Kunden" className={`${inputClass} mt-1`} autoFocus />
@@ -101,9 +101,9 @@ export function SendDocumentDialog({
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={copyToSelf} onChange={(e) => setCopyToSelf(e.target.checked)} />
-          Kopie an mich senden (verdeckt, an Ihre Absenderadresse)
+          Kopie an mich senden (verdeckt, an deine Absenderadresse)
         </label>
-        <p className="text-xs text-slate-500">Die E-Mail wird mit Ihrem Firmenlogo im Kopf und Ihren Firmendaten im Fuß gesendet. Das PDF wird automatisch angehängt. Der Versand läuft über Ihr E-Mail-Postfach (Einstellungen → E-Mail-Versand); die Software kann nur bestätigen, dass die Nachricht an Ihren Mailserver übergeben wurde, nicht, dass sie gelesen wurde.</p>
+        <p className="text-xs text-slate-500">Die E-Mail wird mit deinem Firmenlogo im Kopf und deinen Firmendaten im Fuß gesendet. Das PDF wird automatisch angehängt. Der Versand läuft über dein E-Mail-Postfach (Einstellungen → E-Mail-Versand); die Software kann nur bestätigen, dass die Nachricht an deinen Mailserver übergeben wurde, nicht, dass sie gelesen wurde.</p>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex gap-2 pt-1">
           <button onClick={send} disabled={sending || !to.trim()} className="flex-1 bg-brand hover:bg-brand-dark text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50">{sending ? "Wird gesendet ..." : "E-Mail senden"}</button>

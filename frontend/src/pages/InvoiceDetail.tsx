@@ -284,7 +284,7 @@ export default function InvoiceDetail() {
           <input placeholder="Empfänger-E-Mail" value={emailForm.to} onChange={(e) => setEmailForm((f) => ({ ...f, to: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
           <input placeholder="Betreff (optional)" value={emailForm.subject} onChange={(e) => setEmailForm((f) => ({ ...f, subject: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
           <textarea placeholder="Nachricht (optional, sonst Standardtext)" value={emailForm.message} onChange={(e) => setEmailForm((f) => ({ ...f, message: e.target.value }))} rows={4} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={emailCopy} onChange={(e) => setEmailCopy(e.target.checked)} />Kopie an mich senden (verdeckt, an Ihre Absenderadresse)</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={emailCopy} onChange={(e) => setEmailCopy(e.target.checked)} />Kopie an mich senden (verdeckt, an deine Absenderadresse)</label>
           <div className="flex gap-2">
             <button disabled={emailSending} onClick={handleSendEmail} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm disabled:opacity-50">
               {emailSending ? "Wird gesendet..." : "Senden"}

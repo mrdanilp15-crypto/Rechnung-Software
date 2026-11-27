@@ -114,11 +114,11 @@ export function AssetsPanel({ year, onChanged }: { year: number; onChanged?: () 
       </div>
 
       <InfoBox title="Wofür ist das Anlageverzeichnis?">
-        <p>Größere Anschaffungen für den Betrieb - z.B. ein <strong>3D-Drucker</strong>, Werkzeug, Computer - setzen Sie nicht immer sofort in voller Höhe ab. Je nach Preis gilt:</p>
-        <p><strong>GWG (geringwertiges Wirtschaftsgut):</strong> Kostet das Gut netto höchstens {money(gwgLimit)}, dürfen Sie es im Jahr der Anschaffung sofort voll als Ausgabe ansetzen.</p>
-        <p><strong>Lineare Abschreibung (AfA):</strong> Teurere Güter verteilen Sie über die Nutzungsdauer. Im Anschaffungsjahr zählt nur der Anteil ab dem Anschaffungsmonat. Die Nutzungsdauer (z.B. 3, 5 oder 7 Jahre) richtet sich nach den amtlichen AfA-Tabellen - bei einem 3D-Drucker ist die Einordnung nicht eindeutig, bitte mit dem Steuerberater klären.</p>
-        <p><strong>Kleinunternehmer:</strong> Sie können keine Vorsteuer abziehen, deshalb sind die Anschaffungskosten der <strong>Bruttobetrag</strong> (Rechnungsbetrag inkl. USt.). Wer die Regelbesteuerung nutzt, trägt den Nettobetrag ein.</p>
-        <p><strong>Verknüpfung mit einer Ausgabe:</strong> Haben Sie den Kauf schon unter Finanzen → Ausgaben erfasst, wählen Sie ihn unten aus - dann zählt die EÜR statt der vollen Ausgabe nur noch die Abschreibung des Jahres (kein doppeltes Absetzen). Ohne Verknüpfung kommt die Abschreibung zusätzlich zu Ihren Ausgaben hinzu.</p>
+        <p>Größere Anschaffungen für den Betrieb - z.B. ein <strong>3D-Drucker</strong>, Werkzeug, Computer - setzt du nicht immer sofort in voller Höhe ab. Je nach Preis gilt:</p>
+        <p><strong>GWG (geringwertiges Wirtschaftsgut):</strong> Kostet das Gut netto höchstens {money(gwgLimit)}, darfst du es im Jahr der Anschaffung sofort voll als Ausgabe ansetzen.</p>
+        <p><strong>Lineare Abschreibung (AfA):</strong> Teurere Güter verteilst du über die Nutzungsdauer. Im Anschaffungsjahr zählt nur der Anteil ab dem Anschaffungsmonat. Die Nutzungsdauer (z.B. 3, 5 oder 7 Jahre) richtet sich nach den amtlichen AfA-Tabellen - bei einem 3D-Drucker ist die Einordnung nicht eindeutig, bitte mit dem Steuerberater klären.</p>
+        <p><strong>Kleinunternehmer:</strong> Du kannst keine Vorsteuer abziehen, deshalb sind die Anschaffungskosten der <strong>Bruttobetrag</strong> (Rechnungsbetrag inkl. USt.). Wer die Regelbesteuerung nutzt, trägt den Nettobetrag ein.</p>
+        <p><strong>Verknüpfung mit einer Ausgabe:</strong> Hast du den Kauf schon unter Finanzen → Ausgaben erfasst, wähle ihn unten aus - dann zählt die EÜR statt der vollen Ausgabe nur noch die Abschreibung des Jahres (kein doppeltes Absetzen). Ohne Verknüpfung kommt die Abschreibung zusätzlich zu deinen Ausgaben hinzu.</p>
         <p>Die Werte dienen der Orientierung und ersetzen keine Steuerberatung; Grenzen und Fristen ändern sich gelegentlich.</p>
       </InfoBox>
 
@@ -159,7 +159,7 @@ export function AssetsPanel({ year, onChanged }: { year: number; onChanged?: () 
                 <label className="flex items-center gap-2"><input type="radio" name="method" checked={form.method === "LINEAR"} onChange={() => setForm({ ...form, method: "LINEAR" })} /> Linear über mehrere Jahre</label>
                 <label className="flex items-center gap-2"><input type="radio" name="method" checked={form.method === "GWG"} onChange={() => setForm({ ...form, method: "GWG" })} /> GWG: sofort im Anschaffungsjahr</label>
               </div>
-              {cost > 0 && cost <= gwgLimit && form.method === "LINEAR" && <p className="text-xs text-green-700 dark:text-green-400 mt-1">Dieser Betrag liegt unter der GWG-Grenze von {money(gwgLimit)} (netto) - Sie dürfen auch sofort abschreiben.</p>}
+              {cost > 0 && cost <= gwgLimit && form.method === "LINEAR" && <p className="text-xs text-green-700 dark:text-green-400 mt-1">Dieser Betrag liegt unter der GWG-Grenze von {money(gwgLimit)} (netto) - du darfst auch sofort abschreiben.</p>}
               {cost > gwgLimit && form.method === "GWG" && <p className="text-xs text-amber-600 mt-1">Achtung: über der GWG-Grenze von {money(gwgLimit)} (netto). Bei Regelbesteuerung gilt der Nettobetrag - sonst bitte linear abschreiben.</p>}
             </div>
             {form.method === "LINEAR" && (

@@ -65,7 +65,7 @@ export function TaxPanel({ year }: { year: number }) {
             ))}
           </select>
         </div>
-        {isSmallBusiness && <p className="text-sm text-slate-500 mb-3">Als Kleinunternehmer (§19 UStG) geben Sie keine Umsatzsteuer-Voranmeldung ab - die Übersicht zeigt nur Ihre Umsätze.</p>}
+        {isSmallBusiness && <p className="text-sm text-slate-500 mb-3">Als Kleinunternehmer (§19 UStG) gibst du keine Umsatzsteuer-Voranmeldung ab - die Übersicht zeigt nur deine Umsätze.</p>}
         {!summary ? (
           <p className="text-sm text-slate-500">Wird berechnet ...</p>
         ) : summary.rows.length === 0 && summary.expenseCount === 0 ? (

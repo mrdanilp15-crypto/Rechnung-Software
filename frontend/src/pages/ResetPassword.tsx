@@ -34,9 +34,9 @@ export default function ResetPassword() {
       <form onSubmit={submit} className="w-full max-w-sm bg-white dark:bg-slate-800 p-8 rounded-lg shadow">
         <h1 className="text-xl font-semibold mb-4 text-brand">Neues Passwort vergeben</h1>
         {done ? (
-          <p className="text-sm mb-4">Ihr Passwort wurde geändert. Alle anderen Sitzungen wurden abgemeldet. Sie können sich jetzt anmelden.</p>
+          <p className="text-sm mb-4">Dein Passwort wurde geändert. Alle anderen Sitzungen wurden abgemeldet. Du kannst dich jetzt anmelden.</p>
         ) : !token ? (
-          <p className="text-red-600 text-sm mb-4">Dieser Link ist unvollständig. Bitte fordern Sie einen neuen an.</p>
+          <p className="text-red-600 text-sm mb-4">Dieser Link ist unvollständig. Bitte fordere einen neuen an.</p>
         ) : (
           <>
             {error && <p className="text-red-600 text-sm mb-4">{error}</p>}

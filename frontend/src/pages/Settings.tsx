@@ -97,11 +97,12 @@ const formatEuro = (cents: number) => new Intl.NumberFormat("de-DE", { style: "c
 
 const TABS = [
   { key: "company", label: "Firma", group: "Mein Betrieb" },
+  { key: "pricing", label: "Kalkulation", group: "Mein Betrieb" },
   { key: "branding", label: "Logo & Stempel", group: "Mein Betrieb" },
   { key: "design", label: "Beleg-Design", group: "Mein Betrieb" },
   { key: "templates", label: "Vorlagen", group: "Mein Betrieb" },
   { key: "dunning", label: "Mahnwesen", group: "Mein Betrieb" },
-  { key: "verbindungen", label: "Verbindungen", group: "Verbindungen" },
+  { key: "verbindungen", label: "Status", group: "Verbindungen" },
   { key: "email", label: "E-Mail-Versand", group: "Verbindungen" },
   { key: "schnittstellen", label: "Schnittstellen", group: "Verbindungen" },
   { key: "users", label: "Benutzer", group: "Konto & System" },
@@ -113,7 +114,7 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 /** Hilfethema je Reiter (kurze Erklärung unter den Reitern) */
-const SETTINGS_TAB_HELP: Record<string, string> = { company: "settings-company", branding: "settings-branding", design: "settings-design", templates: "settings-templates", dunning: "settings-dunning", verbindungen: "connections", email: "settings-email", schnittstellen: "integrations", users: "users", password: "users", security: "security", appearance: "appearance", audit: "audit", data: "data" };
+const SETTINGS_TAB_HELP: Record<string, string> = { company: "settings-company", pricing: "costs", branding: "settings-branding", design: "settings-design", templates: "settings-templates", dunning: "settings-dunning", verbindungen: "connections", email: "settings-email", schnittstellen: "integrations", users: "users", password: "users", security: "security", appearance: "appearance", audit: "audit", data: "data" };
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -278,7 +279,7 @@ export default function Settings() {
   if (!company) return <p>{t("common.loading")}</p>;
 
   const visibleTabs =
-    user?.role === "ADMIN" ? TABS : TABS.filter((tb) => tb.key === "company" || tb.key === "password");
+    user?.role === "ADMIN" ? TABS : TABS.filter((tb) => tb.key === "company" || tb.key === "pricing" || tb.key === "password");
 
   return (
     <div className="max-w-3xl">
@@ -347,6 +348,36 @@ export default function Settings() {
             </div>
           </div>
           <h3 className="text-sm font-semibold pt-2">Steuer &amp; Register (Pflichtangaben auf Rechnungen)</h3>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={company.isSmallBusiness} onChange={(e) => setCompany({ ...company, isSmallBusiness: e.target.checked })} />
+            <span><strong>Kleinunternehmer</strong> (§19 UStG) - ich weise keine Umsatzsteuer aus</span>
+          </label>
+          <p className="text-xs text-slate-500 -mt-2">Rechnungen bekommen dann automatisch den §19-Hinweis und keine USt. Gilt, solange dein Umsatz im Vorjahr unter 25.000 € und im laufenden Jahr unter 100.000 € liegt.</p>
+          {company.isSmallBusiness && (
+            <details className="text-sm">
+            <summary className="cursor-pointer select-none text-slate-500">Grenzen für die Warnung anpassen (normalerweise nicht nötig)</summary>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+              <div>
+                <label className="block text-sm mb-1">Vorjahresgrenze für Warnhinweis (€, gesetzlich seit 2025: 25.000 €)</label>
+                <input
+                  type="number"
+                  value={company.smallBusinessThresholdCents / 100}
+                  onChange={(e) => setCompany({ ...company, smallBusinessThresholdCents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
+                  className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Laufende-Jahr-Grenze für Warnhinweis (€, gesetzlich seit 2025: 100.000 €)</label>
+                <input
+                  type="number"
+                  value={company.smallBusinessCurrentYearThresholdCents / 100}
+                  onChange={(e) => setCompany({ ...company, smallBusinessCurrentYearThresholdCents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
+                  className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                />
+              </div>
+            </div>
+            </details>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="block text-sm">
               Steuernummer
@@ -386,69 +417,6 @@ export default function Settings() {
               <input type="text" value={company.website || ""} onChange={(e) => setCompany({ ...company, website: e.target.value })} placeholder="www.firma.de" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
             </label>
           </div>
-          <h3 className="text-sm font-semibold pt-2">Kalkulation (Produktpreise)</h3>
-          <p className="text-xs text-slate-500 -mt-2">Aus diesen Sätzen berechnet die Produktverwaltung die Selbstkosten und einen Preisvorschlag (Material aus dem Lager + Maschinen- und Arbeitszeit).</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <label className="block text-sm">
-              Pauschaler Maschinenstundensatz (€ pro Stunde)
-              <input type="number" min={0} step="0.01" value={(company.machineRateCentsPerHour ?? 0) / 100} onChange={(e) => setCompany({ ...company, machineRateCentsPerHour: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Nur für Produkte ohne gewählten Drucker. Mit Drucker rechnet die Software Strom, Abschreibung und Verschleiß einzeln (siehe Katalog → Drucker).</span>
-            </label>
-            <label className="block text-sm">
-              Arbeitsstundensatz (€ pro Stunde)
-              <input type="number" min={0} step="0.01" value={(company.laborRateCentsPerHour ?? 0) / 100} onChange={(e) => setCompany({ ...company, laborRateCentsPerHour: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Was Ihre eigene Arbeitsstunde kosten soll (Vorbereiten, Nachbearbeiten, Verpacken). Mindestens der Betrag, den Sie sich als Lohn zahlen wollen - üblich sind 20-40 €/h.</span>
-            </label>
-            <label className="block text-sm">
-              Materialausschuss (%)
-              <input type="number" min={0} max={100} step="0.5" value={company.materialWastePercent ?? 5} onChange={(e) => setCompany({ ...company, materialWastePercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Aufschlag auf den Materialverbrauch für Fehldrucke, Spülmaterial (Purge), Reste und Trocknungsverluste. Wenn Stützstrukturen schon in der Slicer-Angabe stecken, genügen 3-8 %.</span>
-            </label>
-            <label className="block text-sm">
-              Strompreis (Cent pro kWh)
-              <input type="number" min={0} step="0.1" value={company.electricityCentsPerKwh ?? 35} onChange={(e) => setCompany({ ...company, electricityCentsPerKwh: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Ihr Brutto-Arbeitspreis pro Kilowattstunde laut Stromrechnung, in Cent (Beispiel: 35 = 0,35 €/kWh). Bei Vorsteuerabzug den Nettopreis nehmen.</span>
-            </label>
-            <label className="block text-sm">
-              Gemeinkosten-Aufschlag (%)
-              <input type="number" min={0} step="0.5" value={company.overheadPercent ?? 5} onChange={(e) => setCompany({ ...company, overheadPercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Kosten, die nicht einem Produkt zuzuordnen sind: Miete/Raum, Software, Versicherung, Internet, Werkzeug, Buchhaltung. (Verpackung steht pro Produkt, Gebühren und Fehldrucke haben eigene Felder.) Faustregel: Summe dieser Kosten pro Jahr ÷ Summe aller direkten Kosten pro Jahr. Für den Start 5-15 %.</span>
-            </label>
-            <label className="block text-sm">
-              Gewinnaufschlag (%)
-              <input type="number" min={0} step="1" value={company.targetMarginPercent ?? 30} onChange={(e) => setCompany({ ...company, targetMarginPercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Wird auf die Selbstkosten aufgeschlagen und ergibt den Preisvorschlag. Achtung: 30 % <em>Aufschlag</em> sind nur rund 23 % <em>Gewinn vom Verkaufspreis</em> (Rechnung: Gewinn ÷ Preis). Aus dem Gewinn müssen noch Steuern und Rücklagen bezahlt werden.</span>
-            </label>
-            <label className="block text-sm">
-              Fehldruckquote (%)
-              <input type="number" min={0} step="0.5" value={company.failRatePercent ?? 5} onChange={(e) => setCompany({ ...company, failRatePercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Wie oft ein Druck misslingt: dann sind Druckzeit, Strom und Verschleiß verloren. Aufschlag auf diese Maschinenkosten (das verlorene Material deckt der Materialausschuss). Erfahrungswert: 3-10 %, bei neuen Materialien mehr.</span>
-            </label>
-            <FailRateHint current={company.failRatePercent ?? 5} onApply={(v) => setCompany({ ...company, failRatePercent: v })} />
-            <label className="block text-sm">
-              Plattform-/Zahlungsgebühren (% vom Verkaufspreis)
-              <input type="number" min={0} max={90} step="0.1" value={company.platformFeePercent ?? 0} onChange={(e) => setCompany({ ...company, platformFeePercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Gebühren, die beim Verkauf anfallen (Etsy, eBay, PayPal, Kartenzahlung - zusammen oft 5-12 %). Der Preisvorschlag wird so erhöht, dass nach Abzug der Gebühren Ihr Gewinn bleibt. Bei Direktverkauf per Überweisung: 0.</span>
-            </label>
-            <label className="block text-sm">
-              Preisvorschlag runden
-              <select value={company.priceRounding ?? "NONE"} onChange={(e) => setCompany({ ...company, priceRounding: e.target.value })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
-                <option value="NONE">Nicht runden (auf den Cent genau)</option>
-                <option value="5">Auf 5 Cent aufrunden (7,43 → 7,45)</option>
-                <option value="10">Auf 10 Cent aufrunden (7,43 → 7,50)</option>
-                <option value="50">Auf 50 Cent aufrunden (7,43 → 7,50)</option>
-                <option value="100">Auf volle Euro aufrunden (7,43 → 8,00)</option>
-                <option value="90">Auf ,90 aufrunden (7,43 → 7,90)</option>
-                <option value="99">Auf ,99 aufrunden (7,43 → 7,99)</option>
-              </select>
-              <span className="block text-xs text-slate-500 mt-0.5">Es wird immer aufgerundet, nie ab. Die Rundung wirkt auf den Nettopreis (ohne USt.).</span>
-            </label>
-            <label className="block text-sm">
-              Mindestpreis je Einheit (€ netto)
-              <input type="number" min={0} step="0.01" value={(company.minPriceCents ?? 0) / 100} onChange={(e) => setCompany({ ...company, minPriceCents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <span className="block text-xs text-slate-500 mt-0.5">Kein Preisvorschlag liegt darunter - auch nicht bei winzigen Teilen, bei denen sich Auftragsannahme, Versand und Abrechnung sonst nicht lohnen. 0 = kein Mindestpreis.</span>
-            </label>
-          </div>
           <h3 className="text-sm font-semibold pt-2">Bank &amp; Zahlung</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="block text-sm">
@@ -475,33 +443,82 @@ export default function Settings() {
               <span className="block text-xs text-slate-500 mt-0.5">Als Fälligkeitsdatum vorbelegt, wenn bei der Rechnung keines gewählt wird (0 = kein Standard).</span>
             </label>
           </div>
-          <textarea value={company.invoiceFooterText || ""} onChange={(e) => setCompany({ ...company, invoiceFooterText: e.target.value })} placeholder="Fußzeilentext für Rechnungen" className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={company.isSmallBusiness} onChange={(e) => setCompany({ ...company, isSmallBusiness: e.target.checked })} />
-            {t("settings.smallBusiness")}
+          <label className="block text-sm">
+            Eigener Fußzeilentext (optional)
+            <textarea value={company.invoiceFooterText || ""} onChange={(e) => setCompany({ ...company, invoiceFooterText: e.target.value })} placeholder="z.B. Vielen Dank für Ihren Auftrag!" className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
           </label>
-          {company.isSmallBusiness && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm mb-1">Vorjahresgrenze für Warnhinweis (€, gesetzlich seit 2025: 25.000 €)</label>
-                <input
-                  type="number"
-                  value={company.smallBusinessThresholdCents / 100}
-                  onChange={(e) => setCompany({ ...company, smallBusinessThresholdCents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
-                  className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Laufende-Jahr-Grenze für Warnhinweis (€, gesetzlich seit 2025: 100.000 €)</label>
-                <input
-                  type="number"
-                  value={company.smallBusinessCurrentYearThresholdCents / 100}
-                  onChange={(e) => setCompany({ ...company, smallBusinessCurrentYearThresholdCents: Math.round((parseFloat(e.target.value) || 0) * 100) })}
-                  className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
-                />
-              </div>
-            </div>
-          )}
+          {companyError && <p className="text-red-600 text-sm">{companyError}</p>}
+          <SaveButton status={companySave.status} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
+            {t("common.save")}
+          </SaveButton>
+        </form>
+      )}
+
+      {tab === "pricing" && (
+        <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-4">
+          <h2 className="font-medium">Kalkulation (Produktpreise)</h2>
+          <p className="text-xs text-slate-500 -mt-2">Aus diesen Sätzen berechnet die Produktverwaltung die Selbstkosten und einen Preisvorschlag (Material aus dem Lager + Maschinen- und Arbeitszeit).</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="block text-sm">
+              Pauschaler Maschinenstundensatz (€ pro Stunde)
+              <input type="number" min={0} step="0.01" value={(company.machineRateCentsPerHour ?? 0) / 100} onChange={(e) => setCompany({ ...company, machineRateCentsPerHour: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Nur für Produkte ohne gewählten Drucker. Mit Drucker rechnet die Software Strom, Abschreibung und Verschleiß einzeln (siehe Katalog → Drucker).</span>
+            </label>
+            <label className="block text-sm">
+              Arbeitsstundensatz (€ pro Stunde)
+              <input type="number" min={0} step="0.01" value={(company.laborRateCentsPerHour ?? 0) / 100} onChange={(e) => setCompany({ ...company, laborRateCentsPerHour: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Was deine eigene Arbeitsstunde kosten soll (Vorbereiten, Nachbearbeiten, Verpacken). Mindestens der Betrag, den du dir als Lohn zahlen willst - üblich sind 20-40 €/h.</span>
+            </label>
+            <label className="block text-sm">
+              Materialausschuss (%)
+              <input type="number" min={0} max={100} step="0.5" value={company.materialWastePercent ?? 5} onChange={(e) => setCompany({ ...company, materialWastePercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Aufschlag auf den Materialverbrauch für Fehldrucke, Spülmaterial (Purge), Reste und Trocknungsverluste. Wenn Stützstrukturen schon in der Slicer-Angabe stecken, genügen 3-8 %.</span>
+            </label>
+            <label className="block text-sm">
+              Strompreis (Cent pro kWh)
+              <input type="number" min={0} step="0.1" value={company.electricityCentsPerKwh ?? 35} onChange={(e) => setCompany({ ...company, electricityCentsPerKwh: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Dein Brutto-Arbeitspreis pro Kilowattstunde laut Stromrechnung, in Cent (Beispiel: 35 = 0,35 €/kWh). Bei Vorsteuerabzug den Nettopreis nehmen.</span>
+            </label>
+            <label className="block text-sm">
+              Gemeinkosten-Aufschlag (%)
+              <input type="number" min={0} step="0.5" value={company.overheadPercent ?? 5} onChange={(e) => setCompany({ ...company, overheadPercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Kosten, die nicht einem Produkt zuzuordnen sind: Miete/Raum, Software, Versicherung, Internet, Werkzeug, Buchhaltung. (Verpackung steht pro Produkt, Gebühren und Fehldrucke haben eigene Felder.) Faustregel: Summe dieser Kosten pro Jahr ÷ Summe aller direkten Kosten pro Jahr. Für den Start 5-15 %.</span>
+            </label>
+            <label className="block text-sm">
+              Gewinnaufschlag (%)
+              <input type="number" min={0} step="1" value={company.targetMarginPercent ?? 30} onChange={(e) => setCompany({ ...company, targetMarginPercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Wird auf die Selbstkosten aufgeschlagen und ergibt den Preisvorschlag. Achtung: 30 % <em>Aufschlag</em> sind nur rund 23 % <em>Gewinn vom Verkaufspreis</em> (Rechnung: Gewinn ÷ Preis). Aus dem Gewinn müssen noch Steuern und Rücklagen bezahlt werden.</span>
+            </label>
+            <label className="block text-sm">
+              Fehldruckquote (%)
+              <input type="number" min={0} step="0.5" value={company.failRatePercent ?? 5} onChange={(e) => setCompany({ ...company, failRatePercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Wie oft ein Druck misslingt: dann sind Druckzeit, Strom und Verschleiß verloren. Aufschlag auf diese Maschinenkosten (das verlorene Material deckt der Materialausschuss). Erfahrungswert: 3-10 %, bei neuen Materialien mehr.</span>
+            </label>
+            <FailRateHint current={company.failRatePercent ?? 5} onApply={(v) => setCompany({ ...company, failRatePercent: v })} />
+            <label className="block text-sm">
+              Plattform-/Zahlungsgebühren (% vom Verkaufspreis)
+              <input type="number" min={0} max={90} step="0.1" value={company.platformFeePercent ?? 0} onChange={(e) => setCompany({ ...company, platformFeePercent: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Gebühren, die beim Verkauf anfallen (Etsy, eBay, PayPal, Kartenzahlung - zusammen oft 5-12 %). Der Preisvorschlag wird so erhöht, dass nach Abzug der Gebühren dein Gewinn bleibt. Bei Direktverkauf per Überweisung: 0.</span>
+            </label>
+            <label className="block text-sm">
+              Preisvorschlag runden
+              <select value={company.priceRounding ?? "NONE"} onChange={(e) => setCompany({ ...company, priceRounding: e.target.value })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                <option value="NONE">Nicht runden (auf den Cent genau)</option>
+                <option value="5">Auf 5 Cent aufrunden (7,43 → 7,45)</option>
+                <option value="10">Auf 10 Cent aufrunden (7,43 → 7,50)</option>
+                <option value="50">Auf 50 Cent aufrunden (7,43 → 7,50)</option>
+                <option value="100">Auf volle Euro aufrunden (7,43 → 8,00)</option>
+                <option value="90">Auf ,90 aufrunden (7,43 → 7,90)</option>
+                <option value="99">Auf ,99 aufrunden (7,43 → 7,99)</option>
+              </select>
+              <span className="block text-xs text-slate-500 mt-0.5">Es wird immer aufgerundet, nie ab. Die Rundung wirkt auf den Nettopreis (ohne USt.).</span>
+            </label>
+            <label className="block text-sm">
+              Mindestpreis je Einheit (€ netto)
+              <input type="number" min={0} step="0.01" value={(company.minPriceCents ?? 0) / 100} onChange={(e) => setCompany({ ...company, minPriceCents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className="mt-1 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+              <span className="block text-xs text-slate-500 mt-0.5">Kein Preisvorschlag liegt darunter - auch nicht bei winzigen Teilen, bei denen sich Auftragsannahme, Versand und Abrechnung sonst nicht lohnen. 0 = kein Mindestpreis.</span>
+            </label>
+          </div>
           {companyError && <p className="text-red-600 text-sm">{companyError}</p>}
           <SaveButton status={companySave.status} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">
             {t("common.save")}
@@ -625,7 +642,7 @@ export default function Settings() {
         <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-6">
           <div>
             <h2 className="font-medium">Darstellung des Programms</h2>
-            <p className="text-sm text-slate-500">Gilt für alle Benutzer und Geräte. Die Belege (PDF) haben ihre eigene Farbe unter "Logo &amp; Stempel" - hier geht es nur um die Oberfläche. Änderungen sehen Sie sofort; mit "Speichern" werden sie dauerhaft übernommen.</p>
+            <p className="text-sm text-slate-500">Gilt für alle Benutzer und Geräte. Die Belege (PDF) haben ihre eigene Farbe unter "Logo &amp; Stempel" - hier geht es nur um die Oberfläche. Änderungen siehst du sofort; mit "Speichern" werden sie dauerhaft übernommen.</p>
           </div>
 
           <div>
@@ -651,7 +668,7 @@ export default function Settings() {
                 Eigene Farbe
               </label>
             </div>
-            <p className="text-xs text-slate-500 mt-2">Gilt für Knöpfe, Menü, Links und Diagramme. Wählen Sie eine Farbe, auf der weiße Schrift gut lesbar ist (nicht zu hell).</p>
+            <p className="text-xs text-slate-500 mt-2">Gilt für Knöpfe, Menü, Links und Diagramme. Wähle eine Farbe, auf der weiße Schrift gut lesbar ist (nicht zu hell).</p>
           </div>
 
           <div>
@@ -699,7 +716,7 @@ export default function Settings() {
         <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-5">
           <h2 className="font-medium">Beleg-Design</h2>
           <p className="text-sm text-slate-500 -mt-3">
-            Gilt für alle PDFs (Rechnung, Angebot, Auftragsbestätigung, Lieferschein). Alle gesetzlichen Pflichtangaben stehen in jedem Layout. Die Farbe stellen Sie unter "Logo &amp; Stempel" ein.
+            Gilt für alle PDFs (Rechnung, Angebot, Auftragsbestätigung, Lieferschein). Alle gesetzlichen Pflichtangaben stehen in jedem Layout. Die Farbe stellst du unter "Logo &amp; Stempel" ein.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {(

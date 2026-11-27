@@ -139,18 +139,22 @@ export default function Production() {
           <p className="text-sm text-slate-500">Neue Anfrage? Erst ein Angebot - den Auftrag macht man daraus mit einem Klick.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-slate-500" title="Nur Aufträge, bei denen die Rechnung noch nicht bezahlt oder noch nicht geschrieben ist">
-            <input type="checkbox" checked={unpaidOnly} onChange={(e) => setUnpaidOnly(e.target.checked)} />
-            nur nicht bezahlte
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-500">
-            <input type="checkbox" checked={showAllShipped} onChange={(e) => setShowAllShipped(e.target.checked)} />
-            auch ältere versendete
-          </label>
-          <button type="button" onClick={() => setShowImport((v) => !v)} className="px-4 py-2 rounded-lg text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">{showImport ? "Import schließen" : "Etsy-Import"}</button>
-          <Link to="/order-confirmations/new" title="Nur wenn der Kunde schon fest bestellt hat und kein Angebot nötig ist" className="px-4 py-2 rounded-lg text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">Auftrag ohne Angebot</Link>
           <Link to="/quotes/new" title="Der übliche Start: Angebot erstellen, nach der Zusage daraus den Auftrag machen" className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-lg text-sm font-medium">+ Neues Angebot</Link>
+          <Link to="/order-confirmations/new" title="Nur wenn der Kunde schon fest bestellt hat und kein Angebot nötig ist" className="px-4 py-2 rounded-lg text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">Auftrag ohne Angebot</Link>
         </div>
+      </div>
+
+      {/* Filter und seltene Aktionen klein in einer Zeile, damit oben nur die zwei Startpunkte groß stehen */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-sm text-slate-500">
+        <label className="flex items-center gap-2" title="Nur Aufträge, bei denen die Rechnung noch nicht bezahlt oder noch nicht geschrieben ist">
+          <input type="checkbox" checked={unpaidOnly} onChange={(e) => setUnpaidOnly(e.target.checked)} />
+          nur nicht bezahlte
+        </label>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={showAllShipped} onChange={(e) => setShowAllShipped(e.target.checked)} />
+          auch ältere versendete
+        </label>
+        <button type="button" onClick={() => setShowImport((v) => !v)} className="text-brand hover:underline sm:ml-auto">{showImport ? "Etsy-Import schließen" : "Bestellungen aus Etsy importieren"}</button>
       </div>
 
       {staff.length > 1 && (
@@ -300,8 +304,8 @@ export default function Production() {
 
       <div className="mt-4">
         <InfoBox title="So funktioniert die Produktion">
-          <p>Jede <strong>Auftragsbestätigung</strong> erscheint hier automatisch als Karte (am besten aus einem Angebot heraus, oder über „Auftrag ohne Angebot“). Ziehen Sie eine Karte in die nächste Spalte oder nutzen Sie die Pfeile <strong>← →</strong> - das geht auch am Handy. Unter <strong>⋯</strong> findest du Details, Kosten, Notiz und den Beleg.</p>
-          <p><strong>Erstellt</strong> = angenommen, <strong>In Produktion</strong> = wird gedruckt/nachbearbeitet, <strong>Versandbereit</strong> = verpackt, <strong>Versendet</strong> = unterwegs. Versendete Aufträge verschwinden nach 14 Tagen vom Board (über "auch ältere versendete" sehen Sie alle); in der Spalte werden zuerst die letzten 5 gezeigt.</p>
+          <p>Jede <strong>Auftragsbestätigung</strong> erscheint hier automatisch als Karte (am besten aus einem Angebot heraus, oder über „Auftrag ohne Angebot“). Zieh eine Karte in die nächste Spalte oder nutze die Pfeile <strong>← →</strong> - das geht auch am Handy. Unter <strong>⋯</strong> findest du Details, Kosten, Notiz und den Beleg.</p>
+          <p><strong>Erstellt</strong> = angenommen, <strong>In Produktion</strong> = wird gedruckt/nachbearbeitet, <strong>Versandbereit</strong> = verpackt, <strong>Versendet</strong> = unterwegs. Versendete Aufträge verschwinden nach 14 Tagen vom Board (über "auch ältere versendete" siehst du alle); in der Spalte werden zuerst die letzten 5 gezeigt.</p>
           <p>Die <strong>Druckzeit</strong> auf der Karte ist eine Schätzung: Sie wird berechnet, wenn der Positionstext genau dem Namen eines Produkts mit hinterlegter Druckzeit entspricht (Katalog → Produkte). Der Produktionsstatus hat nichts mit dem Belegstatus zu tun - er ändert weder Rechnung noch Materialbestand.</p>
           <p><strong>Drucke und Kosten:</strong> Wählst du beim Senden eines Drucks (Druckerkarte → Druck senden) einen Auftrag, oder ordnest du einen Druck im Druckverlauf zu, erscheint er als grünes Zeichen auf der Karte. Über <strong>Kosten</strong> siehst du, was Material und Maschine tatsächlich gekostet haben, verglichen mit der Kalkulation.</p>
         </InfoBox>

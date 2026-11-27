@@ -283,7 +283,7 @@ export const HELP: HelpTopic[] = [
     title: "Kalkulation",
     short: "Selbstkosten = Material (mit Ausschuss) + Strom + Abschreibung + Verschleiß + Arbeit + Zukaufteile + Gemeinkosten. Darauf kommt der Gewinnaufschlag.",
     body: [
-      "Die Sätze (Stundenlohn, Strompreis, Ausschuss, Gewinnaufschlag, Rundung) stellst du unter Einstellungen → Firma ein, die Maschinenwerte unter Katalog → Drucker. Die Tabelle \"Berechnet für Auftragsmenge\" zeigt, wie sich die einmalige Rüstzeit auf die Stückzahl verteilt.",
+      "Die Sätze (Stundenlohn, Strompreis, Ausschuss, Gewinnaufschlag, Rundung) stellst du unter Einstellungen → Kalkulation ein, die Maschinenwerte unter Katalog → Drucker. Die Tabelle \"Berechnet für Auftragsmenge\" zeigt, wie sich die einmalige Rüstzeit auf die Stückzahl verteilt.",
       "\"Übernehmen\" setzt den Preisvorschlag als Verkaufspreis ein. Gebühren von Verkaufsplattformen werden berücksichtigt.",
     ],
     keywords: "preis berechnen selbstkosten gewinn marge",
@@ -453,7 +453,7 @@ export const HELP: HelpTopic[] = [
     id: "settings-company",
     category: "Einstellungen und Team",
     title: "Firma, Steuer und Kalkulation",
-    short: "Firmenangaben für Belege, Steuerangaben (Pflicht), Bankverbindung mit Kontoinhaber, Nummernkreise und die Sätze der Kalkulation.",
+    short: "Firmenangaben für Belege, Steuerangaben (Pflicht) mit der Kleinunternehmer-Einstellung, Bankverbindung mit Kontoinhaber und Nummernkreise.",
     body: [
       "Steuernummer oder USt-IdNr. ist Pflicht auf jeder Rechnung. Unter \"Bank & Zahlung\" trägst du IBAN und den Kontoinhaber ein - der Kontoinhaber erscheint im Zahlungs-QR (damit die Banking-App nicht wegen abweichender Namen warnt), auf Rechnungen und in E-Rechnungen.",
       "Die Kalkulationssätze (Stundenlohn, Strom, Ausschuss, Gemeinkosten, Gewinnaufschlag, Rundung) wirken in allen Produkten.",

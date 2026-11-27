@@ -53,7 +53,7 @@ export const TEXT_PLACEHOLDERS: { key: string; description: string }[] = [
   { key: "{datum}", description: "Belegdatum" },
   { key: "{faellig}", description: "Fällig bis / gültig bis" },
   { key: "{betrag}", description: "Gesamtbetrag" },
-  { key: "{firma}", description: "Name Ihrer Firma" },
+  { key: "{firma}", description: "Name deiner Firma" },
 ];
 
 /** Hinweis auf die verfügbaren Platzhalter - Klick kopiert nichts, die Liste ist reine Orientierung. */

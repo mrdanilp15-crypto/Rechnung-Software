@@ -131,7 +131,7 @@ export function DunningPanel({ invoiceId, onChanged }: { invoiceId: string; onCh
               </button>
             )}
           </div>
-          {!next.canEmail && <p className="text-xs text-slate-500">E-Mail-Versand: {next.customerEmail ? "unter Einstellungen → E-Mail-Versand einrichten" : "beim Kunden ist keine E-Mail-Adresse hinterlegt"} - das erzeugte PDF können Sie auch selbst verschicken.</p>}
+          {!next.canEmail && <p className="text-xs text-slate-500">E-Mail-Versand: {next.customerEmail ? "unter Einstellungen → E-Mail-Versand einrichten" : "beim Kunden ist keine E-Mail-Adresse hinterlegt"} - das erzeugte PDF kannst du auch selbst verschicken.</p>}
         </div>
       ) : (
         <p className="text-slate-500">{history.some((h) => h.level >= 3) ? "Die letzte Mahnstufe wurde erzeugt. Weitere Schritte (Inkasso, gerichtliches Mahnverfahren) erfolgen außerhalb der Software." : "Für diese Rechnung ist aktuell keine Mahnung möglich."}</p>

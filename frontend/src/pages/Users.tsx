@@ -219,7 +219,7 @@ export default function Users() {
                   ]}
                 />
               ) : (
-                <span className="flex items-center gap-2 text-xs text-slate-400"><button type="button" onClick={() => setAvatarFor(u)} className="text-brand hover:underline">Profilbild</button>(Sie)</span>
+                <span className="flex items-center gap-2 text-xs text-slate-400"><button type="button" onClick={() => setAvatarFor(u)} className="text-brand hover:underline">Profilbild</button>(du)</span>
               );
             return (
               <div key={u.id}>

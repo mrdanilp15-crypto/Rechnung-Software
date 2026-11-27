@@ -7,6 +7,7 @@ import { EditPanel } from "../components/EditPanel";
 import { AddressFields } from "../components/AddressFields";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
+import { RowActionsMenu } from "../components/RowActionsMenu";
 import { MobileCard, MobileField } from "../components/MobileCard";
 
 import { HelpTip } from "../components/HelpTip";
@@ -235,13 +236,12 @@ export default function Customers() {
               </span>
             );
             const actions = (
-              <div className="flex gap-3 justify-end shrink-0">
-                <button onClick={() => startEdit(c)} className="text-brand hover:underline">
+              <div className="flex gap-1 items-center justify-end shrink-0">
+                <button onClick={() => startEdit(c)} className="text-brand hover:underline px-2">
                   {t("common.edit")}
                 </button>
-                <button onClick={() => handleDelete(c)} className="text-red-600 hover:underline">
-                  {t("common.delete")}
-                </button>
+                {/* "Archivieren" statt "Löschen": Kunden mit Belegen müssen erhalten bleiben, der Server archiviert nur */}
+                <RowActionsMenu actions={[{ label: "Archivieren", onClick: () => handleDelete(c), danger: true }]} />
               </div>
             );
             return (
@@ -264,13 +264,13 @@ export default function Customers() {
                 {/* Mobile */}
                 <MobileCard
                   title={<Link to={`/customers/${c.id}`} className="text-brand hover:underline">{c.name}</Link>}
-                  subtitle={c.contactName || c.customerNumber}
+                  subtitle={[c.customerNumber, c.contactName].filter(Boolean).join(" · ")}
                   actions={actions}
                 >
-                  <MobileField label="Nummer" value={c.customerNumber} />
-                  <MobileField label="E-Mail" value={c.email || "-"} />
-                  <MobileField label="Telefon" value={c.phone || "-"} />
-                  <MobileField label="Ort" value={c.city || "-"} />
+                  {/* Leere Felder weglassen statt "-" anzuzeigen */}
+                  {c.email && <MobileField label="E-Mail" value={c.email} />}
+                  {c.phone && <MobileField label="Telefon" value={c.phone} />}
+                  {c.city && <MobileField label="Ort" value={c.city} />}
                   <MobileField label="Typ" value={typeBadge} />
                 </MobileCard>
               </div>

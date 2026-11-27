@@ -449,7 +449,7 @@ invoicesRouter.post("/:id/send-email", async (req, res) => {
   });
   if (!invoice) throw new HttpError(404, "Rechnung nicht gefunden");
   if (invoice.status === "CANCELLED") {
-    throw new HttpError(409, "Stornierte Rechnungen können nicht per E-Mail verschickt werden (den Korrekturbeleg schicken Sie stattdessen).");
+    throw new HttpError(409, "Stornierte Rechnungen können nicht per E-Mail verschickt werden (schick stattdessen den Korrekturbeleg).");
   }
   const body = sendEmailSchema.parse(req.body);
   const to = body.to || invoice.customer.email;

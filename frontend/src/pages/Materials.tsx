@@ -166,7 +166,7 @@ export default function Materials() {
       <InfoBox title="Wozu dient Material?" defaultOpen>
         <p>Hier erfasst du <strong>Rohstoffe</strong>, die du selbst einkaufst (z.B. Filament) - getrennt von den Produkten, die du verkaufst.</p>
         <p>Trage beim Anlegen direkt ein, wie viel du hast und was du dafür insgesamt bezahlt hast (z.B. 1000g für 24,99€) - der Preis pro Einheit wird automatisch berechnet und eine passende Ausgabe angelegt (Finanzen → Ausgaben), du musst den Einkauf also nicht doppelt eintragen. Käufst du später nach, geht das genauso über <strong>"Nachbestellen"</strong>.</p>
-<p><strong>Wichtig für die Kalkulation:</strong> Beim Nachbestellen rechnet die Software mit dem <em>gleitenden Durchschnittspreis</em>: Reste der alten Spule behalten ihren alten Preis, die neue Lieferung ihren neuen - daraus entsteht ein gemeinsamer Preis pro Einheit (z.B. 500 g Rest zu 0,02 € + 1000 g für 30 € ergeben rund 0,0267 €/g). Rabatte und Versandkosten gehören in den Gesamtpreis, damit der echte Einkaufspreis stimmt. Bei "Bearbeiten" können Sie den Preis auch von Hand korrigieren.</p>
+<p><strong>Wichtig für die Kalkulation:</strong> Beim Nachbestellen rechnet die Software mit dem <em>gleitenden Durchschnittspreis</em>: Reste der alten Spule behalten ihren alten Preis, die neue Lieferung ihren neuen - daraus entsteht ein gemeinsamer Preis pro Einheit (z.B. 500 g Rest zu 0,02 € + 1000 g für 30 € ergeben rund 0,0267 €/g). Rabatte und Versandkosten gehören in den Gesamtpreis, damit der echte Einkaufspreis stimmt. Bei "Bearbeiten" kannst du den Preis auch von Hand korrigieren.</p>
         <p>Bei <strong>Produkte</strong> kannst du hinterlegen, wie viel von welchem Material ein Produkt pro Stück verbraucht (z.B. "15g Filament pro Druck"). Beim Erstellen einer Rechnung wird der Bestand hier automatisch entsprechend reduziert.</p>
         <p><strong>Zukaufteile</strong> (Schrauben, Magnete, Federn ...) legst du hier mit der Art <em>Zukaufteil</em> an: Einkaufspreis, Lieferant, Bestand und Mindestbestand wie beim Filament. Beim Produkt wählst du nur die Menge je verkaufter Einheit; der Preis kommt aus dem Lager, beim Verkauf wird abgebucht.</p>
       </InfoBox>
@@ -207,7 +207,7 @@ export default function Materials() {
           <div>
             <label className="block text-sm mb-1">{editingId ? "Bestand (Korrektur)" : "Aktueller Bestand"}</label>
             <input type="number" step="any" min="0" value={form.stockQuantity} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, stockQuantity: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-            <p className="text-xs text-slate-500 mt-1">{editingId ? "Nur ändern, wenn Sie nachgezählt/-gewogen haben (z.B. Spule wiegen minus Leerspule). Normalerweise bucht die Software den Verbrauch selbst." : "Menge in der oben gewählten Einheit, z.B. 1000 für eine 1-kg-Spule bei Einheit g."}</p>
+            <p className="text-xs text-slate-500 mt-1">{editingId ? "Nur ändern, wenn du nachgezählt/-gewogen haben (z.B. Spule wiegen minus Leerspule). Normalerweise bucht die Software den Verbrauch selbst." : "Menge in der oben gewählten Einheit, z.B. 1000 für eine 1-kg-Spule bei Einheit g."}</p>
           </div>
           {editingId ? (
             <div>
@@ -233,7 +233,7 @@ export default function Materials() {
               <option value="">Kein Lieferant</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-            <p className="text-xs text-slate-500 mt-1">Wo Sie dieses Material normalerweise kaufen. Nachbestellungen werden auf diesen Lieferanten gebucht (Lieferanten pflegen Sie unter Katalog → Lieferanten).</p>
+            <p className="text-xs text-slate-500 mt-1">Wo du dieses Material normalerweise kaufst. Nachbestellungen werden auf diesen Lieferanten gebucht (Lieferanten pflegst du unter Katalog → Lieferanten).</p>
           </div>
          </div>
         </EditPanel>
