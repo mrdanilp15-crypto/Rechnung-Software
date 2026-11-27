@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
-import { StatusChip, StatusIcon, statusInfo } from "../components/StatusChip";
+import { StatusIcon, statusInfo } from "../components/StatusChip";
 import { PdfLink } from "../components/PdfLink";
 import { LabelDialog } from "../components/LabelDialog";
 import { useAuthStore } from "../store/authStore";
@@ -142,15 +142,7 @@ export default function CustomerDetail() {
       <div className="bg-white dark:bg-slate-800 rounded-3xl shadow divide-y divide-slate-100 dark:divide-slate-700 mb-6">
         {customer.history.invoices.map((inv) => (
           <div key={inv.id}>
-            {/* Desktop */}
-            <Link to={`/invoices/${inv.id}`} className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700" style={{ gridTemplateColumns: "140px 1fr 100px 100px" }}>
-              <span className="font-medium">{inv.invoiceNumber ?? "Entwurf"}</span>
-              <span className="text-slate-500">{formatDate(inv.issueDate)}</span>
-              <span className="text-right">{formatEuro(inv.totalCents)}</span>
-              <span className="text-right"><StatusChip status={inv.status} kind="INVOICE" isCancellationDocument={inv.isCancellationDocument} /></span>
-            </Link>
-            {/* Mobile */}
-            <Link to={`/invoices/${inv.id}`} className="xl:hidden flex items-center gap-3 px-3 py-2.5">
+            <Link to={`/invoices/${inv.id}`} className="flex items-center gap-3 px-3 md:px-4 py-2.5 hover:bg-slate-50/70 first:rounded-t-3xl last:rounded-b-3xl">
               <StatusIcon status={inv.status} kind="INVOICE" isCancellationDocument={inv.isCancellationDocument} />
               <span className="min-w-0 flex-1">
                 <span className="block font-medium truncate">{inv.invoiceNumber ?? "Entwurf"}</span>
@@ -167,15 +159,7 @@ export default function CustomerDetail() {
       <div className="bg-white dark:bg-slate-800 rounded-3xl shadow divide-y divide-slate-100 dark:divide-slate-700">
         {customer.history.quotes.map((q) => (
           <div key={q.id}>
-            {/* Desktop */}
-            <Link to={`/quotes/${q.id}`} className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700" style={{ gridTemplateColumns: "140px 1fr 100px 100px" }}>
-              <span className="font-medium">{q.quoteNumber ?? "Entwurf"}</span>
-              <span className="text-slate-500">{formatDate(q.issueDate)}</span>
-              <span className="text-right">{formatEuro(q.totalCents)}</span>
-              <span className="text-right"><StatusChip status={q.status} kind="QUOTE" /></span>
-            </Link>
-            {/* Mobile */}
-            <Link to={`/quotes/${q.id}`} className="xl:hidden flex items-center gap-3 px-3 py-2.5">
+            <Link to={`/quotes/${q.id}`} className="flex items-center gap-3 px-3 md:px-4 py-2.5 hover:bg-slate-50/70 first:rounded-t-3xl last:rounded-b-3xl">
               <StatusIcon status={q.status} kind="QUOTE" />
               <span className="min-w-0 flex-1">
                 <span className="block font-medium truncate">{q.quoteNumber ?? "Entwurf"}</span>

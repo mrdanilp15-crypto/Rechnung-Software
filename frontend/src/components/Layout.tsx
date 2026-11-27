@@ -94,7 +94,7 @@ function UserMenu({ onLogout }: { onLogout: () => void }) {
   }, [open]);
   return (
     <div className="relative" ref={ref}>
-      <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" aria-haspopup="menu" aria-expanded={open}>
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white shadow hover:bg-slate-50" aria-haspopup="menu" aria-expanded={open}>
         <Avatar id={user?.id ?? ""} name={user?.name ?? ""} avatar={user?.avatar} size="md" />
         <span className="hidden xl:block text-left leading-tight">
           <span className="block text-sm font-medium">{user?.name}</span>
@@ -235,8 +235,8 @@ export default function Layout() {
               to={item.to}
               title={t(`nav.${item.key}`)}
               end={item.to === "/"}
-              className={`flex items-center rounded-xl font-medium transition-colors ${layout} ${!inEditor && BOTTOM_BAR_KEYS.includes(item.key) ? "max-lg:hidden" : ""} ${
-                active ? "bg-brand text-white shadow-sm" : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
+              className={`flex items-center ${isRail ? "rounded-2xl" : "rounded-full"} font-medium transition-colors ${layout} ${!inEditor && BOTTOM_BAR_KEYS.includes(item.key) ? "max-lg:hidden" : ""} ${
+                active ? "bg-slate-900 text-white shadow-sm" : "hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
               }`}
               aria-current={active ? "page" : undefined}
             >
@@ -246,7 +246,7 @@ export default function Layout() {
           );
         })}
       </nav>
-      <div className="flex flex-col gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+      <div className="flex flex-col gap-2 pt-4">
         <button
           type="button"
           onClick={toggleSidebar}
@@ -299,7 +299,7 @@ export default function Layout() {
       )}
 
       <aside
-        className={`w-64 ${isRail ? "lg:w-[5.75rem] lg:px-1.5" : "lg:w-64"} shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 flex flex-col
+        className={`w-64 ${isRail ? "lg:w-[5.75rem] lg:px-1.5" : "lg:w-64"} shrink-0 bg-white lg:bg-transparent dark:bg-slate-950 p-4 flex flex-col
           fixed inset-y-0 left-0 z-40 transform transition-transform duration-200
           ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"}
           lg:sticky lg:top-0 lg:h-screen lg:self-start lg:translate-x-0 lg:z-auto`}
@@ -312,23 +312,23 @@ export default function Layout() {
 
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Obere Leiste (ab lg): Suche, hell/dunkel, Meldungen, Benutzermenü */}
-        <header className="hidden lg:flex sticky top-0 z-20 items-center gap-3 px-8 h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur" style={{ paddingTop: SAFE_TOP }}>
+        <header className="hidden lg:flex sticky top-0 z-20 items-center gap-3 px-8 h-16 bg-[#f2f3f5]/85 backdrop-blur w-full max-w-[76rem] mx-auto" style={{ paddingTop: SAFE_TOP }}>
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
-            className="flex-1 max-w-xl flex items-center justify-between gap-2 px-4 py-2 rounded-xl text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-500 hover:border-slate-300 dark:hover:border-slate-600"
+            className="flex-1 max-w-md flex items-center justify-between gap-2 px-4 h-10 rounded-full text-sm bg-white shadow text-slate-400 hover:text-slate-600"
             title="Suchen (Strg K)"
           >
             <span className="flex items-center gap-2"><Icon name="search" className="w-4 h-4" />Suche (Aufträge, Kunden, Belege ...)</span>
-            <kbd className="text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-600">Strg K</kbd>
+            <kbd className="text-[11px] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500">Strg K</kbd>
           </button>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-2">
             <RunningTimerChip />
             <NewMenu />
-            <button onClick={() => navigate(`/help#${topicForPath(location.pathname, location.search)}`)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 text-base font-semibold" aria-label="Hilfe zu dieser Seite" title="Hilfe zu dieser Seite">
+            <button onClick={() => navigate(`/help#${topicForPath(location.pathname, location.search)}`)} className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 bg-white shadow hover:text-slate-800 text-base font-semibold" aria-label="Hilfe zu dieser Seite" title="Hilfe zu dieser Seite">
               ?
             </button>
-            <button onClick={() => navigate("/#meldungen")} className="relative w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={unread > 0 ? `${unread} neue Meldungen` : "Meldungen"} title="Meldungen">
+            <button onClick={() => navigate("/#meldungen")} className="relative w-10 h-10 rounded-full flex items-center justify-center text-slate-500 bg-white shadow hover:text-slate-800" aria-label={unread > 0 ? `${unread} neue Meldungen` : "Meldungen"} title="Meldungen">
               <Icon name="bell" className="w-5 h-5" />
               {unread > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center">{unread > 9 ? "9+" : unread}</span>}
             </button>
@@ -336,8 +336,10 @@ export default function Layout() {
           </div>
         </header>
 
-        <main className={`flex-1 p-4 sm:p-6 lg:p-8 overflow-auto min-w-0 pt-[calc(5rem+env(safe-area-inset-top,0px))] sm:pt-[calc(5rem+env(safe-area-inset-top,0px))] lg:pt-8 ${inEditor ? "" : "pb-[calc(9rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(9rem+env(safe-area-inset-bottom,0px))] lg:pb-8"}`}>
-          <Outlet />
+        <main className={`flex-1 p-4 sm:p-6 lg:p-8 overflow-auto min-w-0 pt-[calc(5rem+env(safe-area-inset-top,0px))] sm:pt-[calc(5rem+env(safe-area-inset-top,0px))] lg:pt-4 ${inEditor ? "" : "pb-[calc(9rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(9rem+env(safe-area-inset-bottom,0px))] lg:pb-8"}`}>
+          <div className="w-full max-w-6xl mx-auto">
+            <Outlet />
+          </div>
         </main>
       </div>
 

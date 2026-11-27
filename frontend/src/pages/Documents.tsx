@@ -6,7 +6,7 @@ import { RowActionsMenu, RowAction } from "../components/RowActionsMenu";
 import { LabelDialog } from "../components/LabelDialog";
 import { useToast } from "../components/Toast";
 import { RecurringDialog } from "../components/RecurringDialog";
-import { StatusChip, StatusIcon, statusInfo } from "../components/StatusChip";
+import { StatusIcon, statusInfo } from "../components/StatusChip";
 import { Icon } from "../components/Icon";
 import { SendDocumentDialog } from "../components/SendDocumentDialog";
 import { LinkDocsDialog, type LinkCandidate } from "../components/LinkDocsDialog";
@@ -71,7 +71,6 @@ function groupRows<T extends { status: string; date: string }>(list: T[]): { lab
   return groups;
 }
 
-const ROW_COLUMNS ="90px 130px 1fr 90px 100px 110px 300px";
 
 /** Alle Belegarten in einer Liste - Entwürfe zuerst, Filter nach Art/Entwurf, Suche, Weiterführen zum nächsten Beleg. */
 export default function Documents() {
@@ -326,18 +325,6 @@ export default function Documents() {
     return null;
   }
 
-  function primary(row: DocRow) {
-    const path = openPath(row);
-    if (path) {
-      return (
-        <Link to={path} className={row.status === "DRAFT" ? "bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded text-sm" : "text-brand hover:underline"}>
-          {row.status === "DRAFT" ? "Weiter bearbeiten" : "Öffnen"}
-        </Link>
-      );
-    }
-    return null;
-  }
-
   // Leere Filter (z.B. "Entwürfe 0") ausblenden, außer "Alle" und dem gerade aktiven
   const chip = (value: string, label: string) => (value !== "ALL" && value !== filter && !(counts[value] ?? 0) ? null : (
     <button
@@ -390,80 +377,51 @@ export default function Documents() {
       <section key={group.label + gi} className="mb-4">
       <h2 className="text-xs font-medium text-slate-500 px-1 mb-1.5">{group.label}</h2>
       <div className="bg-white dark:bg-slate-800 rounded-3xl shadow divide-y divide-slate-100 dark:divide-slate-700">
-        {gi === 0 && <div className="hidden xl:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
-          <span>Art</span>
-          <span>Nummer</span>
-          <span>Kunde</span>
-          <span className="text-right">Datum</span>
-          <span className="text-right">Betrag</span>
-          <span className="text-right">Status</span>
-          <span></span>
-        </div>}
         {group.rows.map((row) => {
-          const badge = <StatusChip status={row.status} kind={row.kind} isCancellationDocument={row.isCancellationDocument} emailed={!!row.emailSentAt} />;
-          const actions = (
-            <div className="flex gap-2 justify-end items-start">
-              <div className="flex gap-x-3 gap-y-2 justify-end items-center flex-wrap flex-1 min-w-0">
-              {continued(row) && <span className="text-xs text-green-600" title="Daraus wurde bereits ein Folgebeleg erstellt">{row.kind === "ORDER_CONFIRMATION" ? "✓ Rechnung angelegt" : "✓ weitergeführt"}</span>}
-              {row.kind === "ORDER_CONFIRMATION" && row.hasNext && !row.hasInvoice && <span className="text-xs text-slate-500" title="Zu diesem Auftrag gibt es einen Lieferschein, aber noch keine Rechnung">Lieferschein ✓</span>}
-              {(() => {
-                const step = nextStep(row);
-                return step ? <button type="button" onClick={step.run} title={step.title} className="bg-brand hover:bg-brand-dark text-white px-3 py-1.5 rounded text-sm whitespace-nowrap">{step.label}</button> : null;
-              })()}
-              {primary(row)}
-              {row.status !== "CANCELLED" && !row.isCancellationDocument && (
-                <button type="button" onClick={() => setSendRow(row)} className="text-brand hover:underline" title={row.emailSentAt ? `Zuletzt per E-Mail gesendet am ${formatDate(row.emailSentAt)}` : "Per E-Mail an den Kunden senden (PDF im Anhang)"}>
-                  {row.emailSentAt ? "✉ Erneut senden" : "✉ Senden"}
-                </button>
-              )}
-              {row.status !== "DRAFT" && (
-                <PdfLink url={`${KIND_INFO[row.kind].base}/${row.id}/pdf`} filename={`${row.number ?? "beleg"}.pdf`} className="text-brand hover:underline">PDF</PdfLink>
-              )}
-              </div>
-              <RowActionsMenu actions={actionsFor(row)} />
-            </div>
+          // Eine Zeile wie in einer Banking-App - auf allen Bildschirmen gleich: Status-Symbol, Kunde, Nummer und Status, Betrag.
+          // Ab Tablet-Breite stehen der nächste Schritt, Senden und PDF direkt in der Zeile, alles Weitere im ⋮-Menü.
+          const step = nextStep(row);
+          const path = detailPath(row);
+          const info = statusInfo(row.status, { kind: row.kind, isCancellationDocument: row.isCancellationDocument, emailed: !!row.emailSentAt });
+          const due = isOpenInvoice(row) && row.dueDate ? ` · fällig ${formatDate(row.dueDate)}` : "";
+          const canSend = row.status !== "CANCELLED" && !row.isCancellationDocument;
+          const body = (
+            <>
+              <StatusIcon status={row.status} kind={row.kind} isCancellationDocument={row.isCancellationDocument} emailed={!!row.emailSentAt} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium truncate">{row.customerName}</span>
+                <span className="block text-xs text-slate-500 truncate">
+                  {row.number ?? kindLabel(row)}
+                  <span className="hidden md:inline"> · {kindLabel(row)} vom {formatDate(row.date)}</span>
+                  {" · "}<span className={info.tone === "red" ? "text-rose-600" : ""}>{info.label}</span>{due}
+                  {continued(row) && <span className="hidden md:inline text-emerald-600"> · {row.kind === "ORDER_CONFIRMATION" ? "Rechnung angelegt" : "weitergeführt"}</span>}
+                </span>
+              </span>
+              <span className={`shrink-0 font-semibold text-sm md:text-base ${row.status === "CANCELLED" ? "line-through text-slate-400" : ""}`}>{money(row.totalCents)}</span>
+            </>
           );
           return (
-            <div key={`${row.kind}-${row.id}`}>
-              <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
-                <span className="text-slate-500">{kindLabel(row)}</span>
-                {detailPath(row) ? <Link to={detailPath(row)!} className={`font-medium truncate text-brand hover:underline ${row.number ? "" : "italic"}`} title="Übersicht und Folgebelege öffnen">{row.number ?? "Entwurf"}</Link> : <span className={`font-medium truncate ${row.number ? "" : "italic text-slate-500"}`}>{row.number ?? "Entwurf"}</span>}
-                <span className="truncate">{row.customerName}</span>
-                <span className="text-right text-slate-500">{formatDate(row.date)}</span>
-                <span className="text-right">{money(row.totalCents)}</span>
-                <span className="text-right">{badge}</span>
-                {actions}
+            <div key={`${row.kind}-${row.id}`} className="px-3 md:px-4 py-2.5 hover:bg-slate-50/70 first:rounded-t-3xl last:rounded-b-3xl">
+              <div className="flex items-center gap-2 md:gap-3">
+                {path ? <Link to={path} className="flex-1 min-w-0 flex items-center gap-3" title="Öffnen">{body}</Link> : <div className="flex-1 min-w-0 flex items-center gap-3">{body}</div>}
+                <div className="hidden md:flex items-center justify-end gap-1.5 shrink-0 w-72">
+                  {step && <button type="button" onClick={step.run} title={step.title} className="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-700 text-white text-xs font-medium whitespace-nowrap">{step.label}</button>}
+                  {canSend && (
+                    <button type="button" onClick={() => setSendRow(row)} className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-medium whitespace-nowrap" title={row.emailSentAt ? `Zuletzt per E-Mail gesendet am ${formatDate(row.emailSentAt)}` : "Per E-Mail an den Kunden senden (PDF im Anhang)"}>
+                      {row.emailSentAt ? "Erneut senden" : "Senden"}
+                    </button>
+                  )}
+                  {row.status !== "DRAFT" && (
+                    <PdfLink url={`${KIND_INFO[row.kind].base}/${row.id}/pdf`} filename={`${row.number ?? "beleg"}.pdf`} className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-medium">PDF</PdfLink>
+                  )}
+                </div>
+                <RowActionsMenu actions={actionsFor(row)} />
               </div>
-              {/* Handy: eine Zeile wie in einer Banking-App - Status-Symbol, Kunde, Nummer und Status, Betrag; alles Weitere im ⋮-Menü */}
-              {(() => {
-                const step = nextStep(row);
-                const path = detailPath(row);
-                const info = statusInfo(row.status, { kind: row.kind, isCancellationDocument: row.isCancellationDocument, emailed: !!row.emailSentAt });
-                const due = isOpenInvoice(row) && row.dueDate ? ` · fällig ${formatDate(row.dueDate)}` : "";
-                const body = (
-                  <>
-                    <StatusIcon status={row.status} kind={row.kind} isCancellationDocument={row.isCancellationDocument} emailed={!!row.emailSentAt} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-medium truncate">{row.customerName}</span>
-                      <span className="block text-xs text-slate-500 truncate">{row.number ?? kindLabel(row)} · <span className={info.tone === "red" ? "text-rose-600" : ""}>{info.label}</span>{due}</span>
-                    </span>
-                    <span className={`shrink-0 font-semibold text-sm ${row.status === "CANCELLED" ? "line-through text-slate-400" : ""}`}>{money(row.totalCents)}</span>
-                  </>
-                );
-                return (
-                  <div className="xl:hidden px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      {path ? <Link to={path} className="flex-1 min-w-0 flex items-center gap-3">{body}</Link> : <div className="flex-1 min-w-0 flex items-center gap-3">{body}</div>}
-                      <RowActionsMenu actions={actionsFor(row)} />
-                    </div>
-                    {step && (
-                      <div className="pl-12 pt-1.5">
-                        <button type="button" onClick={step.run} title={step.title} className="px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-medium">{step.label}</button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
+              {step && (
+                <div className="md:hidden pl-12 pt-1.5">
+                  <button type="button" onClick={step.run} title={step.title} className="px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-medium">{step.label}</button>
+                </div>
+              )}
             </div>
           );
         })}

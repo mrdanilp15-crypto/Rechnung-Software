@@ -304,7 +304,7 @@ const ACTIONS: { to: string; label: string; icon: IconName }[] = [
 
 export function QuickActions({ className = "" }: { className?: string }) {
   return (
-    <div className={`flex justify-between sm:justify-start sm:gap-8 px-2 sm:px-0 ${className}`}>
+    <div className={`flex justify-between md:justify-center md:gap-3 lg:gap-5 px-2 md:px-3 ${className}`}>
       {ACTIONS.map((a, i) => (
         <Link key={a.label} to={a.to} className="flex flex-col items-center gap-1.5 group" aria-label={`Neu: ${a.label}`}>
           <span className={`w-14 h-14 rounded-full flex items-center justify-center transition group-active:scale-95 ${i === 0 ? "bg-brand text-white shadow-lg shadow-brand/25" : "bg-white text-brand shadow group-hover:bg-slate-50"}`}>

@@ -191,8 +191,8 @@ export default function Dashboard() {
       )}
 
       {/* Oben: große Karte mit dem offenen Betrag, daneben/darunter die vier häufigsten Schritte, dann die Kennzahl-Kacheln */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 mb-3">
-        <Link to="/documents?type=OPEN_INVOICE" className="lg:col-span-3 block bg-brand text-white rounded-3xl p-5 sm:p-6 shadow-lg shadow-brand/20 active:scale-[0.99] transition">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-3">
+        <Link to="/documents?type=OPEN_INVOICE" className="md:col-span-3 block bg-brand text-white rounded-3xl p-5 sm:p-6 shadow-lg shadow-brand/20 active:scale-[0.99] transition">
           <div className="flex items-center justify-between">
             <p className="text-sm text-white/75">Noch offen</p>
             <span className="text-xs font-medium bg-white/15 rounded-full px-2.5 py-1">Alle ansehen →</span>
@@ -203,8 +203,8 @@ export default function Dashboard() {
             {overdue.length > 0 && <> · <span className="text-rose-200 font-medium">{overdue.length} überfällig</span></>}
           </p>
         </Link>
-        <div className="lg:col-span-2 flex items-center lg:justify-center lg:bg-white lg:rounded-3xl lg:shadow py-3 lg:py-0">
-          <QuickActions className="w-full lg:w-auto" />
+        <div className="md:col-span-2 flex items-center md:justify-center md:bg-white md:rounded-3xl md:shadow py-3 md:py-4">
+          <QuickActions className="w-full md:w-auto" />
         </div>
       </div>
 
