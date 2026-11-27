@@ -12,7 +12,6 @@ import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
 import Products from "./pages/Products";
 import Materials from "./pages/Materials";
-import Invoices from "./pages/Invoices";
 import InvoiceDetail from "./pages/InvoiceDetail";
 import DocumentEditor from "./pages/DocumentEditor";
 import Documents from "./pages/Documents";
@@ -77,7 +76,7 @@ export default function App() {
         <Route path="/customers/:id" element={<CustomerDetail />} />
         <Route path="/products" element={<Products />} />
         <Route path="/materials" element={<Materials />} />
-        <Route path="/invoices" element={<Invoices />} />
+        <Route path="/invoices" element={<Navigate to="/documents?type=INVOICE" replace />} />
         <Route path="/documents" element={<Documents />} />
         <Route path="/catalog" element={<Catalog />} />
         <Route path="/recurring" element={<RecurringPage />} />

@@ -115,6 +115,8 @@ export default function Products() {
   const [tierRows, setTierRows] = useState<TierRow[]>([]);
   const [calcQty, setCalcQty] = useState("1");
   const [extraRows, setExtraRows] = useState<ExtraRow[]>([]);
+  // Kleinunternehmer (§19 UStG): keine USt. - Netto/Brutto/Steuersatz würden nur verwirren
+  const [smallBusiness, setSmallBusiness] = useState(false);
   const { status, run } = useSaveStatus();
   const showToast = useToast();
 
@@ -124,7 +126,8 @@ export default function Products() {
   useEffect(load, []);
   useEffect(() => {
     api.get("/materials").then((res) => setMaterials(res.data));
-    api.get("/companies/me").then((res) =>
+    api.get("/companies/me").then((res) => {
+      setSmallBusiness(!!res.data.isSmallBusiness);
       setRates({
         machineRateCentsPerHour: res.data.machineRateCentsPerHour ?? 0,
         laborRateCentsPerHour: res.data.laborRateCentsPerHour ?? 0,
@@ -136,8 +139,8 @@ export default function Products() {
         platformFeePercent: res.data.platformFeePercent ?? 0,
         priceRounding: res.data.priceRounding ?? "NONE",
         minPriceCents: res.data.minPriceCents ?? 0,
-      })
-    );
+      });
+    });
     api.get("/printers").then((res) => setPrinters(res.data));
     api.get("/production/product-actuals").then((res) => setActuals(new Map((res.data as ProductActual[]).map((a) => [a.productId, a])))).catch(() => undefined);
   }, []);
@@ -386,7 +389,7 @@ export default function Products() {
               rows={2}
             />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className={`grid grid-cols-1 gap-4 ${smallBusiness ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
             <div>
               <label className="block text-sm mb-1">{t("products.unit")}</label>
               <input value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))} placeholder="z.B. Stk., g, Std., m" className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
@@ -394,10 +397,16 @@ export default function Products() {
             <div>
               <label className="block text-sm mb-1">{t("products.unitPrice")} (€ pro Einheit)</label>
               <input type="number" step="0.01" value={form.unitPriceEur} onFocus={(e) => e.target.select()} onChange={(e) => setForm((f) => ({ ...f, unitPriceEur: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-              <GrossPriceField netEur={form.unitPriceEur} vatRateBps={form.vatRateBps} onNetChange={(v) => setForm((f) => ({ ...f, unitPriceEur: v }))} />
-              <p className="text-xs text-slate-500 mt-1">Verkaufspreis <strong>netto</strong> (ohne USt.). Den Preisvorschlag aus der Kalkulation unten können Sie mit "Übernehmen" eintragen.</p>
+              {smallBusiness ? (
+                <p className="text-xs text-slate-500 mt-1">Das ist der <strong>Endpreis</strong>, den der Kunde zahlt. Als Kleinunternehmer (§19 UStG) kommt keine Umsatzsteuer dazu. Den Preisvorschlag aus der Kalkulation unten können Sie mit "Übernehmen" eintragen.</p>
+              ) : (
+                <>
+                  <GrossPriceField netEur={form.unitPriceEur} vatRateBps={form.vatRateBps} onNetChange={(v) => setForm((f) => ({ ...f, unitPriceEur: v }))} />
+                  <p className="text-xs text-slate-500 mt-1">Verkaufspreis <strong>netto</strong> (ohne USt.). Den Preisvorschlag aus der Kalkulation unten können Sie mit "Übernehmen" eintragen.</p>
+                </>
+              )}
             </div>
-            <div>
+            <div className={smallBusiness ? "hidden" : ""}>
               <label className="block text-sm mb-1">{t("products.vatRate")}</label>
               <select value={form.vatRateBps} onChange={(e) => setForm((f) => ({ ...f, vatRateBps: Number(e.target.value) }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
                 <option value={1900}>19% (Standard)</option>
@@ -611,7 +620,7 @@ export default function Products() {
                 <div className="flex justify-between font-medium border-t border-slate-200 dark:border-slate-700 pt-1"><span>Selbstkosten</span><span>{formatPrice(liveCost.total)}</span></div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500" title={`${rates.targetMarginPercent}% Aufschlag auf die Selbstkosten entsprechen ${(100 - 10000 / (100 + rates.targetMarginPercent)).toFixed(0)}% Gewinn vom Verkaufspreis`}>
-                    Preisvorschlag (netto, +{rates.targetMarginPercent}% auf Selbstkosten{rates.platformFeePercent > 0 ? `, ${rates.platformFeePercent}% Gebühren eingerechnet` : ""})
+                    Preisvorschlag ({smallBusiness ? "" : "netto, "}+{rates.targetMarginPercent}% auf Selbstkosten{rates.platformFeePercent > 0 ? `, ${rates.platformFeePercent}% Gebühren eingerechnet` : ""})
                   </span>
                   <span className="flex items-center gap-2">
                     {formatPrice(liveCost.recommended)}
@@ -677,7 +686,7 @@ export default function Products() {
                 <button type="button" onClick={() => setTierRows((rows) => [...rows, { minQuantity: "", priceEur: "" }])} className="text-brand hover:underline">+ Staffel hinzufügen</button>
               </div>
             </div>
-            <p className="text-xs text-slate-500">Günstigerer Stückpreis ab einer Mindestmenge, z.B. ab 10 Stück 9,00 €. Beim Erstellen eines Angebots oder einer Rechnung wird der Preis automatisch passend zur Menge gesetzt (einen von Hand geänderten Preis überschreibt das nicht). Preise netto. "Aus Kalkulation vorschlagen" setzt Staffeln ab 10, 50 und 100 Stück, sofern sie günstiger als der aktuelle Preis sind.</p>
+            <p className="text-xs text-slate-500">Günstigerer Stückpreis ab einer Mindestmenge, z.B. ab 10 Stück 9,00 €. Beim Erstellen eines Angebots oder einer Rechnung wird der Preis automatisch passend zur Menge gesetzt (einen von Hand geänderten Preis überschreibt das nicht).{smallBusiness ? "" : " Preise netto."} "Aus Kalkulation vorschlagen" setzt Staffeln ab 10, 50 und 100 Stück, sofern sie günstiger als der aktuelle Preis sind.</p>
             {tierRows.map((row, idx) => (
               <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
                 <input type="number" min="2" step="1" placeholder="Ab Menge (Stk.)" value={row.minQuantity} onFocus={(e) => e.target.select()} onChange={(e) => setTierRows((rows) => rows.map((r, i) => (i === idx ? { ...r, minQuantity: e.target.value } : r)))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
@@ -772,7 +781,7 @@ export default function Products() {
                   )}
                 </div>
                 <span className="text-right">{formatPrice(p.unitPriceCents)} / {p.unit}</span>
-                <span className="text-slate-500 text-right">{(p.vatRateBps / 100).toFixed(0)}% USt.</span>
+                <span className="text-slate-500 text-right">{smallBusiness ? "" : `${(p.vatRateBps / 100).toFixed(0)}% USt.`}</span>
                 {actions}
               </div>
               {/* Mobile */}
@@ -782,7 +791,7 @@ export default function Products() {
                 actions={actions}
               >
                 <MobileField label="Preis" value={`${formatPrice(p.unitPriceCents)} / ${p.unit}`} />
-                <MobileField label="USt." value={`${(p.vatRateBps / 100).toFixed(0)}%`} />
+                {!smallBusiness && <MobileField label="USt." value={`${(p.vatRateBps / 100).toFixed(0)}%`} />}
                 {p.trackStock && <MobileField label="Lager" value={`${p.stockQuantity ?? 0} ${p.unit}`} />}
                 {p.parts && p.parts.length > 0 && <MobileField label="Bauteile" value={p.parts.map((x) => x.name + (x.quantityPerProduct !== 1 ? " ×" + x.quantityPerProduct : "")).join(", ")} />}
                 {p.materials.length > 0 && (

@@ -16,7 +16,7 @@ import { emitEvent } from "../plugins/hooks";
 import { generateAndStoreInvoicePdf } from "./pdfHelper";
 import { buildXRechnungXml, getXRechnungBlockers } from "../einvoice/xrechnung";
 import { buildFacturXml, FACTURX_XMP } from "../einvoice/facturx";
-import { getInvoiceComplianceWarnings } from "../tax/compliance";
+import { getInvoiceComplianceWarnings, missingIssuerData } from "../tax/compliance";
 import { sendMailForCompany, isSmtpConfigured, buildInvoiceEmailText, buildReminderEmailText } from "../email/mailer";
 import { deductMaterialStock, restoreMaterialStock } from "../materials/stock";
 
@@ -81,6 +81,11 @@ invoicesRouter.get("/:id", async (req, res) => {
 // Nummernfolge - eine lückenlose Rechnungsnummerierung ist eine GoBD-Kernanforderung.
 async function finalizeInvoiceNumber(tx: Prisma.TransactionClient | PrismaClient, invoice: { id: string; companyId: string; invoiceNumber: string | null }) {
   if (invoice.invoiceNumber) return invoice.invoiceNumber;
+  const company = await tx.company.findUniqueOrThrow({ where: { id: invoice.companyId } });
+  const missing = missingIssuerData(company);
+  if (missing.length > 0) {
+    throw new HttpError(422, `Die Rechnung kann noch nicht ausgestellt werden - es fehlen Pflichtangaben (§14 UStG): ${missing.join(", ")}. Bitte unter Einstellungen → Firmendaten ergänzen.`);
+  }
   const invoiceNumber = await nextDocumentNumber(invoice.companyId, "INVOICE", tx);
   await tx.invoice.update({ where: { id: invoice.id }, data: { invoiceNumber } });
   return invoiceNumber;

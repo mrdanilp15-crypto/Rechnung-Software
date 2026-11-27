@@ -267,7 +267,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-x-8 gap-y-2 mb-3">
-                <div><p className="text-2xl font-semibold tracking-tight">{eur(monthRevenue)}</p><p className="text-xs text-slate-500 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-brand" />Umsatz (bezahlt, netto)</p></div>
+                <div><p className="text-2xl font-semibold tracking-tight">{eur(monthRevenue)}</p><p className="text-xs text-slate-500 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-brand" />Umsatz (bezahlt{revenue?.isSmallBusiness ? "" : ", netto"})</p></div>
                 <div><p className="text-2xl font-semibold tracking-tight">{eur(monthExpenses)}</p><p className="text-xs text-slate-500 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500" />Ausgaben</p></div>
                 <div><p className={`text-2xl font-semibold tracking-tight ${monthResult < 0 ? "text-red-500" : ""}`}>{eur(monthResult)}</p><p className="text-xs text-slate-500 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-500" />Ergebnis (vor Steuern)</p></div>
               </div>
@@ -276,12 +276,12 @@ export default function Dashboard() {
               ) : hasChartData && stats ? (
                 <>
                   <IncomeExpenseChart months={stats.months} expenses={stats.expenseMonths} />
-                  <p className="text-xs text-slate-500 mt-1">{now.getFullYear()}: Umsatz {eur(stats.yearRevenueCents)} netto</p>
+                  <p className="text-xs text-slate-500 mt-1">{now.getFullYear()}: Umsatz {eur(stats.yearRevenueCents)}{revenue?.isSmallBusiness ? "" : " netto"}</p>
                 </>
               ) : (
                 <p className="text-sm text-slate-500">Noch keine Daten.</p>
               )}
-              <p className="text-xs text-slate-500 mt-2">Monatsansicht: aufgelaufene Werte seit dem 1. des Monats. Umsatz aus gestellten Rechnungen netto, Ausgaben laut Ausgabenliste.</p>
+              <p className="text-xs text-slate-500 mt-2">Monatsansicht: aufgelaufene Werte seit dem 1. des Monats. Umsatz = bezahlte Rechnungen nach Zahlungsdatum{revenue?.isSmallBusiness ? "" : " (netto)"}, Ausgaben laut Ausgabenliste.</p>
             </Panel>
             <Panel title="Materiallager" help="materials" action={{ to: "/catalog?tab=materials", label: "Alle anzeigen" }}>
               <MaterialWidget materials={materials} />

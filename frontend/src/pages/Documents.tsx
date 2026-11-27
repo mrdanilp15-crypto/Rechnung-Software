@@ -9,7 +9,6 @@ import { useToast } from "../components/Toast";
 import { RecurringDialog } from "../components/RecurringDialog";
 import { StatusChip } from "../components/StatusChip";
 import { SendDocumentDialog } from "../components/SendDocumentDialog";
-import { createFinalInvoice, QUICK_INVOICE_CONFIRM } from "../lib/quickInvoice";
 import { LinkDocsDialog, type LinkCandidate } from "../components/LinkDocsDialog";
 
 import { HelpTip } from "../components/HelpTip";
@@ -186,18 +185,6 @@ export default function Documents() {
     }
   }
 
-  /** Rechnung anlegen, fertigstellen und gleich zum Versenden öffnen (ohne Entwurf-Zwischenschritt) */
-  async function convertFinal(row: DocRow) {
-    if (!window.confirm(QUICK_INVOICE_CONFIRM)) return;
-    try {
-      const r = await createFinalInvoice(row.kind === "QUOTE" ? "/quotes" : "/order-confirmations", row.id);
-      showToast(r.message, r.ok ? "success" : "error");
-      navigate(r.path);
-    } catch (err: any) {
-      showToast(err.response?.data?.error || "Rechnung konnte nicht angelegt werden", "error");
-    }
-  }
-
   async function createDownPayment() {
     if (!dpRow) return;
     const percent = parseFloat(dpPercent.replace(",", "."));
@@ -275,7 +262,6 @@ export default function Documents() {
     if (openQuote || (row.kind === "ORDER_CONFIRMATION" && row.status !== "DRAFT")) {
       list.push({ label: "→ Anzahlungsrechnung", onClick: () => { setDpPercent("30"); setDpRow(row); } });
       list.push({ label: "→ Rechnung", onClick: () => convert(row, "convert-to-invoice", "/invoices", "Rechnung als Entwurf angelegt") });
-      list.push({ label: "→ Rechnung gleich fertigstellen & senden", onClick: () => convertFinal(row) });
     }
     if (row.kind === "ORDER_CONFIRMATION" && row.status !== "DRAFT") {
       list.push({ label: "→ Lieferschein", onClick: () => convert(row, "convert-to-delivery-note", "/delivery-notes", "Lieferschein als Entwurf angelegt") });
@@ -352,7 +338,6 @@ export default function Documents() {
         <h1 className="text-2xl font-semibold">Belege<HelpTip topic="documents" className="ml-2" /></h1>
         <div className="flex items-center gap-4">
         <Link to="/recurring" className="text-sm text-brand hover:underline whitespace-nowrap">Wiederkehrende Rechnungen</Link>
-        <Link to="/invoices" className="text-sm text-brand hover:underline whitespace-nowrap hidden sm:inline">Rechnungen verwalten</Link>
         <div className="relative" ref={newRef}>
           <button onClick={() => setNewOpen((v) => !v)} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm w-full sm:w-auto">
             + Neuer Beleg ▾
@@ -510,7 +495,7 @@ export default function Documents() {
 
       <p className="text-xs text-slate-500 mt-3">
         Der übliche Ablauf: Angebot → Auftrag → Rechnung (der Lieferschein ist optional). Über das Menü (⋮) führen Sie einen Beleg mit allen Positionen zum nächsten weiter.{" "}
-        <Link to="/invoices" className="text-brand hover:underline">Rechnungen verwalten</Link> (Mehrfachauswahl, E-Mail-Status) · <Link to="/recurring" className="text-brand hover:underline">Wiederkehrende Rechnungen</Link>.
+        <Link to="/recurring" className="text-brand hover:underline">Wiederkehrende Rechnungen</Link>.
       </p>
     </div>
   );

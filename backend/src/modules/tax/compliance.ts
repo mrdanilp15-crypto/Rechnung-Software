@@ -2,6 +2,18 @@ import type { Company, Customer, Invoice } from "@prisma/client";
 import { prisma } from "../../db/prisma";
 
 /**
+ * Harte Pflichtangaben zum Aussteller (§14 Abs. 4 Nr. 1 und 2 UStG): ohne sie ist eine Rechnung nicht ordnungsgemäß.
+ * Liefert die fehlenden Angaben als lesbare Liste (leer = alles da).
+ */
+export function missingIssuerData(company: Pick<Company, "name" | "street" | "postalCode" | "city" | "taxId" | "vatId">): string[] {
+  const missing: string[] = [];
+  if (!company.name?.trim()) missing.push("Firmenname");
+  if (!company.street?.trim() || !company.postalCode?.trim() || !company.city?.trim()) missing.push("vollständige Anschrift (Straße, PLZ, Ort)");
+  if (!company.taxId?.trim() && !company.vatId?.trim()) missing.push("Steuernummer oder USt-IdNr.");
+  return missing;
+}
+
+/**
  * Nicht-blockierende Prüfung auf Pflichtangaben nach §14 UStG (Rechnungsangaben).
  * Gibt eine Liste menschenlesbarer Hinweise zurück - keine rechtsverbindliche Prüfung,
  * sondern ein Hinweis, was auf der Rechnung typischerweise fehlt.

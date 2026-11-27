@@ -200,7 +200,7 @@ export const HELP: HelpTopic[] = [
   {
     id: "production",
     category: "Aufträge und Produktion",
-    title: "Aufträge (Produktionsboard)",
+    title: "Produktion",
     short: "Alle Aufträge als Karten nach Status: Erstellt, In Produktion, Versandbereit, Versendet. Karten lassen sich weiterschieben.",
     body: [
       "Auf jeder Karte siehst du Kunde, Positionen, Liefertermin, Priorität und den Zuständigen (Profilbild). Oben filterst du nach Mitarbeiter oder \"Nur meine\". Ein Klick auf die Karte öffnet die Auftragsseite.",

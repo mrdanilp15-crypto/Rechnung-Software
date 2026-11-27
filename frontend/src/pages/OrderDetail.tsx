@@ -247,7 +247,7 @@ export default function OrderDetail() {
             {usageJob && <JobUsageDialog jobId={usageJob.id} jobName={usageJob.name} current={usageJob.materialUsage} onClose={() => setUsageJob(null)} onSaved={() => { setUsageJob(null); load(); }} />}
           </Panel>
           <Panel title="Versand" help="production">
-            {o.shippedAt ? <p className="text-sm">Versendet am {fmtDate(o.shippedAt)}{o.carrier ? ` mit ${o.carrier}` : ""}{o.trackingNumber ? `, Sendung ${o.trackingNumber}` : ""}.{o.shippedMailAt ? ` Versandmail am ${fmtDate(o.shippedMailAt)}.` : ""}</p> : <p className="text-sm text-slate-500">Noch nicht versendet. Im Auftragsboard nach "Versendet" verschieben (mit Sendungsnummer und Versandmail).</p>}
+            {o.shippedAt ? <p className="text-sm">Versendet am {fmtDate(o.shippedAt)}{o.carrier ? ` mit ${o.carrier}` : ""}{o.trackingNumber ? `, Sendung ${o.trackingNumber}` : ""}.{o.shippedMailAt ? ` Versandmail am ${fmtDate(o.shippedMailAt)}.` : ""}</p> : <p className="text-sm text-slate-500">Noch nicht versendet. In der Produktion nach "Versendet" verschieben (mit Sendungsnummer und Versandmail).</p>}
           </Panel>
           <Panel title="Verlauf" help="order">
             <ol className="space-y-2.5">{d.timeline.slice(0, 30).map((e, i) => (

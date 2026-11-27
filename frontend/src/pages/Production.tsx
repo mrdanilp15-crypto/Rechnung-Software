@@ -299,7 +299,7 @@ export default function Production() {
       )}
 
       <div className="mt-4">
-        <InfoBox title="So funktioniert das Produktionsboard">
+        <InfoBox title="So funktioniert die Produktion">
           <p>Jede <strong>Auftragsbestätigung</strong> erscheint hier automatisch als Karte (am besten aus einem Angebot heraus, oder über „Auftrag ohne Angebot“). Ziehen Sie eine Karte in die nächste Spalte oder nutzen Sie die Pfeile <strong>← →</strong> - das geht auch am Handy. Unter <strong>⋯</strong> findest du Details, Kosten, Notiz und den Beleg.</p>
           <p><strong>Erstellt</strong> = angenommen, <strong>In Produktion</strong> = wird gedruckt/nachbearbeitet, <strong>Versandbereit</strong> = verpackt, <strong>Versendet</strong> = unterwegs. Versendete Aufträge verschwinden nach 14 Tagen vom Board (über "auch ältere versendete" sehen Sie alle); in der Spalte werden zuerst die letzten 5 gezeigt.</p>
           <p>Die <strong>Druckzeit</strong> auf der Karte ist eine Schätzung: Sie wird berechnet, wenn der Positionstext genau dem Namen eines Produkts mit hinterlegter Druckzeit entspricht (Katalog → Produkte). Der Produktionsstatus hat nichts mit dem Belegstatus zu tun - er ändert weder Rechnung noch Materialbestand.</p>
