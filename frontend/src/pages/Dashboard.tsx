@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { api } from "../api/client";
-import { StatusChip } from "../components/StatusChip";
+import { StatusIcon, statusInfo } from "../components/StatusChip";
+import { Icon } from "../components/Icon";
 import { type LiveStatus } from "../components/PrinterLive";
 import { TodoPanel } from "../components/TodoPanel";
 import { SetupChecklist } from "../components/SetupChecklist";
@@ -168,12 +169,13 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{greeting(now.getHours())}{firstName ? `, ${firstName}` : ""}!<HelpTip topic="start" className="ml-2" /></h1>
-          <p className="text-sm text-slate-500 mt-1">{summary}</p>
+      <div className="flex items-start justify-between gap-3 mb-5">
+        <div className="min-w-0">
+          <p className="text-sm text-slate-500">{WEEKDAY_DATE.format(now)}</p>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{greeting(now.getHours())}{firstName ? `, ${firstName}` : ""}<HelpTip topic="start" className="ml-2" /></h1>
+          <p className="text-sm text-slate-500 mt-0.5">{summary}</p>
         </div>
-        <p className="text-sm text-slate-500">{WEEKDAY_DATE.format(now)}</p>
+        <Link to="/#meldungen" className="lg:hidden w-10 h-10 rounded-full bg-white shadow flex items-center justify-center text-slate-600 shrink-0" aria-label="Meldungen"><Icon name="bell" className="w-5 h-5" /></Link>
       </div>
 
       {revenue?.isSmallBusiness && (revenue.isApproaching || revenue.currentYearExceeded || revenue.priorYearExceeded) && (
@@ -188,14 +190,30 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Farbige Kacheln oben: das Wichtigste auf einen Blick */}
+      {/* Oben: große Karte mit dem offenen Betrag, daneben/darunter die vier häufigsten Schritte, dann die Kennzahl-Kacheln */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 mb-3">
+        <Link to="/documents?type=OPEN_INVOICE" className="lg:col-span-3 block bg-brand text-white rounded-3xl p-5 sm:p-6 shadow-lg shadow-brand/20 active:scale-[0.99] transition">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-white/75">Noch offen</p>
+            <span className="text-xs font-medium bg-white/15 rounded-full px-2.5 py-1">Alle ansehen →</span>
+          </div>
+          <p className="text-4xl sm:text-5xl font-semibold tracking-tight mt-1">{loading ? "…" : eur(openTotal)}</p>
+          <p className="text-sm text-white/75 mt-1">
+            {open.length === 0 ? "Keine offenen Rechnungen" : `${open.length} Rechnung${open.length === 1 ? "" : "en"}`}
+            {overdue.length > 0 && <> · <span className="text-rose-200 font-medium">{overdue.length} überfällig</span></>}
+          </p>
+        </Link>
+        <div className="lg:col-span-2 flex items-center lg:justify-center lg:bg-white lg:rounded-3xl lg:shadow py-3 lg:py-0">
+          <QuickActions className="w-full lg:w-auto" />
+        </div>
+      </div>
+
       {!loading && (
-      <div className={`grid grid-cols-2 gap-3 mb-6 ${livePrinters.length > 0 ? "md:grid-cols-3 xl:grid-cols-5 [&>*:last-child]:col-span-2 md:[&>*:last-child]:col-span-1" : "md:grid-cols-4"}`}>
-        <Kpi icon="receipt" tone={overdue.length > 0 ? "red" : "amber"} label="Offen" value={eur(openTotal)} sub={`${open.length} Rechnung${open.length === 1 ? "" : "en"}${overdue.length > 0 ? ` · ${overdue.length} überfällig` : ""}`} subTone={overdue.length > 0 ? "bad" : "muted"} to="/documents?type=INVOICE" />
-        <Kpi icon="money" tone="green" label="Bezahlt diesen Monat" value={eur(monthRevenue)} sub={revenueDelta === null ? `Vormonat ${eur(prevRevenue)}` : `${revenueDelta >= 0 ? "+" : ""}${revenueDelta} % zum Vormonat`} subTone={revenueDelta === null ? "muted" : revenueDelta >= 0 ? "good" : "bad"} to="/finance" />
+      <div className={`grid grid-cols-2 gap-3 mb-6 [&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1 ${livePrinters.length > 0 ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
+        <Kpi icon="checkCircle" tone="green" label="Bezahlt diesen Monat" value={eur(monthRevenue)} sub={revenueDelta === null ? `Vormonat ${eur(prevRevenue)}` : `${revenueDelta >= 0 ? "+" : ""}${revenueDelta} % zum Vormonat`} subTone={revenueDelta === null ? "muted" : revenueDelta >= 0 ? "good" : "bad"} to="/finance" />
         <Kpi icon="board" tone="violet" label="In Produktion" value={activeOrders.length} sub={newOrders > 0 ? `+${newOrders} seit gestern` : "keine neuen seit gestern"} subTone={newOrders > 0 ? "good" : "muted"} to="/production" />
-        <Kpi icon="filament" tone="pink" label="Materialbestand" value={`${kgTotal.toLocaleString("de-DE", { maximumFractionDigits: 1 })} kg`} sub={materials.length === 0 ? "noch kein Material" : lowCount > 0 ? `${lowCount} Artikel knapp` : "alles ausreichend"} subTone={lowCount > 0 ? "bad" : "good"} to="/catalog?tab=materials" />
-        {livePrinters.length > 0 && <Kpi icon="printer" tone="slate" label="Drucker online" value={livePrinters.length > 0 ? `${onlinePrinters.length} / ${livePrinters.length}` : "-"} sub={livePrinters.length > 0 ? `${Math.round((onlinePrinters.length / livePrinters.length) * 100)} % online` : "keine Live-Verbindung"} subTone={livePrinters.length > 0 && onlinePrinters.length < livePrinters.length ? "warn" : "muted"} to="/catalog?tab=printers" />}
+        <Kpi icon="filament" tone="pink" label="Material" value={`${kgTotal.toLocaleString("de-DE", { maximumFractionDigits: 1 })} kg`} sub={materials.length === 0 ? "noch kein Material" : lowCount > 0 ? `${lowCount} Artikel knapp` : "alles ausreichend"} subTone={lowCount > 0 ? "bad" : materials.length === 0 ? "muted" : "good"} to="/catalog?tab=materials" />
+        {livePrinters.length > 0 && <Kpi icon="printer" tone="slate" label="Drucker online" value={`${onlinePrinters.length} / ${livePrinters.length}`} sub={printingNow > 0 ? `${printingNow} ${printingNow === 1 ? "druckt" : "drucken"}` : "alle bereit"} subTone={printerErrors > 0 ? "bad" : "muted"} to="/catalog?tab=printers" />}
       </div>
       )}
 
@@ -257,15 +275,13 @@ export default function Dashboard() {
             <Panel title="Letzte Aktivität" help="documents" action={{ to: "/documents", label: "Alle Belege" }} className="xl:col-span-2">
               <div className="-mx-2 divide-y divide-slate-100 dark:divide-slate-700">
                 {recent.map((r) => (
-                  <Link key={`${r.kind}-${r.id}`} to={r.kind === "INVOICE" ? `/invoices/${r.id}` : `/documents?type=${r.kind}`} className="flex items-center justify-between gap-3 px-2 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/40 rounded-lg">
-                    <span className="min-w-0">
-                      <span className="block truncate"><span className="font-medium">{r.isCancellationDocument ? "Korrekturbeleg" : KIND_LABEL[r.kind]} {r.number}</span></span>
-                      <span className="block truncate text-xs text-slate-500">{r.customerName}</span>
+                  <Link key={`${r.kind}-${r.id}`} to={r.kind === "INVOICE" ? `/invoices/${r.id}` : `/documents?type=${r.kind}`} className="flex items-center gap-3 px-2 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/40 rounded-xl">
+                    <StatusIcon status={r.status} kind={r.kind} isCancellationDocument={r.isCancellationDocument} emailed={!!r.emailSentAt} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{r.customerName}</span>
+                      <span className="block truncate text-xs text-slate-500">{r.isCancellationDocument ? "Korrekturbeleg" : KIND_LABEL[r.kind]} {r.number} · {statusInfo(r.status, { kind: r.kind, isCancellationDocument: r.isCancellationDocument, emailed: !!r.emailSentAt }).label}</span>
                     </span>
-                    <span className="shrink-0 flex items-center gap-3">
-                      <StatusChip status={r.status} kind={r.kind} isCancellationDocument={r.isCancellationDocument} emailed={!!r.emailSentAt} />
-                      <span className="w-24 text-right font-medium">{r.totalCents === null ? "" : eur(r.totalCents)}</span>
-                    </span>
+                    <span className="shrink-0 text-right font-semibold">{r.totalCents === null ? "" : eur(r.totalCents)}</span>
                   </Link>
                 ))}
                 {recent.length === 0 && <p className="px-2 py-6 text-center text-slate-500 text-sm">Noch nichts ausgestellt. Starte mit "Rechnung erstellen".</p>}
@@ -273,8 +289,6 @@ export default function Dashboard() {
             </Panel>
 
             <div className="space-y-3 min-w-0">
-              {/* Auf dem Handy gibt es dafür den +-Knopf */}
-              <Panel title="Schnellaktionen" help="search" className="hidden lg:block"><QuickActions /></Panel>
               {stats && (
                 <Panel title={`Beste Kunden ${now.getFullYear()}`}>
                   {stats.topCustomers.length === 0 && <p className="text-sm text-slate-500">Noch kein Umsatz.</p>}

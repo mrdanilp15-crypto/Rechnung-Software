@@ -9,15 +9,15 @@ import { HelpTip } from "../HelpTip";
 export const eur = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
 export const eurShort = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(cents / 100);
 
-// Kacheln der Startseite: je Bereich eine helle Pastellfarbe (Kachel, Symbol, Schrift aus derselben Farbfamilie)
+// Kacheln: weiße Fläche, farbiges Symbol-Kästchen je Bereich (Bento-Stil)
 const TONES = {
-  brand: { tile: "bg-violet-50", icon: "bg-white/70 text-violet-600", text: "text-violet-950", label: "text-violet-700" },
-  violet: { tile: "bg-violet-50", icon: "bg-white/70 text-violet-600", text: "text-violet-950", label: "text-violet-700" },
-  green: { tile: "bg-emerald-50", icon: "bg-white/70 text-emerald-600", text: "text-emerald-950", label: "text-emerald-700" },
-  amber: { tile: "bg-amber-50", icon: "bg-white/70 text-amber-600", text: "text-amber-950", label: "text-amber-700" },
-  red: { tile: "bg-rose-50", icon: "bg-white/70 text-rose-600", text: "text-rose-950", label: "text-rose-700" },
-  pink: { tile: "bg-pink-50", icon: "bg-white/70 text-pink-600", text: "text-pink-950", label: "text-pink-700" },
-  slate: { tile: "bg-slate-100", icon: "bg-white/70 text-slate-500", text: "text-slate-900", label: "text-slate-600" },
+  brand: { tile: "bg-white shadow", icon: "bg-blue-50 text-blue-600", text: "text-slate-900", label: "text-slate-500" },
+  violet: { tile: "bg-white shadow", icon: "bg-violet-50 text-violet-600", text: "text-slate-900", label: "text-slate-500" },
+  green: { tile: "bg-white shadow", icon: "bg-emerald-50 text-emerald-600", text: "text-slate-900", label: "text-slate-500" },
+  amber: { tile: "bg-white shadow", icon: "bg-amber-50 text-amber-600", text: "text-slate-900", label: "text-slate-500" },
+  red: { tile: "bg-white shadow", icon: "bg-rose-50 text-rose-600", text: "text-slate-900", label: "text-slate-500" },
+  pink: { tile: "bg-white shadow", icon: "bg-pink-50 text-pink-600", text: "text-slate-900", label: "text-slate-500" },
+  slate: { tile: "bg-white shadow", icon: "bg-slate-100 text-slate-500", text: "text-slate-900", label: "text-slate-500" },
 } as const;
 export type Tone = keyof typeof TONES;
 const SUB_TONES = { good: "text-emerald-700", warn: "text-amber-700", bad: "text-rose-700", muted: "" } as const;
@@ -25,11 +25,11 @@ const SUB_TONES = { good: "text-emerald-700", warn: "text-amber-700", bad: "text
 /** Karte mit Titel und optionalem Link rechts oben. */
 export function Panel({ title, action, className = "", help, children }: { title?: string; action?: { to: string; label: string }; className?: string; /** Hilfethema: zeigt ein ? neben dem Titel */ help?: string; children: ReactNode }) {
   return (
-    <section className={`bg-white rounded-2xl p-4 shadow min-w-0 ${className}`}>
+    <section className={`bg-white rounded-3xl p-4 sm:p-5 shadow min-w-0 ${className}`}>
       {title && (
         <div className="flex items-center justify-between gap-2 mb-3">
           <h2 className="text-base font-semibold tracking-tight">{title}{help && <HelpTip topic={help} className="ml-2" />}</h2>
-          {action && <Link to={action.to} className="text-xs text-slate-500 hover:text-brand">{action.label} →</Link>}
+          {action && <Link to={action.to} className="text-xs font-medium text-brand hover:underline">{action.label} →</Link>}
         </div>
       )}
       {children}
@@ -42,15 +42,15 @@ export function Kpi({ icon, tone, label, value, sub, subTone = "muted", to }: { 
   const c = TONES[tone];
   const body = (
     <>
-      <span className={`w-8 h-8 rounded-xl flex items-center justify-center ${c.icon}`}>
+      <span className={`w-9 h-9 rounded-xl flex items-center justify-center ${c.icon}`}>
         <Icon name={icon} className="w-[18px] h-[18px]" />
       </span>
       <p className={`mt-2 text-xl sm:text-2xl font-semibold tracking-tight truncate ${c.text}`}>{value}</p>
       <p className={`text-xs sm:text-sm truncate ${c.label}`}>{label}</p>
-      {sub && <p className={`text-xs truncate mt-0.5 ${SUB_TONES[subTone] || c.label} ${subTone === "muted" ? "opacity-80" : ""}`}>{sub}</p>}
+      {sub && <p className={`text-xs truncate mt-0.5 ${SUB_TONES[subTone] || "text-slate-400"}`}>{sub}</p>}
     </>
   );
-  const cls = `${c.tile} rounded-2xl p-3.5 sm:p-4 min-w-0 block`;
+  const cls = `${c.tile} rounded-3xl p-4 min-w-0 block`;
   return to ? <Link to={to} className={`${cls} active:scale-[0.98] transition`}>{body}</Link> : <div className={cls}>{body}</div>;
 }
 
@@ -294,22 +294,23 @@ export function MaterialWidget({ materials }: { materials: MaterialRow[] }) {
 
 // ---------- Schnellaktionen ----------
 
-const ACTIONS: { to: string; label: string; icon: IconName; tone: Tone }[] = [
-  { to: "/order-confirmations/new", label: "Neuer Auftrag", icon: "plus", tone: "green" },
-  { to: "/invoices/new", label: "Neue Rechnung", icon: "receipt", tone: "amber" },
-  { to: "/quotes/new", label: "Neues Angebot", icon: "document", tone: "brand" },
-  { to: "/customers", label: "Neuer Kunde", icon: "users", tone: "violet" },
-  { to: "/archive", label: "Datei hochladen", icon: "upload", tone: "brand" },
-  { to: "/time", label: "Zeit erfassen", icon: "clock", tone: "slate" },
+// Die vier häufigsten Schritte als runde Knöpfe (wie in einer Banking-App); der erste ist hervorgehoben
+const ACTIONS: { to: string; label: string; icon: IconName }[] = [
+  { to: "/invoices/new", label: "Rechnung", icon: "documentPlus" },
+  { to: "/quotes/new", label: "Angebot", icon: "document" },
+  { to: "/customers?new=1", label: "Kunde", icon: "userPlus" },
+  { to: "/order-confirmations/new", label: "Auftrag", icon: "board" },
 ];
 
-export function QuickActions() {
+export function QuickActions({ className = "" }: { className?: string }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-2 gap-2">
-      {ACTIONS.map((a) => (
-        <Link key={a.label} to={a.to} className="flex items-center gap-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40 px-3 py-2.5 text-sm font-medium hover:border-brand/50 transition">
-          <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${TONES[a.tone]}`}><Icon name={a.icon} className="w-4 h-4" /></span>
-          <span className="truncate">{a.label}</span>
+    <div className={`flex justify-between sm:justify-start sm:gap-8 px-2 sm:px-0 ${className}`}>
+      {ACTIONS.map((a, i) => (
+        <Link key={a.label} to={a.to} className="flex flex-col items-center gap-1.5 group" aria-label={`Neu: ${a.label}`}>
+          <span className={`w-14 h-14 rounded-full flex items-center justify-center transition group-active:scale-95 ${i === 0 ? "bg-brand text-white shadow-lg shadow-brand/25" : "bg-white text-brand shadow group-hover:bg-slate-50"}`}>
+            <Icon name={a.icon} className="w-6 h-6" />
+          </span>
+          <span className="text-xs font-medium text-slate-600">{a.label}</span>
         </Link>
       ))}
     </div>

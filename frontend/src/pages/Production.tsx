@@ -140,7 +140,7 @@ export default function Production() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Link to="/quotes/new" title="Der übliche Start: Angebot erstellen, nach der Zusage daraus den Auftrag machen" className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-lg text-sm font-medium">+ Neues Angebot</Link>
-          <Link to="/order-confirmations/new" title="Nur wenn der Kunde schon fest bestellt hat und kein Angebot nötig ist" className="px-4 py-2 rounded-lg text-sm border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">Auftrag ohne Angebot</Link>
+          <Link to="/order-confirmations/new" title="Nur wenn der Kunde schon fest bestellt hat und kein Angebot nötig ist" className="px-4 py-2 rounded-full text-sm font-medium bg-white shadow hover:bg-slate-50">Auftrag ohne Angebot</Link>
         </div>
       </div>
 
@@ -160,10 +160,10 @@ export default function Production() {
       {staff.length > 1 && (
         <div className="flex flex-wrap items-center gap-2 mb-3 text-xs" role="group" aria-label="Nach Zuständigem filtern">
           {([["all", "Alle"], ["mine", "Meine"], ["none", "Nicht zugeordnet"]] as const).map(([k, l]) => (
-            <button key={k} type="button" onClick={() => setWho(k)} aria-pressed={who === k} className={`px-3 py-1 rounded-full border ${who === k ? "bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900" : "border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>{l}</button>
+            <button key={k} type="button" onClick={() => setWho(k)} aria-pressed={who === k} className={`px-3 py-1 rounded-full ${who === k ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900" : "bg-white shadow hover:bg-slate-50"}`}>{l}</button>
           ))}
           {staff.filter((s) => s.id !== me?.id).map((s) => (
-            <button key={s.id} type="button" onClick={() => setWho(s.id)} aria-pressed={who === s.id} title={s.name} className={`flex items-center gap-1.5 pl-1 pr-3 py-0.5 rounded-full border ${who === s.id ? "bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900" : "border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
+            <button key={s.id} type="button" onClick={() => setWho(s.id)} aria-pressed={who === s.id} title={s.name} className={`flex items-center gap-1.5 pl-1 pr-3 py-0.5 rounded-full ${who === s.id ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900" : "bg-white shadow hover:bg-slate-50"}`}>
               <Avatar id={s.id} name={s.name} avatar={s.avatar} size="xs" />{s.name.split(" ")[0]}
             </button>
           ))}
@@ -202,7 +202,7 @@ export default function Production() {
           {COLUMNS.map((col) => {
             const n = orders.filter((o) => o.productionStatus === col.key && matchesWho(o)).length;
             return (
-              <button key={col.key} type="button" role="tab" aria-selected={tab === col.key} onClick={() => setTab(col.key)} className={`rounded-lg px-1 py-2 text-xs font-medium border ${tab === col.key ? "bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900" : "border-slate-300 dark:border-slate-600"}`}>
+              <button key={col.key} type="button" role="tab" aria-selected={tab === col.key} onClick={() => setTab(col.key)} className={`rounded-2xl px-1 py-2 text-xs font-medium ${tab === col.key ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900" : "bg-white text-slate-600 shadow"}`}>
                 <span className="block truncate">{col.label}</span>
                 <span className="block text-base leading-tight">{n}</span>
               </button>
@@ -222,11 +222,11 @@ export default function Production() {
                 onDragOver={(e) => { e.preventDefault(); setOverColumn(col.key); }}
                 onDragLeave={() => setOverColumn((c) => (c === col.key ? null : c))}
                 onDrop={(e) => onDrop(e, col.key)}
-                className={`${col.key === tab ? "" : "hidden"} lg:block rounded-xl p-2 transition-colors ${overColumn === col.key ? "bg-brand/10 ring-2 ring-brand/40" : "bg-slate-100/70 dark:bg-slate-900/50"}`}
+                className={`${col.key === tab ? "" : "hidden"} lg:block rounded-3xl p-2 transition-colors ${overColumn === col.key ? "bg-brand/10 ring-2 ring-brand/40" : "bg-slate-200/50 dark:bg-slate-900/50"}`}
                 aria-label={col.label}
               >
                 <header className="flex items-center justify-between px-2 py-2" title={col.hint}>
-                  <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <span className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                     <span className={`w-2 h-2 rounded-full ${col.dot}`} />
                     {col.label}
                   </span>
@@ -244,7 +244,7 @@ export default function Production() {
                         draggable
                         onDragStart={(e) => { e.dataTransfer.setData("text/plain", o.id); e.dataTransfer.effectAllowed = "move"; setDragId(o.id); }}
                         onDragEnd={() => { setDragId(null); setOverColumn(null); }}
-                        className={`bg-white dark:bg-slate-800 rounded-lg shadow px-3 py-2 text-sm cursor-grab active:cursor-grabbing ${dragId === o.id ? "opacity-50" : ""}`}
+                        className={`bg-white dark:bg-slate-800 rounded-2xl shadow px-3 py-2.5 text-sm cursor-grab active:cursor-grabbing ${dragId === o.id ? "opacity-50" : ""}`}
                       >
                         <div className="flex items-baseline justify-between gap-2">
                           <div className="min-w-0 font-medium truncate"><Link to={`/orders/${o.id}`} className="hover:text-brand">{o.number}</Link>{(o.priority ?? 0) > 0 && <span className={`ml-2 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${o.priority === 2 ? "bg-red-500/15 text-red-500" : "bg-amber-500/15 text-amber-600"}`}>{o.priority === 2 ? "dringend" : "hoch"}</span>}</div>
@@ -274,10 +274,10 @@ export default function Production() {
                           {/* Eine Zeile für alles Wichtige: Zuständig, Spalte zurück/weiter, Mehr-Menü */}
                           <div className="ml-auto flex items-center gap-1">
                             <AssigneeSelect compact value={o.assignee?.id ?? null} current={o.assignee} onChange={async (uid) => { try { await api.patch(`/orders/${o.id}`, { assigneeId: uid }); load(); } catch (err: any) { showToast(err?.response?.data?.error ?? "Zuständigkeit konnte nicht geändert werden", "error"); } }} />
-                            <button type="button" disabled={colIndex === 0} onClick={() => move(o, COLUMNS[colIndex - 1].key)} className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 disabled:opacity-30" aria-label="Eine Spalte zurück">←</button>
-                            <button type="button" disabled={colIndex === COLUMNS.length - 1} onClick={() => move(o, COLUMNS[colIndex + 1].key)} className="w-8 h-8 rounded-lg bg-brand text-white disabled:opacity-30" aria-label="Eine Spalte weiter">→</button>
+                            <button type="button" disabled={colIndex === 0} onClick={() => move(o, COLUMNS[colIndex - 1].key)} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 disabled:opacity-30" aria-label="Eine Spalte zurück">←</button>
+                            <button type="button" disabled={colIndex === COLUMNS.length - 1} onClick={() => move(o, COLUMNS[colIndex + 1].key)} className="w-8 h-8 rounded-full bg-brand text-white disabled:opacity-30" aria-label="Eine Spalte weiter">→</button>
                             <details className="relative">
-                              <summary className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center cursor-pointer list-none select-none" aria-label="Mehr" title="Details, Kosten, Notiz, Beleg">⋯</summary>
+                              <summary className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center cursor-pointer list-none select-none" aria-label="Mehr" title="Details, Kosten, Notiz, Beleg">⋯</summary>
                               <div className="absolute right-0 bottom-9 z-20 w-36 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg py-1 text-sm">
                                 <Link to={`/orders/${o.id}`} className="block px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700">Details</Link>
                                 <button type="button" onClick={(e) => { closeMenu(e); setCostOrderId(o.id); }} className="block w-full text-left px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700">Kosten</button>

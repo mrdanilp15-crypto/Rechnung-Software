@@ -2,22 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Farben als RGB-Tripel, damit Tailwind Deckkraft-Varianten (z.B. bg-slate-900/40) bilden kann. Die Akzentfarbe (--brand) wird zur Laufzeit
+/* Helle Grau-Stufen fest (kühles Grau passend zum Seitengrund); Farben als RGB-Tripel, damit Tailwind Deckkraft-Varianten (z.B. bg-slate-900/40) bilden kann. Die Akzentfarbe (--brand) wird zur Laufzeit
    aus den Einstellungen gesetzt (src/theme/appearance.ts); die Werte hier gelten bis dahin. */
 :root {
   --brand: var(--brand-light, 37 99 235);
   --brand-dark: var(--brand-dark-light, 29 78 216);
-  --slate-50: var(--t-light-50, 248 250 252);
-  --slate-100: var(--t-light-100, 241 245 249);
-  --slate-200: var(--t-light-200, 226 232 240);
-  --slate-300: var(--t-light-300, 203 213 225);
-  --slate-400: var(--t-light-400, 148 163 184);
-  --slate-500: var(--t-light-500, 100 116 139);
-  --slate-600: var(--t-light-600, 71 85 105);
-  --slate-700: var(--t-light-700, 51 65 85);
-  --slate-800: var(--t-light-800, 30 41 59);
-  --slate-900: var(--t-light-900, 15 23 42);
-  --slate-950: var(--t-light-950, 2 6 23);
+  --slate-50: 248 250 252;
+  --slate-100: 241 245 249;
+  --slate-200: 226 232 240;
+  --slate-300: 203 213 225;
+  --slate-400: 148 163 184;
+  --slate-500: 100 116 139;
+  --slate-600: 71 85 105;
+  --slate-700: 51 65 85;
+  --slate-800: 30 41 59;
+  --slate-900: 15 23 42;
+  --slate-950: 2 6 23;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
   --card-glow: 0 0 #0000;
@@ -69,9 +69,27 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Helles, ruhiges Design: Karten heben sich mit einer feinen Linie ab statt mit einem Schatten */
+/* Modernes helles Design: hellgrauer Seitengrund, darauf weiße Karten mit großen Rundungen und nur einem Hauch Schatten */
+html:not(.dark) body {
+  background-color: #f2f3f5;
+}
 html:not(.dark) .shadow {
-  box-shadow: 0 0 0 1px rgb(var(--slate-200) / 0.9), 0 1px 2px rgb(15 23 42 / 0.03);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 1px rgb(15 23 42 / 0.02);
+}
+/* Eingabefelder und Zweitknöpfe heben sich auf grauem Grund weiß ab */
+html:not(.dark) .bg-slate-200:is(button, a) {
+  background-color: #fff;
+  box-shadow: 0 0 0 1px rgb(var(--slate-200));
+}
+html:not(.dark) .bg-slate-200:is(button, a):hover {
+  background-color: rgb(var(--slate-50));
+}
+/* Knöpfe als Pillen, Überschriften etwas enger - gilt auf allen Seiten */
+html:not(.dark) :is(button, a):is(.bg-brand, .bg-slate-200, .bg-red-600, .bg-green-600, .bg-red-100):not(.rounded-none, .rounded-2xl, .rounded-3xl) {
+  border-radius: 9999px;
+}
+h1 {
+  letter-spacing: -0.02em;
 }
 
 @keyframes toast-in {

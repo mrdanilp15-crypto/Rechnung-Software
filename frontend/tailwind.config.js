@@ -20,6 +20,8 @@ export default {
       },
       // Eckenradius kommt vom gewählten Design (siehe src/theme/themes.ts)
       borderRadius: {
+        // "rounded" (Knöpfe, Felder) etwas runder als der Tailwind-Standard
+        DEFAULT: "0.625rem",
         lg: "var(--radius-lg, 0.75rem)",
         xl: "var(--radius-xl, 1rem)",
       },

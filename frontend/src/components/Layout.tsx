@@ -133,7 +133,6 @@ export default function Layout() {
   // Sidebar ist auf dem Handy standardmäßig eingeklappt (Overlay statt fest verankert),
   // ab 1024 px (Tablet quer, Laptop) immer sichtbar - siehe lg:translate-x-0 unten; zwischen 1024 und 1279 px als schmale Symbolleiste.
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [quickOpen, setQuickOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [unread, setUnread] = useState(0);
 
@@ -190,7 +189,6 @@ export default function Layout() {
 
   useEffect(() => {
     setMobileNavOpen(false);
-    setQuickOpen(false);
   }, [location.pathname, location.search]);
   // Die Editoren haben eigene Aktionsleisten - dort stört der Schnellzugriff-Knopf
   const inEditor = /\/(new|edit)$/.test(location.pathname);
@@ -282,7 +280,7 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen">
       {/* Mobile Kopfleiste mit Hamburger-Button - ab lg verborgen, da dort die Sidebar dauerhaft sichtbar ist. */}
-      <div className="lg:hidden fixed top-0 inset-x-0 z-30 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950" style={{ height: `calc(3.5rem + ${SAFE_TOP})`, paddingTop: SAFE_TOP }}>
+      <div className="lg:hidden fixed top-0 inset-x-0 z-30 flex items-center justify-between px-4 bg-[#f2f3f5]/90 backdrop-blur" style={{ height: `calc(3.5rem + ${SAFE_TOP})`, paddingTop: SAFE_TOP }}>
         {inEditor ? (
           <button onClick={() => setMobileNavOpen(true)} className="w-9 h-9 -ml-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-xl" aria-label="Menü öffnen">
             ☰
@@ -290,8 +288,8 @@ export default function Layout() {
         ) : (
           <span className="w-9" />
         )}
-        <span className="font-semibold text-brand truncate">{appName}</span>
-        <button onClick={() => setSearchOpen(true)} className="w-9 h-9 -mr-2 rounded flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300" aria-label="Suchen">
+        <span className="font-semibold tracking-tight truncate">{appName}</span>
+        <button onClick={() => setSearchOpen(true)} className="w-9 h-9 -mr-1 rounded-full flex items-center justify-center bg-white text-slate-600 shadow" aria-label="Suchen">
           <Icon name="search" className="w-5 h-5" />
         </button>
       </div>
@@ -343,44 +341,33 @@ export default function Layout() {
         </main>
       </div>
 
-      {/* Mobil: feste Leiste unten mit den wichtigsten Bereichen (große Tippflächen), "Mehr" öffnet das ganze Menü */}
+      {/* Mobil: schwebende dunkle Leiste unten - der aktive Bereich steht mit Namen in einer weißen Pille, die anderen als Symbol; "Mehr" öffnet das ganze Menü */}
       {!inEditor && (
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 h-16 grid grid-cols-5 border-t border-slate-200/80 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)]" aria-label="Hauptnavigation">
-          {BOTTOM_BAR_KEYS.map((k) => navItems.find((n) => n.key === k)!).map((item) => {
-            const active = isActive(item);
-            return (
-              <NavLink key={item.to} to={item.to} className={`flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${active ? "text-brand" : "text-slate-500"}`}>
-                <span className={`px-4 py-1 rounded-full transition-colors ${active ? "bg-brand/10" : ""}`}><Icon name={item.icon} className="w-5 h-5" /></span>
-                {t(`nav.${item.key}`)}
-              </NavLink>
-            );
-          })}
-          <button type="button" onClick={() => setMobileNavOpen(true)} className="flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-slate-500">
-            <span className="px-4 py-1"><Icon name="more" className="w-5 h-5" /></span>
-            Mehr
-          </button>
+        <nav className="lg:hidden fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pointer-events-none" style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))" }} aria-label="Hauptnavigation">
+          <div className="pointer-events-auto flex items-center gap-1 p-1.5 rounded-full bg-slate-900 shadow-lg shadow-slate-900/25">
+            {BOTTOM_BAR_KEYS.map((k) => navItems.find((n) => n.key === k)!).map((item) => {
+              const active = isActive(item);
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  aria-label={t(`nav.${item.key}`)}
+                  title={t(`nav.${item.key}`)}
+                  aria-current={active ? "page" : undefined}
+                  className={`h-11 rounded-full flex items-center justify-center gap-1.5 transition-all ${active ? "bg-white text-slate-900 px-4 text-sm font-medium" : "w-11 text-slate-400 hover:text-white"}`}
+                >
+                  <Icon name={item.icon} className="w-5 h-5 shrink-0" />
+                  {active && <span className="whitespace-nowrap">{t(`nav.${item.key}`)}</span>}
+                </NavLink>
+              );
+            })}
+            <button type="button" onClick={() => setMobileNavOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center text-slate-400 hover:text-white" aria-label="Mehr" title="Mehr">
+              <Icon name="more" className="w-5 h-5" />
+            </button>
+          </div>
         </nav>
       )}
 
-      {/* Mobil: "+"-Knopf für die häufigsten Aktionen */}
-      {!inEditor && (
-        <div className="lg:hidden fixed bottom-20 right-4 z-20">
-          {quickOpen && (
-            <div className="absolute bottom-14 right-0 w-52 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 text-sm">
-              <button onClick={() => navigate("/invoices/new")} className="block w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700">Neue Rechnung</button>
-              <button onClick={() => navigate("/quotes/new")} className="block w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700">Neues Angebot</button>
-              <button onClick={() => navigate("/customers")} className="block w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700">Neuer Kunde</button>
-            </div>
-          )}
-          <button
-            onClick={() => setQuickOpen((v) => !v)}
-            className="w-12 h-12 rounded-full bg-brand text-white text-2xl shadow-lg flex items-center justify-center"
-            aria-label="Neu anlegen"
-          >
-            {quickOpen ? "×" : "+"}
-          </button>
-        </div>
-      )}
     </div>
   );
 }

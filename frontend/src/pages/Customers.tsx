@@ -8,7 +8,9 @@ import { AddressFields } from "../components/AddressFields";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
 import { RowActionsMenu } from "../components/RowActionsMenu";
-import { MobileCard, MobileField } from "../components/MobileCard";
+import { Icon } from "../components/Icon";
+
+const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "?";
 
 import { HelpTip } from "../components/HelpTip";
 const ROW_COLUMNS = "1fr 100px 1fr 130px 120px 90px 130px";
@@ -151,9 +153,9 @@ export default function Customers() {
   return (
     <div>
       <div className="flex justify-between items-center gap-3 mb-6">
-        <h1 className="text-2xl font-semibold">{t("customers.title")}<HelpTip topic="customers" className="ml-2" /></h1>
-        <button onClick={startCreate} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap">
-          + {t("customers.new")}
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{t("customers.title")}<HelpTip topic="customers" className="ml-2" /></h1>
+        <button onClick={startCreate} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap shadow-lg shadow-brand/20">
+          + Neu
         </button>
       </div>
 
@@ -209,17 +211,15 @@ export default function Customers() {
         </EditPanel>
       )}
 
-      <input
-        placeholder={t("customers.search")}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="w-full mb-4 px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
-      />
+      <label className="w-full mb-5 flex items-center gap-2 px-4 h-11 rounded-full bg-white shadow text-sm text-slate-400">
+        <Icon name="search" className="w-4 h-4 shrink-0" />
+        <input placeholder="Name, Nummer, Ort suchen" value={query} onChange={(e) => setQuery(e.target.value)} className="flex-1 min-w-0 bg-transparent outline-none text-slate-900 placeholder:text-slate-400 !rounded-none focus-visible:!outline-none" />
+      </label>
 
       {loading ? (
         <p>{t("common.loading")}</p>
       ) : (
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow divide-y divide-slate-100 dark:divide-slate-700">
           <div className="hidden xl:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
             <span>Name</span>
             <span>Nummer</span>
@@ -262,17 +262,17 @@ export default function Customers() {
                   {actions}
                 </div>
                 {/* Mobile */}
-                <MobileCard
-                  title={<Link to={`/customers/${c.id}`} className="text-brand hover:underline">{c.name}</Link>}
-                  subtitle={[c.customerNumber, c.contactName].filter(Boolean).join(" · ")}
-                  actions={actions}
-                >
-                  {/* Leere Felder weglassen statt "-" anzuzeigen */}
-                  {c.email && <MobileField label="E-Mail" value={c.email} />}
-                  {c.phone && <MobileField label="Telefon" value={c.phone} />}
-                  {c.city && <MobileField label="Ort" value={c.city} />}
-                  <MobileField label="Typ" value={typeBadge} />
-                </MobileCard>
+                {/* Handy: Zeile mit Initialen, Name, Nummer und Ort; Bearbeiten/Archivieren im ⋮-Menü */}
+                <div className="xl:hidden flex items-center gap-2 px-3 py-2.5">
+                  <Link to={`/customers/${c.id}`} className="flex-1 min-w-0 flex items-center gap-3">
+                    <span className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${c.type === "GEWERBLICH" ? "bg-blue-50 text-blue-700" : "bg-violet-50 text-violet-700"}`}>{initials(c.name)}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium truncate">{c.name}</span>
+                      <span className="block text-xs text-slate-500 truncate">{[c.customerNumber, c.contactName, c.city, c.type === "GEWERBLICH" ? "Firma" : null].filter(Boolean).join(" · ")}</span>
+                    </span>
+                  </Link>
+                  <RowActionsMenu actions={[{ label: t("common.edit"), onClick: () => startEdit(c) }, { label: "Archivieren", onClick: () => handleDelete(c), danger: true }]} />
+                </div>
               </div>
             );
           })}

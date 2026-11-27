@@ -54,12 +54,14 @@ export function applyAppearance(a: Appearance) {
     root.style.setProperty(`--t-light-${s}`, theme.light[s]);
     root.style.setProperty(`--t-dark-${s}`, theme.dark[s]);
   }
-  root.style.setProperty("--radius-lg", theme.radius.lg);
-  root.style.setProperty("--radius-xl", theme.radius.xl);
+  // Einheitlich große Rundungen (modernes Design), unabhängig vom früher gewählten Design
+  root.style.setProperty("--radius-lg", "1rem");
+  root.style.setProperty("--radius-xl", "1.25rem");
   root.style.setProperty("--card-glow", theme.glow || "0 0 #0000");
   root.style.setProperty("--page-glow", theme.pageGlow || "none");
   root.dataset.theme = theme.id;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", accent);
+  // Statusleiste am Handy in der Farbe des Seitengrunds
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#f2f3f5");
   document.title = cleanName(a.appName);
   // Seitenleiste und Anmeldeseite aktualisieren den Programmnamen darüber
   window.dispatchEvent(new CustomEvent("appearance-changed", { detail: a }));

@@ -4,10 +4,10 @@ import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
 import { RowActionsMenu, RowAction } from "../components/RowActionsMenu";
 import { LabelDialog } from "../components/LabelDialog";
-import { MobileCard, MobileField } from "../components/MobileCard";
 import { useToast } from "../components/Toast";
 import { RecurringDialog } from "../components/RecurringDialog";
-import { StatusChip } from "../components/StatusChip";
+import { StatusChip, StatusIcon, statusInfo } from "../components/StatusChip";
+import { Icon } from "../components/Icon";
 import { SendDocumentDialog } from "../components/SendDocumentDialog";
 import { LinkDocsDialog, type LinkCandidate } from "../components/LinkDocsDialog";
 
@@ -56,6 +56,20 @@ const formatDate = (iso?: string | null) => (iso ? new Intl.DateTimeFormat("de-D
 /** Rechnung ausgestellt, aber noch nicht bezahlt (offen oder überfällig), ohne Korrekturbelege */
 const isOpenInvoice = (r: { kind: Kind; status: string; isCancellationDocument?: boolean }) =>
   r.kind === "INVOICE" && !r.isCancellationDocument && (r.status === "SENT" || r.status === "OVERDUE");
+
+const MONTH_YEAR = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
+
+/** Liste in Abschnitte teilen: Entwürfe zusammen, sonst nach Monat (Reihenfolge der Liste bleibt erhalten). */
+function groupRows<T extends { status: string; date: string }>(list: T[]): { label: string; rows: T[] }[] {
+  const groups: { label: string; rows: T[] }[] = [];
+  for (const r of list) {
+    const label = r.status === "DRAFT" ? "Entwürfe" : MONTH_YEAR.format(new Date(r.date));
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.rows.push(r);
+    else groups.push({ label, rows: [r] });
+  }
+  return groups;
+}
 
 const ROW_COLUMNS ="90px 130px 1fr 90px 100px 110px 300px";
 
@@ -329,7 +343,7 @@ export default function Documents() {
     <button
       key={value}
       onClick={() => setFilter(value)}
-      className={`shrink-0 whitespace-nowrap px-3 py-1 rounded-full text-xs border ${filter === value ? "bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900" : "border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
+      className={`shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-medium ${filter === value ? "bg-slate-900 text-white" : "bg-white text-slate-600 shadow hover:bg-slate-50"}`}
     >
       {label} <span className="opacity-60">{counts[value] ?? 0}</span>
     </button>
@@ -338,15 +352,15 @@ export default function Documents() {
   return (
     <div>
       <div className="flex justify-between items-center gap-3 mb-4">
-        <h1 className="text-2xl font-semibold">Belege<HelpTip topic="documents" className="ml-2" /></h1>
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Belege<HelpTip topic="documents" className="ml-2" /></h1>
         <div className="flex items-center gap-4">
         <Link to="/recurring" className="text-sm text-brand hover:underline whitespace-nowrap hidden sm:inline">Wiederkehrende Rechnungen</Link>
         <div className="relative" ref={newRef}>
-          <button onClick={() => setNewOpen((v) => !v)} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap">
-            + Neuer Beleg ▾
+          <button onClick={() => setNewOpen((v) => !v)} className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap shadow-lg shadow-brand/20">
+            + Neu
           </button>
           {newOpen && (
-            <div className="absolute right-0 mt-1 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-40 text-sm">
+            <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-2xl shadow-lg py-1.5 z-40 text-sm">
               {[...KIND_ORDER].reverse().map((k) => (
                 <Link key={k} to={KIND_INFO[k].newPath} className="block px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700">
                   {NEW_LABEL[k]}
@@ -358,7 +372,11 @@ export default function Documents() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
+      <div className="flex flex-col sm:flex-row-reverse sm:items-center gap-3 mb-5">
+        <label className="sm:ml-auto w-full sm:w-72 flex items-center gap-2 px-4 h-11 rounded-full bg-white shadow text-sm text-slate-400">
+          <Icon name="search" className="w-4 h-4 shrink-0" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Kunde oder Nummer suchen" className="flex-1 min-w-0 bg-transparent outline-none text-slate-900 placeholder:text-slate-400 !rounded-none focus-visible:!outline-none" />
+        </label>
         {/* Auf dem Handy eine wischbare Zeile statt drei umbrechender Reihen */}
         <div className="flex gap-2 overflow-x-auto sm:flex-wrap -mx-4 px-4 sm:mx-0 sm:px-0 pb-1 sm:pb-0 [scrollbar-width:none]">
           {chip("ALL", "Alle")}
@@ -366,11 +384,13 @@ export default function Documents() {
           {chip("OPEN_INVOICE", "Offene Rechnungen")}
           {KIND_ORDER.map((k) => chip(k, KIND_INFO[k].plural))}
         </div>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Suchen (Nummer, Kunde) ..." className="sm:ml-auto w-full sm:w-64 px-3 py-1.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
-        <div className="hidden xl:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
+      {groupRows(visible).map((group, gi) => (
+      <section key={group.label + gi} className="mb-4">
+      <h2 className="text-xs font-medium text-slate-500 px-1 mb-1.5">{group.label}</h2>
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow divide-y divide-slate-100 dark:divide-slate-700">
+        {gi === 0 && <div className="hidden xl:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: ROW_COLUMNS }}>
           <span>Art</span>
           <span>Nummer</span>
           <span>Kunde</span>
@@ -378,8 +398,8 @@ export default function Documents() {
           <span className="text-right">Betrag</span>
           <span className="text-right">Status</span>
           <span></span>
-        </div>
-        {visible.map((row) => {
+        </div>}
+        {group.rows.map((row) => {
           const badge = <StatusChip status={row.status} kind={row.kind} isCancellationDocument={row.isCancellationDocument} emailed={!!row.emailSentAt} />;
           const actions = (
             <div className="flex gap-2 justify-end items-start">
@@ -414,22 +434,48 @@ export default function Documents() {
                 <span className="text-right">{badge}</span>
                 {actions}
               </div>
-              <MobileCard title={detailPath(row) ? <Link to={detailPath(row)!} className="text-brand hover:underline">{`${kindLabel(row)} ${row.number ?? "(Entwurf)"}`}</Link> : `${kindLabel(row)} ${row.number ?? "(Entwurf)"}`} subtitle={row.customerName}>
-                <MobileField label="Datum" value={formatDate(row.date)} />
-                <MobileField label="Betrag" value={money(row.totalCents)} />
-                <MobileField label="Status" value={badge} />
-                <div className="pt-2">{actions}</div>
-              </MobileCard>
+              {/* Handy: eine Zeile wie in einer Banking-App - Status-Symbol, Kunde, Nummer und Status, Betrag; alles Weitere im ⋮-Menü */}
+              {(() => {
+                const step = nextStep(row);
+                const path = detailPath(row);
+                const info = statusInfo(row.status, { kind: row.kind, isCancellationDocument: row.isCancellationDocument, emailed: !!row.emailSentAt });
+                const due = isOpenInvoice(row) && row.dueDate ? ` · fällig ${formatDate(row.dueDate)}` : "";
+                const body = (
+                  <>
+                    <StatusIcon status={row.status} kind={row.kind} isCancellationDocument={row.isCancellationDocument} emailed={!!row.emailSentAt} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium truncate">{row.customerName}</span>
+                      <span className="block text-xs text-slate-500 truncate">{row.number ?? kindLabel(row)} · <span className={info.tone === "red" ? "text-rose-600" : ""}>{info.label}</span>{due}</span>
+                    </span>
+                    <span className={`shrink-0 font-semibold text-sm ${row.status === "CANCELLED" ? "line-through text-slate-400" : ""}`}>{money(row.totalCents)}</span>
+                  </>
+                );
+                return (
+                  <div className="xl:hidden px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      {path ? <Link to={path} className="flex-1 min-w-0 flex items-center gap-3">{body}</Link> : <div className="flex-1 min-w-0 flex items-center gap-3">{body}</div>}
+                      <RowActionsMenu actions={actionsFor(row)} />
+                    </div>
+                    {step && (
+                      <div className="pl-12 pt-1.5">
+                        <button type="button" onClick={step.run} title={step.title} className="px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-medium">{step.label}</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           );
         })}
-        {loaded && visible.length === 0 && (
-          <div className="px-4 py-10 text-center text-slate-500">
-            <p className="mb-3">{rows.length === 0 ? "Noch keine Belege. Leg deine erste Rechnung an." : "Keine Belege für diesen Filter."}</p>
-            {rows.length === 0 && <Link to="/invoices/new" className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded text-sm">Erste Rechnung erstellen</Link>}
-          </div>
-        )}
       </div>
+      </section>
+      ))}
+      {loaded && visible.length === 0 && (
+        <div className="bg-white rounded-3xl shadow px-4 py-10 text-center text-slate-500">
+          <p className="mb-3">{rows.length === 0 ? "Noch keine Belege. Leg deine erste Rechnung an." : "Keine Belege für diesen Filter."}</p>
+          {rows.length === 0 && <Link to="/invoices/new" className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-full text-sm">Erste Rechnung erstellen</Link>}
+        </div>
+      )}
 
       {labelRow && (
         <LabelDialog

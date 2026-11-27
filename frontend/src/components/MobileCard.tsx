@@ -4,7 +4,8 @@ import { ReactNode } from "react";
  * Gestapelte Karten-Darstellung einer Listenzeile für schmale Bildschirme - Alternative
  * zur festbreiten CSS-Grid-Tabellenzeile (die auf dem Handy nur horizontal scrollbar
  * wäre). Wird zusammen mit "hidden xl:grid" (Desktop-Zeile) / "xl:hidden" (diese Karte)
- * verwendet, siehe Listen-Seiten (Products, Customers, Invoices, ...).
+ * verwendet, siehe Listen-Seiten (Products, Customers, ...).
+ * Die Aktionen stehen unten rechts, damit der Name die volle Breite bekommt.
  */
 export function MobileCard({
   title,
@@ -20,19 +21,17 @@ export function MobileCard({
   onClick?: () => void;
 }) {
   return (
-    <div className={`xl:hidden p-4 ${onClick ? "cursor-pointer active:bg-slate-50 dark:active:bg-slate-700/50" : ""}`} onClick={onClick}>
-      <div className="flex justify-between items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="font-medium truncate">{title}</div>
-          {subtitle && <div className="text-xs text-slate-500 truncate mt-0.5">{subtitle}</div>}
-        </div>
-        {actions && (
-          <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-            {actions}
-          </div>
-        )}
+    <div className={`xl:hidden px-4 py-3.5 ${onClick ? "cursor-pointer active:bg-slate-50 dark:active:bg-slate-700/50" : ""}`} onClick={onClick}>
+      <div className="min-w-0">
+        <div className="font-medium truncate">{title}</div>
+        {subtitle && <div className="text-xs text-slate-500 truncate mt-0.5">{subtitle}</div>}
       </div>
       {children && <dl className="text-sm space-y-1 mt-2 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-x-8 md:gap-y-1 md:[&>.pt-2]:col-span-full">{children}</dl>}
+      {actions && (
+        <div className="mt-2 flex justify-end text-sm" onClick={(e) => e.stopPropagation()}>
+          {actions}
+        </div>
+      )}
     </div>
   );
 }
