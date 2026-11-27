@@ -39,6 +39,24 @@ const navItems: readonly NavItem[] = [
   { to: "/help", key: "help", icon: "help", match: ["/help"] },
 ];
 
+// Kachelfarben im "Mehr"-Menü am Handy (Symbol-Kästchen in der Farbe des Bereichs)
+const TILE_TONE: Record<string, string> = {
+  start: "bg-blue-50 text-blue-600",
+  production: "bg-violet-50 text-violet-600",
+  documents: "bg-amber-50 text-amber-700",
+  customers: "bg-sky-50 text-sky-600",
+  products: "bg-blue-50 text-blue-600",
+  materials: "bg-pink-50 text-pink-600",
+  printers: "bg-violet-50 text-violet-600",
+  suppliers: "bg-orange-50 text-orange-600",
+  time: "bg-teal-50 text-teal-600",
+  finance: "bg-emerald-50 text-emerald-600",
+  stats: "bg-indigo-50 text-indigo-600",
+  archive: "bg-slate-100 text-slate-600",
+  settings: "bg-slate-100 text-slate-600",
+  help: "bg-rose-50 text-rose-600",
+};
+
 /** Schaltet bei Änderung der Fenstergröße (Drehen des Tablets) sofort um. */
 function useMedia(query: string) {
   const [matches, setMatches] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
@@ -282,8 +300,8 @@ export default function Layout() {
       {/* Mobile Kopfleiste mit Hamburger-Button - ab lg verborgen, da dort die Sidebar dauerhaft sichtbar ist. */}
       <div className="lg:hidden fixed top-0 inset-x-0 z-30 flex items-center justify-between px-4 bg-[#f2f3f5]/90 backdrop-blur" style={{ height: `calc(3.5rem + ${SAFE_TOP})`, paddingTop: SAFE_TOP }}>
         {inEditor ? (
-          <button onClick={() => setMobileNavOpen(true)} className="w-9 h-9 -ml-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-xl" aria-label="Menü öffnen">
-            ☰
+          <button onClick={() => setMobileNavOpen(true)} className="w-9 h-9 -ml-1 rounded-full flex items-center justify-center bg-white text-slate-600 shadow" aria-label="Menü öffnen">
+            <Icon name="more" className="w-5 h-5" />
           </button>
         ) : (
           <span className="w-9" />
@@ -294,15 +312,59 @@ export default function Layout() {
         </button>
       </div>
 
+      {/* Handy/Tablet: "Mehr" öffnet ein Blatt von unten mit allen Bereichen als Kacheln */}
       {mobileNavOpen && (
-        <div className="lg:hidden fixed inset-0 bg-black/40 z-30" onClick={() => setMobileNavOpen(false)} />
+        <div className="lg:hidden fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label="Alle Bereiche">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] animate-in" onClick={() => setMobileNavOpen(false)} />
+          <div className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-[2rem] bg-[#f2f3f5] px-4 pt-2 shadow-2xl sheet-up" style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))" }}>
+            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-300" aria-hidden />
+            <div className="flex items-center gap-3 mb-4">
+              <Avatar id={user?.id ?? ""} name={user?.name ?? ""} avatar={user?.avatar} size="md" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold truncate">{user?.name}</p>
+                <p className="text-xs text-slate-500 truncate">{ROLE_LABEL[user?.role ?? ""] ?? user?.role} · {appName}</p>
+              </div>
+              <button onClick={() => setMobileNavOpen(false)} className="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center text-slate-500" aria-label="Menü schließen">✕</button>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+              {navItems.map((item) => {
+                const active = isActive(item);
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === "/"}
+                    onClick={() => setMobileNavOpen(false)}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex flex-col items-center gap-2 rounded-3xl px-2 py-3.5 text-center text-xs font-medium transition active:scale-95 ${active ? "bg-slate-900 text-white" : "bg-white text-slate-700 shadow"}`}
+                  >
+                    <span className={`w-11 h-11 rounded-2xl flex items-center justify-center ${active ? "bg-white/15 text-white" : TILE_TONE[item.key] ?? "bg-slate-100 text-slate-600"}`}>
+                      <Icon name={item.icon} className="w-6 h-6" />
+                    </span>
+                    <span className="leading-tight">{t(`nav.${item.key}`)}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+            <div className="mt-3 bg-white rounded-3xl shadow divide-y divide-slate-100 text-sm">
+              <div className="flex items-center justify-between px-4 py-3">
+                <span>{t("settings.language")}</span>
+                <select value={i18n.language} onChange={(e) => setLocale(e.target.value as "de" | "en")} className="bg-slate-100 rounded-full px-3 py-1.5 text-sm">
+                  <option value="de">Deutsch</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+              <button onClick={logout} className="w-full flex items-center gap-2 px-4 py-3 text-rose-600 font-medium rounded-b-3xl">
+                <Icon name="logout" className="w-5 h-5" />{t("nav.logout")}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <aside
-        className={`w-64 ${isRail ? "lg:w-[5.75rem] lg:px-1.5" : "lg:w-64"} shrink-0 bg-white lg:bg-transparent dark:bg-slate-950 p-4 flex flex-col
-          fixed inset-y-0 left-0 z-40 transform transition-transform duration-200
-          ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:sticky lg:top-0 lg:h-screen lg:self-start lg:translate-x-0 lg:z-auto`}
+        className={`hidden lg:flex ${isRail ? "lg:w-[5.75rem] lg:px-1.5" : "lg:w-64"} shrink-0 lg:bg-transparent dark:bg-slate-950 p-4 flex-col
+          lg:sticky lg:top-0 lg:h-screen lg:self-start`}
         style={{ paddingTop: `calc(1rem + ${SAFE_TOP})` }}
       >
         {sidebarContent}

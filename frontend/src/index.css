@@ -127,3 +127,12 @@ html:not(.dark) :is(button, a).border.border-slate-300:not(.rounded-2xl, .rounde
 html.dark .text-slate-500 {
   color: rgb(var(--slate-400));
 }
+
+/* "Mehr"-Menü am Handy fährt von unten hoch */
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.sheet-up {
+  animation: sheet-up 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
