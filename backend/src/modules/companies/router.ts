@@ -236,7 +236,7 @@ companiesRouter.get("/me/pdf-preview", async (req, res) => {
     deliveryDate: issueDate,
     locale: "de",
     branding: company,
-    recipient: { customerNumber: "K-0001", name: "Beispiel GmbH", contactName: "Frau Beispiel", street: "Beispielstraße 1", postalCode: "10115", city: "Berlin", country: "DE" },
+    recipient: { customerNumber: "K-1001", name: "Beispiel GmbH", contactName: "Frau Beispiel", street: "Beispielstraße 1", postalCode: "10115", city: "Berlin", country: "DE" },
     items,
     subtotalCents: totals.subtotalCents,
     vatBreakdown: totals.vatBreakdown,
