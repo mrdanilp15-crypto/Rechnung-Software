@@ -18,7 +18,7 @@ export function missingIssuerData(company: Pick<Company, "name" | "street" | "po
  * Gibt eine Liste menschenlesbarer Hinweise zurück - keine rechtsverbindliche Prüfung,
  * sondern ein Hinweis, was auf der Rechnung typischerweise fehlt.
  */
-export function getInvoiceComplianceWarnings(company: Company, invoice: Pick<Invoice, "deliveryDate" | "issueDate" | "vatNoticeKey">, customer?: Pick<Customer, "vatId" | "name">): string[] {
+export function getInvoiceComplianceWarnings(company: Company, invoice: Pick<Invoice, "deliveryDate" | "issueDate" | "vatNoticeKey"> & { status?: string }, customer?: Pick<Customer, "vatId" | "name">): string[] {
   const warnings: string[] = [];
 
   if (!company.taxId && !company.vatId) {
@@ -27,7 +27,8 @@ export function getInvoiceComplianceWarnings(company: Company, invoice: Pick<Inv
   if (!company.street || !company.postalCode || !company.city) {
     warnings.push("Firmenanschrift ist unvollständig (Straße/PLZ/Ort in den Einstellungen ergänzen).");
   }
-  if (!invoice.deliveryDate) {
+  // Nur beim Entwurf sinnvoll: eine ausgestellte Rechnung lässt sich nicht mehr ändern (auf dem PDF steht dann das Rechnungsdatum)
+  if (!invoice.deliveryDate && (invoice.status === undefined || invoice.status === "DRAFT")) {
     warnings.push("Kein Leistungs-/Lieferdatum gesetzt - es wird das Rechnungsdatum als Leistungsdatum ausgewiesen (§14 Abs. 4 Nr. 6 UStG). Weicht der tatsächliche Liefer-/Leistungstag ab, bitte eintragen.");
   }
 

@@ -63,6 +63,7 @@ export function PricedItemsEditor({
   onProductCreated,
   compact = false,
   showPrices = true,
+  showVat = true,
 }: {
   items: LineItem[];
   onChange: (items: LineItem[]) => void;
@@ -73,6 +74,8 @@ export function PricedItemsEditor({
   compact?: boolean;
   /** false z.B. beim Lieferschein: nur Menge und Einheit, keine Preise/USt. */
   showPrices?: boolean;
+  /** false bei Kleinunternehmern (§19 UStG): kein USt.-Satz je Position */
+  showVat?: boolean;
 }) {
   const { t } = useTranslation();
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -198,17 +201,17 @@ export function PricedItemsEditor({
               <div className="flex gap-2 items-start">
                 <span className="text-xs text-slate-400 pt-2 w-4 shrink-0">{idx + 1}</span>
                 {item.isDownPaymentDeduction && <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 shrink-0 mt-1.5">Abzug</span>}
-                <div className="flex-1 min-w-0">
-                  <input list="pe-products" placeholder="Beschreibung oder Produkt eintippen" value={item.description} onChange={(e) => onDescription(item, e.target.value)} className={inputClass} />
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <input list="pe-products" placeholder="Was wird berechnet?" value={item.description} onChange={(e) => onDescription(item, e.target.value)} className={inputClass} />
+                  <select value={item.productId || ""} onChange={(e) => applyProduct(item._key, e.target.value)} className={`${inputClass} text-slate-500 ${products.length ? "" : "hidden"}`} aria-label="Aus Katalog wählen">
+                    <option value="">… oder aus dem Katalog wählen</option>
+                    {products.map((pr) => (
+                      <option key={pr.id} value={pr.id}>{pr.name}</option>
+                    ))}
+                  </select>
                   {productHint(item)}{showPrices && tierNote(item)}
                   {catalogHint(item)}
                 </div>
-                <select value={item.productId || ""} onChange={(e) => applyProduct(item._key, e.target.value)} className={`${inputClass} !w-28 shrink-0 ${products.length ? "" : "hidden"}`} aria-label="Aus Katalog wählen">
-                  <option value="">Katalog</option>
-                  {products.map((pr) => (
-                    <option key={pr.id} value={pr.id}>{pr.name}</option>
-                  ))}
-                </select>
                 <button type="button" onClick={() => onChange(items.filter((it) => it._key !== item._key))} className="text-red-500 px-1 pt-1" aria-label="Position entfernen">✕</button>
               </div>
               <div className={`grid ${showPrices ? "grid-cols-2 sm:grid-cols-[1fr_0.8fr_1.2fr_0.9fr_1.1fr]" : "grid-cols-[1fr_1fr]"} gap-2 items-end pl-6`}>
@@ -224,7 +227,7 @@ export function PricedItemsEditor({
                   <label className="block text-[11px] text-slate-500 mb-0.5">Preis (€)</label>
                   <input type="number" min={0} step="0.01" value={item.unitPriceCents / 100} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { unitPriceCents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className={inputClass} />
                 </div>
-                <div className={showPrices ? undefined : "hidden"}>
+                <div className={showPrices && showVat ? undefined : "hidden"}>
                   <label className="block text-[11px] text-slate-500 mb-0.5">USt.</label>
                   <select value={item.vatRateBps} onChange={(e) => updateItem(item._key, { vatRateBps: Number(e.target.value) })} className={inputClass}>
                     <option value={1900}>19%</option>
@@ -247,7 +250,7 @@ export function PricedItemsEditor({
             <th className="pb-2">Beschreibung</th>
             <th className="pb-2 w-20">Menge</th>
             <th className="pb-2 w-28">Preis (€)</th>
-            <th className="pb-2 w-20">USt.</th>
+            {showVat && <th className="pb-2 w-20">USt.</th>}
             <th className="pb-2 w-28 text-right">Summe</th>
             <th></th>
           </tr>
@@ -274,13 +277,15 @@ export function PricedItemsEditor({
               <td className="py-2 pr-2">
                 <input type="number" min={0} step="0.01" value={item.unitPriceCents / 100} onFocus={(e) => e.target.select()} onChange={(e) => updateItem(item._key, { unitPriceCents: Math.round((parseFloat(e.target.value) || 0) * 100) })} className={inputClass} />
               </td>
-              <td className="py-2 pr-2">
-                <select value={item.vatRateBps} onChange={(e) => updateItem(item._key, { vatRateBps: Number(e.target.value) })} className={inputClass}>
-                  <option value={1900}>19%</option>
-                  <option value={700}>7%</option>
-                  <option value={0}>0%</option>
-                </select>
-              </td>
+              {showVat && (
+                <td className="py-2 pr-2">
+                  <select value={item.vatRateBps} onChange={(e) => updateItem(item._key, { vatRateBps: Number(e.target.value) })} className={inputClass}>
+                    <option value={1900}>19%</option>
+                    <option value={700}>7%</option>
+                    <option value={0}>0%</option>
+                  </select>
+                </td>
+              )}
               <td className="py-2 text-right">{formatEuro(item.quantity * item.unitPriceCents)}</td>
               <td>
                 <button type="button" onClick={() => onChange(items.filter((it) => it._key !== item._key))} className="text-red-500 px-2">✕</button>
@@ -324,7 +329,7 @@ export function PricedItemsEditor({
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 items-end">
-              <div>
+              <div className={showVat ? undefined : "invisible"}>
                 <label className="block text-xs text-slate-500 mb-1">USt.</label>
                 <select value={item.vatRateBps} onChange={(e) => updateItem(item._key, { vatRateBps: Number(e.target.value) })} className={inputClass}>
                   <option value={1900}>19%</option>
@@ -360,10 +365,14 @@ export function TotalsSummary({ items, isSmallBusiness = false, abroadHint = fal
   const shownGross = netTotal + shownVat;
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 max-w-xs ml-auto text-sm">
-      <div className="flex justify-between py-1"><span>Netto</span><span>{formatEuro(netTotal)}</span></div>
-      <div className="flex justify-between py-1"><span>USt.</span><span>{formatEuro(shownVat)}</span></div>
-      <div className="flex justify-between py-1 font-semibold border-t border-slate-200 dark:border-slate-700 mt-1 pt-1"><span>{t("invoices.total")}</span><span>{formatEuro(isSmallBusiness ? shownGross : grossTotal)}</span></div>
-      {isSmallBusiness && <p className="text-xs text-slate-500 mt-2">Kleinunternehmerregelung (§19 UStG): es wird keine Umsatzsteuer ausgewiesen.</p>}
+      {!isSmallBusiness && (
+        <>
+          <div className="flex justify-between py-1"><span>Netto</span><span>{formatEuro(netTotal)}</span></div>
+          <div className="flex justify-between py-1"><span>USt.</span><span>{formatEuro(shownVat)}</span></div>
+        </>
+      )}
+      <div className={`flex justify-between py-1 font-semibold ${isSmallBusiness ? "" : "border-t border-slate-200 dark:border-slate-700 mt-1 pt-1"}`}><span>{t("invoices.total")}</span><span>{formatEuro(isSmallBusiness ? shownGross : grossTotal)}</span></div>
+      {isSmallBusiness && <p className="text-xs text-slate-500 mt-2">Keine Umsatzsteuer (Kleinunternehmer, §19 UStG) - der Hinweis steht automatisch auf dem Beleg.</p>}
       {abroadHint && !isSmallBusiness && (
         <p className="text-xs text-slate-500 mt-2">Auslandskunde: Die USt. kann entfallen (innergemeinschaftliche Lieferung, Reverse-Charge, Ausfuhr). Die endgültigen Beträge stehen nach dem Speichern fest.</p>
       )}

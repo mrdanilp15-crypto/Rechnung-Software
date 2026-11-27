@@ -76,41 +76,6 @@ function IncomeExpenseChart({ months, expenses }: { months: Stats["months"]; exp
   );
 }
 
-/** Ring-Diagramm der Rechnungen nach Status (SVG); in der Mitte die Gesamtzahl. */
-function StatusRing({ parts }: { parts: { label: string; count: number; color: string }[] }) {
-  const total = parts.reduce((s, p) => s + p.count, 0);
-  const R = 52;
-  const C = 2 * Math.PI * R;
-  let offset = 0;
-  return (
-    <div className="flex items-center gap-5">
-      <svg viewBox="0 0 140 140" className="w-32 h-32 shrink-0 -rotate-90" role="img" aria-label="Rechnungen nach Status">
-        <circle cx="70" cy="70" r={R} fill="none" strokeWidth="16" className="stroke-slate-100 dark:stroke-slate-700" />
-        {total > 0 &&
-          parts.filter((p) => p.count > 0).map((p) => {
-            const len = (p.count / total) * C;
-            const el = <circle key={p.label} cx="70" cy="70" r={R} fill="none" strokeWidth="16" stroke={p.color} strokeDasharray={`${Math.max(len - 2, 0.5)} ${C - Math.max(len - 2, 0.5)}`} strokeDashoffset={-offset} />;
-            offset += len;
-            return el;
-          })}
-        <g className="rotate-90 origin-center">
-          <text x="70" y="68" textAnchor="middle" className="fill-slate-900 dark:fill-slate-100" fontSize="26" fontWeight="600">{total}</text>
-          <text x="70" y="86" textAnchor="middle" className="fill-slate-500" fontSize="11">Rechnungen</text>
-        </g>
-      </svg>
-      <ul className="space-y-1.5 text-sm min-w-0">
-        {parts.map((p) => (
-          <li key={p.label} className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color }} />
-            <span className="text-slate-600 dark:text-slate-300">{p.label}</span>
-            <span className="ml-auto pl-3 font-medium">{p.count}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 const KIND_LABEL = { INVOICE: "Rechnung", QUOTE: "Angebot", ORDER_CONFIRMATION: "Auftrag", DELIVERY_NOTE: "Lieferschein" } as const;
 const KIND_BASE = { INVOICE: "/invoices", QUOTE: "/quotes", ORDER_CONFIRMATION: "/order-confirmations", DELIVERY_NOTE: "/delivery-notes" } as const;
 
@@ -195,13 +160,6 @@ export default function Dashboard() {
   const kgTotal = materials.reduce((s, m) => s + (stockKg(m) ?? 0), 0);
   const lowCount = materials.filter(isLow).length;
 
-  const ringParts = [
-    { label: "Entwurf", count: invoices.filter((r) => r.status === "DRAFT").length, color: "#f59e0b" },
-    { label: "Offen", count: invoices.filter((r) => r.status === "SENT").length, color: "#3b82f6" },
-    { label: "Überfällig", count: overdue.length, color: "#ef4444" },
-    { label: "Bezahlt", count: invoices.filter((r) => r.status === "PAID").length, color: "#22c55e" },
-  ];
-
   const firstName = user?.name?.split(/\s+/)[0] ?? "";
   const summary = [
     onlinePrinters.length > 0 ? (printerErrors > 0 ? `${printerErrors} Drucker mit Fehler` : printingNow > 0 ? `${printingNow} Drucker ${printingNow === 1 ? "druckt" : "drucken"}` : "Deine Drucker sind bereit") : null,
@@ -218,8 +176,6 @@ export default function Dashboard() {
         <p className="text-sm text-slate-500">{WEEKDAY_DATE.format(now)}</p>
       </div>
 
-      <NotificationsCard />
-
       {revenue?.isSmallBusiness && (revenue.isApproaching || revenue.currentYearExceeded || revenue.priorYearExceeded) && (
         <div className={`rounded-xl p-4 mb-6 text-sm ${revenue.currentYearExceeded || revenue.priorYearExceeded ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"}`}>
           {revenue.priorYearExceeded ? (
@@ -233,6 +189,7 @@ export default function Dashboard() {
       )}
 
       <TodoPanel />
+      <NotificationsCard />
       <SetupChecklist />
 
       {loading ? (
@@ -247,17 +204,20 @@ export default function Dashboard() {
             <Kpi icon="receipt" tone={overdue.length > 0 ? "red" : "slate"} label="Offene Rechnungen" value={eur(openTotal)} sub={`${open.length} Rechnung${open.length === 1 ? "" : "en"}${overdue.length > 0 ? ` · ${overdue.length} überfällig` : ""}`} subTone={overdue.length > 0 ? "bad" : "muted"} to="/documents?type=INVOICE" />
           </div>
 
+          {/* Leere Bereiche (kein Drucker verbunden, kein Material) blendet die Startseite aus - die Kacheln oben sagen das schon */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-3">
-            <Panel title="Druckerübersicht" help="printers" action={{ to: "/catalog?tab=printers", label: "Alle anzeigen" }} className="xl:col-span-2">
-              <PrinterOverview printers={livePrinters} />
-            </Panel>
-            <Panel title="Aktuelle Aufträge" help="production" action={{ to: "/production", label: "Alle anzeigen" }}>
+            {livePrinters.length > 0 && (
+              <Panel title="Druckerübersicht" help="printers" action={{ to: "/catalog?tab=printers", label: "Alle anzeigen" }} className="xl:col-span-2">
+                <PrinterOverview printers={livePrinters} />
+              </Panel>
+            )}
+            <Panel title="Aktuelle Aufträge" help="production" action={{ to: "/production", label: "Alle anzeigen" }} className={livePrinters.length > 0 ? "" : "xl:col-span-3"}>
               <OrdersWidget orders={openOrders} />
             </Panel>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-3">
-            <Panel className="xl:col-span-2">
+            <Panel className={materials.length > 0 ? "xl:col-span-2" : "xl:col-span-3"}>
               <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                 <h2 className="text-base font-semibold tracking-tight">Umsatz &amp; Gewinn</h2>
                 <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden text-xs" role="group" aria-label="Zeitraum">
@@ -283,9 +243,11 @@ export default function Dashboard() {
               )}
               <p className="text-xs text-slate-500 mt-2">Monatsansicht: aufgelaufene Werte seit dem 1. des Monats. Umsatz = bezahlte Rechnungen nach Zahlungsdatum{revenue?.isSmallBusiness ? "" : " (netto)"}, Ausgaben laut Ausgabenliste.</p>
             </Panel>
-            <Panel title="Materiallager" help="materials" action={{ to: "/catalog?tab=materials", label: "Alle anzeigen" }}>
-              <MaterialWidget materials={materials} />
-            </Panel>
+            {materials.length > 0 && (
+              <Panel title="Materiallager" help="materials" action={{ to: "/catalog?tab=materials", label: "Alle anzeigen" }}>
+                <MaterialWidget materials={materials} />
+              </Panel>
+            )}
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-6">
@@ -308,8 +270,8 @@ export default function Dashboard() {
             </Panel>
 
             <div className="space-y-3 min-w-0">
-              <Panel title="Schnellaktionen" help="search"><QuickActions /></Panel>
-              <Panel title="Rechnungen nach Status"><StatusRing parts={ringParts} /></Panel>
+              {/* Auf dem Handy gibt es dafür den +-Knopf */}
+              <Panel title="Schnellaktionen" help="search" className="hidden lg:block"><QuickActions /></Panel>
               {stats && (
                 <Panel title={`Beste Kunden ${now.getFullYear()}`}>
                   {stats.topCustomers.length === 0 && <p className="text-sm text-slate-500">Noch kein Umsatz.</p>}

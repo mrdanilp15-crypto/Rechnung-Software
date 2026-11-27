@@ -42,6 +42,8 @@ const KIND_INFO: Record<Kind, { label: string; plural: string; base: string; new
   INVOICE: { label: "Rechnung", plural: "Rechnungen", base: "/invoices", newPath: "/invoices/new" },
 };
 
+const NEW_LABEL: Record<Kind, string> = { QUOTE: "Neues Angebot", ORDER_CONFIRMATION: "Neuer Auftrag", DELIVERY_NOTE: "Neuer Lieferschein", INVOICE: "Neue Rechnung" };
+
 // Reihenfolge entspricht dem üblichen Ablauf: Angebot -> Auftrag -> Lieferschein -> Rechnung
 const KIND_ORDER: Kind[] = ["QUOTE", "ORDER_CONFIRMATION", "DELIVERY_NOTE", "INVOICE"];
 
@@ -322,15 +324,16 @@ export default function Documents() {
     return null;
   }
 
-  const chip = (value: string, label: string) => (
+  // Leere Filter (z.B. "Entwürfe 0") ausblenden, außer "Alle" und dem gerade aktiven
+  const chip = (value: string, label: string) => (value !== "ALL" && value !== filter && !(counts[value] ?? 0) ? null : (
     <button
       key={value}
       onClick={() => setFilter(value)}
-      className={`px-3 py-1 rounded-full text-xs border ${filter === value ? "bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900" : "border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
+      className={`shrink-0 whitespace-nowrap px-3 py-1 rounded-full text-xs border ${filter === value ? "bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900" : "border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
     >
       {label} <span className="opacity-60">{counts[value] ?? 0}</span>
     </button>
-  );
+  ));
 
   return (
     <div>
@@ -343,10 +346,10 @@ export default function Documents() {
             + Neuer Beleg ▾
           </button>
           {newOpen && (
-            <div className="absolute right-0 mt-1 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-10 text-sm">
+            <div className="absolute right-0 mt-1 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-40 text-sm">
               {[...KIND_ORDER].reverse().map((k) => (
                 <Link key={k} to={KIND_INFO[k].newPath} className="block px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700">
-                  Neue(r) {KIND_INFO[k].label}
+                  {NEW_LABEL[k]}
                 </Link>
               ))}
             </div>
@@ -355,12 +358,15 @@ export default function Documents() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        {chip("ALL", "Alle")}
-        {chip("DRAFT", "Entwürfe")}
-        {chip("OPEN_INVOICE", "Offene Rechnungen")}
-        {KIND_ORDER.map((k) => chip(k, KIND_INFO[k].plural))}
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Suchen (Nummer, Kunde) ..." className="ml-auto w-full sm:w-64 px-3 py-1.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
+        {/* Auf dem Handy eine wischbare Zeile statt drei umbrechender Reihen */}
+        <div className="flex gap-2 overflow-x-auto sm:flex-wrap -mx-4 px-4 sm:mx-0 sm:px-0 pb-1 sm:pb-0 [scrollbar-width:none]">
+          {chip("ALL", "Alle")}
+          {chip("DRAFT", "Entwürfe")}
+          {chip("OPEN_INVOICE", "Offene Rechnungen")}
+          {KIND_ORDER.map((k) => chip(k, KIND_INFO[k].plural))}
+        </div>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Suchen (Nummer, Kunde) ..." className="sm:ml-auto w-full sm:w-64 px-3 py-1.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">

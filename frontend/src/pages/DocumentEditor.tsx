@@ -502,6 +502,7 @@ Abbrechen = weiter bearbeiten`)) navigate("/documents");
 
           <div className="text-xs font-medium text-slate-500 mb-2 px-1">2 · Positionen</div>
           <PricedItemsEditor
+            showVat={!isSmallBusiness}
             items={items}
             onChange={setItems}
             products={products}

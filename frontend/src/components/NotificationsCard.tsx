@@ -121,22 +121,24 @@ export function NotificationsCard() {
   const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   // Die Karte lässt sich einklappen (merkt sich der Browser), gleiche Meldungen werden zusammengefasst
-  const [collapsed, setCollapsed] = useState(() => {
+  // null = nie umgeschaltet: dann eingeklappt, solange es keine Meldungen gibt (spart Platz auf der Startseite)
+  const [collapsedPref, setCollapsedPref] = useState<boolean | null>(() => {
     try {
-      return localStorage.getItem("meldungen_collapsed") === "1";
+      const v = localStorage.getItem("meldungen_collapsed");
+      return v === "1" ? true : v === "0" ? false : null;
     } catch {
-      return false;
+      return null;
     }
   });
+  const collapsed = collapsedPref ?? items.length === 0;
   function toggleCollapsed() {
-    setCollapsed((v) => {
-      try {
-        localStorage.setItem("meldungen_collapsed", v ? "0" : "1");
-      } catch {
-        // Speicher gesperrt - gilt dann nur bis zum Neuladen
-      }
-      return !v;
-    });
+    const next = !collapsed;
+    setCollapsedPref(next);
+    try {
+      localStorage.setItem("meldungen_collapsed", next ? "1" : "0");
+    } catch {
+      // Speicher gesperrt - gilt dann nur bis zum Neuladen
+    }
   }
   const grouped = useMemo(() => {
     const out: (Item & { count: number })[] = [];

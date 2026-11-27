@@ -79,12 +79,16 @@ invoicesRouter.get("/:id", async (req, res) => {
 // DRAFT (Versenden bzw. direktes "als bezahlt markieren"). Wird ein Entwurf vorher
 // gelöscht, ohne je eine Nummer bekommen zu haben, entsteht dadurch KEINE Lücke in der
 // Nummernfolge - eine lückenlose Rechnungsnummerierung ist eine GoBD-Kernanforderung.
-async function finalizeInvoiceNumber(tx: Prisma.TransactionClient | PrismaClient, invoice: { id: string; companyId: string; invoiceNumber: string | null }) {
+async function finalizeInvoiceNumber(tx: Prisma.TransactionClient | PrismaClient, invoice: { id: string; companyId: string; invoiceNumber: string | null; isSmallBusiness: boolean }) {
   if (invoice.invoiceNumber) return invoice.invoiceNumber;
   const company = await tx.company.findUniqueOrThrow({ where: { id: invoice.companyId } });
+  // Sonst fehlt der §19-Hinweis bzw. die USt. stimmt nicht - Speichern des Entwurfs rechnet mit der aktuellen Einstellung neu
+  if (invoice.isSmallBusiness !== company.isSmallBusiness) {
+    throw new HttpError(409, "Die Kleinunternehmer-Einstellung hat sich geändert, seit dieser Entwurf angelegt wurde. Bitte den Entwurf einmal öffnen und speichern, damit Steuer und Hinweise stimmen.");
+  }
   const missing = missingIssuerData(company);
   if (missing.length > 0) {
-    throw new HttpError(422, `Die Rechnung kann noch nicht ausgestellt werden - es fehlen Pflichtangaben (§14 UStG): ${missing.join(", ")}. Bitte unter Einstellungen → Firmendaten ergänzen.`);
+    throw new HttpError(422, `Die Rechnung kann noch nicht ausgestellt werden - es fehlen Pflichtangaben (§14 UStG): ${missing.join(", ")}. Bitte unter Einstellungen → Firmendaten ergänzen.`.replace(".. ", ". "));
   }
   const invoiceNumber = await nextDocumentNumber(invoice.companyId, "INVOICE", tx);
   await tx.invoice.update({ where: { id: invoice.id }, data: { invoiceNumber } });
