@@ -1,18 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 const STORAGE_KEY = "rechnung_theme";
 
+// Die App ist bewusst immer hell (Wunsch des Inhabers). Ein früher gespeichertes "dunkel" wird beim Start entfernt.
 export function useDarkMode() {
-  const [isDark, setIsDark] = useState<boolean>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return stored === "dark";
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
-
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDark);
-    localStorage.setItem(STORAGE_KEY, isDark ? "dark" : "light");
-  }, [isDark]);
-
-  return { isDark, toggle: () => setIsDark((v) => !v) };
+    document.documentElement.classList.remove("dark");
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Speicher gesperrt - spielt keine Rolle, die App ist ohnehin hell
+    }
+  }, []);
+  return { isDark: false, toggle: () => {} };
 }

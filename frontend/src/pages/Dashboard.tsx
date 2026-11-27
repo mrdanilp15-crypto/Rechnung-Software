@@ -188,6 +188,17 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Farbige Kacheln oben: das Wichtigste auf einen Blick */}
+      {!loading && (
+      <div className={`grid grid-cols-2 gap-3 mb-6 ${livePrinters.length > 0 ? "md:grid-cols-3 xl:grid-cols-5 [&>*:last-child]:col-span-2 md:[&>*:last-child]:col-span-1" : "md:grid-cols-4"}`}>
+        <Kpi icon="receipt" tone={overdue.length > 0 ? "red" : "amber"} label="Offen" value={eur(openTotal)} sub={`${open.length} Rechnung${open.length === 1 ? "" : "en"}${overdue.length > 0 ? ` · ${overdue.length} überfällig` : ""}`} subTone={overdue.length > 0 ? "bad" : "muted"} to="/documents?type=INVOICE" />
+        <Kpi icon="money" tone="green" label="Bezahlt diesen Monat" value={eur(monthRevenue)} sub={revenueDelta === null ? `Vormonat ${eur(prevRevenue)}` : `${revenueDelta >= 0 ? "+" : ""}${revenueDelta} % zum Vormonat`} subTone={revenueDelta === null ? "muted" : revenueDelta >= 0 ? "good" : "bad"} to="/finance" />
+        <Kpi icon="board" tone="violet" label="In Produktion" value={activeOrders.length} sub={newOrders > 0 ? `+${newOrders} seit gestern` : "keine neuen seit gestern"} subTone={newOrders > 0 ? "good" : "muted"} to="/production" />
+        <Kpi icon="filament" tone="pink" label="Materialbestand" value={`${kgTotal.toLocaleString("de-DE", { maximumFractionDigits: 1 })} kg`} sub={materials.length === 0 ? "noch kein Material" : lowCount > 0 ? `${lowCount} Artikel knapp` : "alles ausreichend"} subTone={lowCount > 0 ? "bad" : "good"} to="/catalog?tab=materials" />
+        {livePrinters.length > 0 && <Kpi icon="printer" tone="slate" label="Drucker online" value={livePrinters.length > 0 ? `${onlinePrinters.length} / ${livePrinters.length}` : "-"} sub={livePrinters.length > 0 ? `${Math.round((onlinePrinters.length / livePrinters.length) * 100)} % online` : "keine Live-Verbindung"} subTone={livePrinters.length > 0 && onlinePrinters.length < livePrinters.length ? "warn" : "muted"} to="/catalog?tab=printers" />}
+      </div>
+      )}
+
       <TodoPanel />
       <NotificationsCard />
       <SetupChecklist />
@@ -196,14 +207,6 @@ export default function Dashboard() {
         <p>Wird geladen ...</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6 [&>*:last-child]:col-span-2 md:[&>*:last-child]:col-span-1">
-            <Kpi icon="board" tone="brand" label="In Produktion" value={activeOrders.length} sub={newOrders > 0 ? `+${newOrders} seit gestern` : "keine neuen seit gestern"} subTone={newOrders > 0 ? "good" : "muted"} to="/production" />
-            <Kpi icon="printer" tone="green" label="Drucker online" value={livePrinters.length > 0 ? `${onlinePrinters.length} / ${livePrinters.length}` : "-"} sub={livePrinters.length > 0 ? `${Math.round((onlinePrinters.length / livePrinters.length) * 100)} % online` : "keine Live-Verbindung"} subTone={livePrinters.length > 0 && onlinePrinters.length < livePrinters.length ? "warn" : "muted"} to="/catalog?tab=printers" />
-            <Kpi icon="money" tone="violet" label="Umsatz bezahlt (Monat)" value={eur(monthRevenue)} sub={revenueDelta === null ? `Vormonat ${eur(prevRevenue)}` : `${revenueDelta >= 0 ? "+" : ""}${revenueDelta} % zum Vormonat`} subTone={revenueDelta === null ? "muted" : revenueDelta >= 0 ? "good" : "bad"} to="/finance" />
-            <Kpi icon="filament" tone="amber" label="Materialbestand" value={`${kgTotal.toLocaleString("de-DE", { maximumFractionDigits: 1 })} kg`} sub={materials.length === 0 ? "noch kein Material" : lowCount > 0 ? `${lowCount} Artikel knapp` : "alles ausreichend"} subTone={lowCount > 0 ? "bad" : "good"} to="/catalog?tab=materials" />
-            <Kpi icon="receipt" tone={overdue.length > 0 ? "red" : "slate"} label="Offene Rechnungen" value={eur(openTotal)} sub={`${open.length} Rechnung${open.length === 1 ? "" : "en"}${overdue.length > 0 ? ` · ${overdue.length} überfällig` : ""}`} subTone={overdue.length > 0 ? "bad" : "muted"} to="/documents?type=INVOICE" />
-          </div>
-
           {/* Leere Bereiche (kein Drucker verbunden, kein Material) blendet die Startseite aus - die Kacheln oben sagen das schon */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-3">
             {livePrinters.length > 0 && (

@@ -9,25 +9,27 @@ import { HelpTip } from "../HelpTip";
 export const eur = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
 export const eurShort = (cents: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(cents / 100);
 
+// Kacheln der Startseite: je Bereich eine helle Pastellfarbe (Kachel, Symbol, Schrift aus derselben Farbfamilie)
 const TONES = {
-  brand: "bg-brand/15 text-brand",
-  green: "bg-green-500/15 text-green-600 dark:text-green-400",
-  amber: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-  red: "bg-red-500/15 text-red-600 dark:text-red-400",
-  violet: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
-  slate: "bg-slate-500/15 text-slate-500 dark:text-slate-400",
+  brand: { tile: "bg-violet-50", icon: "bg-white/70 text-violet-600", text: "text-violet-950", label: "text-violet-700" },
+  violet: { tile: "bg-violet-50", icon: "bg-white/70 text-violet-600", text: "text-violet-950", label: "text-violet-700" },
+  green: { tile: "bg-emerald-50", icon: "bg-white/70 text-emerald-600", text: "text-emerald-950", label: "text-emerald-700" },
+  amber: { tile: "bg-amber-50", icon: "bg-white/70 text-amber-600", text: "text-amber-950", label: "text-amber-700" },
+  red: { tile: "bg-rose-50", icon: "bg-white/70 text-rose-600", text: "text-rose-950", label: "text-rose-700" },
+  pink: { tile: "bg-pink-50", icon: "bg-white/70 text-pink-600", text: "text-pink-950", label: "text-pink-700" },
+  slate: { tile: "bg-slate-100", icon: "bg-white/70 text-slate-500", text: "text-slate-900", label: "text-slate-600" },
 } as const;
 export type Tone = keyof typeof TONES;
-const SUB_TONES = { good: "text-green-600 dark:text-green-400", warn: "text-amber-600 dark:text-amber-400", bad: "text-red-600 dark:text-red-400", muted: "text-slate-500" } as const;
+const SUB_TONES = { good: "text-emerald-700", warn: "text-amber-700", bad: "text-rose-700", muted: "" } as const;
 
 /** Karte mit Titel und optionalem Link rechts oben. */
 export function Panel({ title, action, className = "", help, children }: { title?: string; action?: { to: string; label: string }; className?: string; /** Hilfethema: zeigt ein ? neben dem Titel */ help?: string; children: ReactNode }) {
   return (
-    <section className={`bg-white dark:bg-slate-800 rounded-xl p-4 shadow min-w-0 ${className}`}>
+    <section className={`bg-white rounded-2xl p-4 shadow min-w-0 ${className}`}>
       {title && (
         <div className="flex items-center justify-between gap-2 mb-3">
           <h2 className="text-base font-semibold tracking-tight">{title}{help && <HelpTip topic={help} className="ml-2" />}</h2>
-          {action && <Link to={action.to} className="text-xs text-slate-500 hover:text-brand border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1">{action.label}</Link>}
+          {action && <Link to={action.to} className="text-xs text-slate-500 hover:text-brand">{action.label} →</Link>}
         </div>
       )}
       {children}
@@ -35,22 +37,21 @@ export function Panel({ title, action, className = "", help, children }: { title
   );
 }
 
-/** Kennzahl-Kachel: Symbol links, Wert groß, Zusatzzeile farbig. */
+/** Kennzahl-Kachel: farbige Fläche, Symbol oben, Wert groß, darunter Bezeichnung und Zusatzzeile. */
 export function Kpi({ icon, tone, label, value, sub, subTone = "muted", to }: { icon: IconName; tone: Tone; label: string; value: ReactNode; sub?: ReactNode; subTone?: keyof typeof SUB_TONES; to?: string }) {
+  const c = TONES[tone];
   const body = (
-    <div className="flex items-center gap-2.5 sm:gap-4">
-      <span className={`hidden min-[360px]:flex w-9 h-9 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 ${TONES[tone]}`}>
-        <Icon name={icon} className="w-5 h-5 sm:w-6 sm:h-6" />
+    <>
+      <span className={`w-8 h-8 rounded-xl flex items-center justify-center ${c.icon}`}>
+        <Icon name={icon} className="w-[18px] h-[18px]" />
       </span>
-      <div className="min-w-0">
-        <p className="text-xs sm:text-sm text-slate-500 truncate">{label}</p>
-        <p className="text-xl sm:text-2xl font-semibold tracking-tight truncate">{value}</p>
-        {sub && <p className={`text-xs truncate ${SUB_TONES[subTone]}`}>{sub}</p>}
-      </div>
-    </div>
+      <p className={`mt-2 text-xl sm:text-2xl font-semibold tracking-tight truncate ${c.text}`}>{value}</p>
+      <p className={`text-xs sm:text-sm truncate ${c.label}`}>{label}</p>
+      {sub && <p className={`text-xs truncate mt-0.5 ${SUB_TONES[subTone] || c.label} ${subTone === "muted" ? "opacity-80" : ""}`}>{sub}</p>}
+    </>
   );
-  const cls = "bg-white dark:bg-slate-800 rounded-xl p-3 sm:p-4 shadow min-w-0 block";
-  return to ? <Link to={to} className={`${cls} hover:ring-1 hover:ring-brand/40 transition`}>{body}</Link> : <div className={cls}>{body}</div>;
+  const cls = `${c.tile} rounded-2xl p-3.5 sm:p-4 min-w-0 block`;
+  return to ? <Link to={to} className={`${cls} active:scale-[0.98] transition`}>{body}</Link> : <div className={cls}>{body}</div>;
 }
 
 // ---------- Drucker ----------

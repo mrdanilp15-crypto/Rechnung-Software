@@ -2,6 +2,8 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import "./i18n";
+// Schrift wird mit der App ausgeliefert (nicht von Google geladen - Datenschutz)
+import "@fontsource-variable/inter";
 import "./index.css";
 import App from "./App";
 import { ToastProvider } from "./components/Toast";

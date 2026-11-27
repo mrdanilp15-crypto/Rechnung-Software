@@ -126,7 +126,7 @@ function UserMenu({ onLogout }: { onLogout: () => void }) {
 export default function Layout() {
   const { t, i18n } = useTranslation();
   const { user, clearSession } = useAuthStore();
-  const { isDark, toggle } = useDarkMode();
+  useDarkMode();
   const navigate = useNavigate();
   const location = useLocation();
   const appName = useAppName();
@@ -259,14 +259,8 @@ export default function Layout() {
           <Icon name={isRail ? "chevronRight" : "chevronLeft"} className="w-5 h-5" />
           {!isRail && "Menü einklappen"}
         </button>
-        {/* Am Handy gibt es keine obere Leiste: Hell/Dunkel, Sprache und Abmelden bleiben hier im Menü */}
+        {/* Am Handy gibt es keine obere Leiste: Sprache und Abmelden bleiben hier im Menü */}
         <div className="lg:hidden flex flex-col gap-2">
-          <div className="flex items-center text-sm justify-between">
-            <span>{t("settings.darkMode")}</span>
-            <button onClick={toggle} className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700" aria-label={t("settings.darkMode")}>
-              <Icon name={isDark ? "moon" : "sun"} className="w-4 h-4" />
-            </button>
-          </div>
           <div className="flex items-center text-sm justify-between">
             <span>{t("settings.language")}</span>
             <select value={i18n.language} onChange={(e) => setLocale(e.target.value as "de" | "en")} className="bg-slate-100 dark:bg-slate-800 rounded px-2 py-1">
@@ -333,9 +327,6 @@ export default function Layout() {
           <div className="ml-auto flex items-center gap-1">
             <RunningTimerChip />
             <NewMenu />
-            <button onClick={toggle} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t("settings.darkMode")} title={t("settings.darkMode")}>
-              <Icon name={isDark ? "sun" : "moon"} className="w-5 h-5" />
-            </button>
             <button onClick={() => navigate(`/help#${topicForPath(location.pathname, location.search)}`)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 text-base font-semibold" aria-label="Hilfe zu dieser Seite" title="Hilfe zu dieser Seite">
               ?
             </button>
@@ -354,18 +345,18 @@ export default function Layout() {
 
       {/* Mobil: feste Leiste unten mit den wichtigsten Bereichen (große Tippflächen), "Mehr" öffnet das ganze Menü */}
       {!inEditor && (
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 h-16 grid grid-cols-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pb-[env(safe-area-inset-bottom)]" aria-label="Hauptnavigation">
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 h-16 grid grid-cols-5 border-t border-slate-200/80 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)]" aria-label="Hauptnavigation">
           {BOTTOM_BAR_KEYS.map((k) => navItems.find((n) => n.key === k)!).map((item) => {
             const active = isActive(item);
             return (
               <NavLink key={item.to} to={item.to} className={`flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${active ? "text-brand" : "text-slate-500"}`}>
-                <Icon name={item.icon} className="w-6 h-6" />
+                <span className={`px-4 py-1 rounded-full transition-colors ${active ? "bg-brand/10" : ""}`}><Icon name={item.icon} className="w-5 h-5" /></span>
                 {t(`nav.${item.key}`)}
               </NavLink>
             );
           })}
           <button type="button" onClick={() => setMobileNavOpen(true)} className="flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-slate-500">
-            <Icon name="more" className="w-6 h-6" />
+            <span className="px-4 py-1"><Icon name="more" className="w-5 h-5" /></span>
             Mehr
           </button>
         </nav>

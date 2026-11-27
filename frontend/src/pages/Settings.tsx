@@ -672,34 +672,6 @@ export default function Settings() {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold mb-2">Design</h3>
-            <p className="text-xs text-slate-500 mb-3">Die Farbwelt der Oberfläche - gilt im hellen und im dunklen Modus. Mit dem Design wird die dazu passende Akzentfarbe vorgeschlagen, die du oben jederzeit ändern kannst.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              {THEMES.map((th) => {
-                const selected = themeById(company.uiDarkStyle).id === th.id;
-                return (
-                  <button key={th.id} type="button" onClick={() => pickAppearance({ uiDarkStyle: th.id, uiAccent: th.accent })} aria-pressed={selected} className={`text-left rounded-lg border p-3 ${selected ? "border-brand ring-2 ring-brand/40" : "border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
-                    <span className="flex gap-1.5 mb-2 rounded-md p-2" style={{ background: th.swatch[1] }}>
-                      <span className="w-5 rounded" style={{ background: th.swatch[0] }} />
-                      <span className="flex-1 flex flex-col gap-1">
-                        <span className="h-2 w-2/3 rounded" style={{ background: th.swatch[2] }} />
-                        <span className="flex gap-1">
-                          <span className="h-6 flex-1 rounded" style={{ background: th.swatch[2] }} />
-                          <span className="h-6 flex-1 rounded" style={{ background: th.swatch[2] }} />
-                          <span className="h-6 w-5 rounded" style={{ background: th.accent }} />
-                        </span>
-                      </span>
-                    </span>
-                    <span className="block font-medium text-sm">{th.label}</span>
-                    <span className="block text-xs text-slate-500">{th.description}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-xs text-slate-500 mt-2">Den Wechsel zwischen hell und dunkel findest du oben rechts (Sonne/Mond) - er gilt je Gerät.</p>
-          </div>
-
-          <div>
             <h3 className="text-sm font-semibold mb-2">Programmname</h3>
             <input value={company.uiAppName ?? ""} maxLength={40} placeholder={DEFAULT_APP_NAME} onChange={(e) => pickAppearance({ uiAppName: e.target.value })} className="w-full sm:max-w-sm px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm" />
             <p className="text-xs text-slate-500 mt-1">Erscheint in der Seitenleiste, auf der Anmeldeseite und als Titel des Browser-Tabs. Leer lassen für den Standardnamen. Das Firmenlogo für Belege stellst du unter "Logo &amp; Stempel" ein.</p>
