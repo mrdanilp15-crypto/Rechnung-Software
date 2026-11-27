@@ -4,7 +4,8 @@ import { PdfLink } from "../components/PdfLink";
 import { SaveButton } from "../components/SaveButton";
 import { AmountTaxFields } from "../components/AmountTaxFields";
 import { useSaveStatus } from "../hooks/useSaveStatus";
-import { MobileCard, MobileField } from "../components/MobileCard";
+import { Icon } from "../components/Icon";
+import { MobileCard } from "../components/MobileCard";
 import { TaxPanel } from "../components/TaxPanel";
 import { DatevPanel } from "../components/DatevPanel";
 import { useSearchParams } from "react-router-dom";
@@ -207,7 +208,7 @@ export default function Finance() {
                   <p className="text-xs text-slate-500 mt-1">{summary.openReceivablesCount} Rechnung{summary.openReceivablesCount === 1 ? "" : "en"}</p>
                 </div>
               </div>
-              <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6">
+              <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-6">
                 <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
                   <h2 className="font-medium text-sm">Einnahmen, Ausgaben und Gewinn pro Monat {year}</h2>
                   <FinanceLegend />
@@ -215,7 +216,7 @@ export default function Finance() {
                 {summary.months?.some((m) => m.incomeCents || m.expenseCents) ? <FinanceChart months={summary.months} /> : <p className="text-sm text-slate-500 py-6 text-center">Für {year} gibt es noch keine bezahlten Rechnungen oder Ausgaben.</p>}
                 <p className="text-xs text-slate-500 mt-1">Einnahmen zählen im Monat des Zahlungseingangs, Ausgaben im Monat des Belegdatums. Gewinn = Einnahmen minus Ausgaben, vor Steuern.</p>
               </div>
-              <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4">
+              <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4">
                 <h2 className="font-medium mb-2 text-sm">Ausgaben nach Kategorie</h2>
                 {Object.entries(summary.expensesByCategory).map(([cat, cents]) => (
                   <div key={cat} className="flex justify-between text-sm py-1 border-t border-slate-100 dark:border-slate-700 first:border-0">
@@ -247,7 +248,7 @@ export default function Finance() {
             </div>
           </div>
           {showExpenseForm && (
-            <form onSubmit={handleAddExpense} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleAddExpense} className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm mb-1">Datum</label>
                 <input type="date" required value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
@@ -281,33 +282,22 @@ export default function Finance() {
               </div>
             </form>
           )}
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow divide-y divide-slate-100 dark:divide-slate-700">
             {expenses.map((exp) => {
               const deleteBtn = (
-                <span className="flex gap-3 justify-end">
+                <span className="flex gap-1.5 justify-end items-center">
+                  <span className="font-semibold text-sm mr-2">{formatEuro(exp.amountCents)}</span>
                   {exp.receiptPath && (
-                    <PdfLink url={`/expenses/${exp.id}/receipt`} filename={`beleg-${exp.vendor}`} className="text-brand hover:underline">
+                    <PdfLink url={`/expenses/${exp.id}/receipt`} filename={`beleg-${exp.vendor}`} className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-medium">
                       Beleg
                     </PdfLink>
                   )}
-                  <button onClick={() => handleDeleteExpense(exp)} className="text-red-600 hover:underline">Löschen</button>
+                  <button onClick={() => handleDeleteExpense(exp)} className="px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-medium">Löschen</button>
                 </span>
               );
               return (
                 <div key={exp.id}>
-                  {/* Desktop */}
-                  <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "100px 1fr 130px 110px auto" }}>
-                    <span>{new Date(exp.date).toLocaleDateString("de-DE")}</span>
-                    <span className="font-medium truncate">{exp.vendor}{exp.inAssetRegister && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-normal" title="Zählt in der EÜR als Abschreibung (Anlageverzeichnis)">Anlage</span>}</span>
-                    <span className="text-slate-500 truncate">{exp.category}</span>
-                    <span className="text-right">{formatEuro(exp.amountCents)}</span>
-                    <span className="justify-self-end">{deleteBtn}</span>
-                  </div>
-                  {/* Mobile */}
-                  <MobileCard title={exp.vendor} subtitle={new Date(exp.date).toLocaleDateString("de-DE")} actions={deleteBtn}>
-                    <MobileField label="Kategorie" value={exp.category} />
-                    <MobileField label="Betrag" value={formatEuro(exp.amountCents)} />
-                  </MobileCard>
+                  <MobileCard leading={<span className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center"><Icon name="receipt" className="w-5 h-5" /></span>} title={exp.vendor} subtitle={`${new Date(exp.date).toLocaleDateString("de-DE")} · ${exp.category}`} actions={deleteBtn} />
                 </div>
               );
             })}
@@ -319,7 +309,7 @@ export default function Finance() {
 
       {tab === "bank" && (
         <div>
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 space-y-3">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-4 space-y-3">
             <h2 className="font-medium">Kontoauszug importieren (CSV)</h2>
             <p className="text-sm text-slate-500">
               CSV-Export aus dem Online-Banking, die üblichen Spaltennamen (z.B. Buchungstag, Betrag, Verwendungszweck, Beguenstigter/Zahlungspflichtiger) werden erkannt.
@@ -338,25 +328,17 @@ export default function Finance() {
             {bankMessage && <p className="text-sm">{bankMessage}</p>}
           </div>
           <BankMatchPanel reloadKey={bankReload} onChanged={() => { loadTransactions(); loadSummary(); }} />
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow divide-y divide-slate-100 dark:divide-slate-700">
             {transactions.map((tx) => {
               const amount = <span className={tx.amountCents >= 0 ? "text-green-600" : "text-red-600"}>{formatEuro(tx.amountCents)}</span>;
               return (
                 <div key={tx.id}>
-                  {/* Desktop */}
-                  <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "100px 160px 1fr 110px 100px" }}>
-                    <span>{new Date(tx.bookingDate).toLocaleDateString("de-DE")}</span>
-                    <span className="truncate">{tx.counterparty}</span>
-                    <span className="text-slate-500 truncate">{tx.purpose}</span>
-                    <span className="text-right">{amount}</span>
-                    <span className="text-right">{tx.matchedInvoiceId ? "✓ zugeordnet" : "-"}</span>
-                  </div>
-                  {/* Mobile */}
-                  <MobileCard title={tx.counterparty || "-"} subtitle={new Date(tx.bookingDate).toLocaleDateString("de-DE")}>
-                    <MobileField label="Zweck" value={tx.purpose || "-"} />
-                    <MobileField label="Betrag" value={amount} />
-                    <MobileField label="Zuordnung" value={tx.matchedInvoiceId ? "✓ zugeordnet" : "-"} />
-                  </MobileCard>
+                  <MobileCard
+                    leading={<span className={`w-10 h-10 rounded-xl flex items-center justify-center ${tx.amountCents >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}><Icon name="money" className="w-5 h-5" /></span>}
+                    title={tx.counterparty || "-"}
+                    subtitle={[new Date(tx.bookingDate).toLocaleDateString("de-DE"), tx.purpose, tx.matchedInvoiceId ? "✓ zugeordnet" : null].filter(Boolean).join(" · ")}
+                    actions={<span className="font-semibold">{amount}</span>}
+                  />
                 </div>
               );
             })}

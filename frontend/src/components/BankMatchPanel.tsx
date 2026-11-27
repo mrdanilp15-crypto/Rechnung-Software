@@ -55,7 +55,7 @@ export function BankMatchPanel({ reloadKey, onChanged }: { reloadKey: number; on
   if (!rows || rows.length === 0) return rows ? <p className="text-sm text-slate-500 mb-4">Alle Zahlungseingänge sind zugeordnet oder ausgeblendet.</p> : null;
   const select = "px-2 py-1.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm";
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 space-y-3">
+    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-4 space-y-3">
       <div>
         <h2 className="font-medium">Zahlungen zuordnen ({rows.length})<HelpTip topic="bank" className="ml-2" /></h2>
         <p className="text-sm text-slate-500">Diese Zahlungseingänge konnten nicht eindeutig einer Rechnung zugeordnet werden. Prüfe den Vorschlag und bestätige mit einem Klick - die Rechnung wird dann als bezahlt markiert.</p>

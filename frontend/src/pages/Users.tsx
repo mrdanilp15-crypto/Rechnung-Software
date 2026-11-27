@@ -56,7 +56,6 @@ const emptyForm = { name: "", email: "", password: "", role: "MITARBEITER" as co
 
 const formatDate = (iso?: string) => (iso ? new Intl.DateTimeFormat("de-DE", { dateStyle: "short", timeStyle: "short" }).format(new Date(iso)) : "Noch nie angemeldet");
 
-const ROW_COLUMNS = "1fr 140px 70px 70px 150px 120px";
 
 /**
  * Benutzerverwaltung: eine Firma kann beliebig viele Benutzerkonten anlegen (z.B. für
@@ -115,7 +114,7 @@ export default function Users() {
   }
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-4">
+    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-4">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <h2 className="font-medium">Benutzerkonten</h2>
@@ -185,14 +184,6 @@ export default function Users() {
       )}
 
       <div className="border-t border-slate-100 dark:border-slate-700">
-        <div className="hidden xl:grid items-center gap-3 py-2 text-xs font-medium text-slate-500 border-b border-slate-100 dark:border-slate-700" style={{ gridTemplateColumns: ROW_COLUMNS }}>
-          <span>Name / E-Mail</span>
-          <span>Rolle</span>
-          <span>Status</span>
-          <span>2FA</span>
-          <span>Letzter Login</span>
-          <span></span>
-        </div>
         <div className="divide-y divide-slate-100 dark:divide-slate-700">
           {users.map((u) => {
             const roleSelect = (
@@ -223,23 +214,7 @@ export default function Users() {
               );
             return (
               <div key={u.id}>
-                {/* Desktop */}
-                <div className="hidden xl:grid items-center gap-3 py-3 text-sm" style={{ gridTemplateColumns: ROW_COLUMNS }}>
-                  <div className="min-w-0 flex items-center gap-3">
-                    <Avatar id={u.id} name={u.name} avatar={u.avatar} size="md" />
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{u.name}</div>
-                      <div className="text-xs text-slate-500 truncate">{u.email}</div>
-                    </div>
-                  </div>
-                  {roleSelect}
-                  {statusLabel}
-                  {totpLabel}
-                  <span className="text-slate-500 text-xs truncate">{formatDate(u.lastLoginAt)}</span>
-                  <div className="flex justify-end">{actions}</div>
-                </div>
-                {/* Mobile */}
-                <MobileCard title={u.name} subtitle={u.email} actions={actions}>
+                                <MobileCard leading={<Avatar id={u.id} name={u.name} avatar={u.avatar} size="md" />} title={u.name} subtitle={u.email} actions={actions}>
                   <MobileField label="Rolle" value={<div className="w-32">{roleSelect}</div>} />
                   <MobileField label="Status" value={statusLabel} />
                   <MobileField label="2FA" value={totpLabel} />

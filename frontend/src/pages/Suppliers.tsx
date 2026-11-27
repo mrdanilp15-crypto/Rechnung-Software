@@ -138,7 +138,7 @@ export default function Suppliers() {
         <span className="ml-auto self-center text-xs text-slate-500">Ausgaben bei Lieferanten dieses Jahr: {money(yearTotal)}</span>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow divide-y divide-slate-100 dark:divide-slate-700">
         {visible.map((s) => (
           <div key={s.id} className="px-4 py-3 text-sm flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
@@ -154,8 +154,8 @@ export default function Suppliers() {
               <div className="text-xs text-slate-500">{money(s.yearSpentCents)} dieses Jahr · {s.expenseCount} {s.expenseCount === 1 ? "Einkauf" : "Einkäufe"}{s.lastPurchase ? ` · zuletzt ${dateDe(s.lastPurchase)}` : ""}</div>
               {s.materialCount > 0 && <div className="text-xs text-slate-500">{s.materialCount} Material{s.materialCount === 1 ? "" : "ien"}</div>}
               <div className="flex gap-3 justify-end mt-1">
-                <button onClick={() => startEdit(s)} className="text-brand hover:underline">Bearbeiten</button>
-                <button onClick={() => remove(s)} className="text-red-600 hover:underline">Archivieren</button>
+                <button onClick={() => startEdit(s)} className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-medium">Bearbeiten</button>
+                <button onClick={() => remove(s)} className="px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-medium">Archivieren</button>
               </div>
             </div>
           </div>

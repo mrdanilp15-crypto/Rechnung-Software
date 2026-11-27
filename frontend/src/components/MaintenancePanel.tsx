@@ -101,7 +101,7 @@ export function MaintenancePanel({ printerId, tasks, isAdmin, onChange }: { prin
               <span className="ml-auto flex gap-3">
                 <button type="button" onClick={() => done(t)} className="text-brand hover:underline">Erledigt</button>
                 {isAdmin && <button type="button" onClick={() => edit(t)} className="text-slate-500 hover:underline">Ändern</button>}
-                {isAdmin && <button type="button" onClick={() => remove(t)} className="text-red-600 hover:underline">Löschen</button>}
+                {isAdmin && <button type="button" onClick={() => remove(t)} className="px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-medium">Löschen</button>}
               </span>
             </div>
             <div className="h-1.5 rounded bg-slate-200 dark:bg-slate-700 mt-1 overflow-hidden" title={t.due ? remainingText(t) : `${Math.round(t.progress * 100)} % des Intervalls`}>

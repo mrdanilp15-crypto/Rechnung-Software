@@ -31,7 +31,7 @@ export default function ResetPassword() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 px-4">
-      <form onSubmit={submit} className="w-full max-w-sm bg-white dark:bg-slate-800 p-8 rounded-lg shadow">
+      <form onSubmit={submit} className="w-full max-w-sm bg-white dark:bg-slate-800 p-8 rounded-3xl shadow">
         <h1 className="text-xl font-semibold mb-4 text-brand">Neues Passwort vergeben</h1>
         {done ? (
           <p className="text-sm mb-4">Dein Passwort wurde geändert. Alle anderen Sitzungen wurden abgemeldet. Du kannst dich jetzt anmelden.</p>

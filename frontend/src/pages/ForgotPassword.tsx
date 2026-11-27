@@ -27,7 +27,7 @@ export default function ForgotPassword() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 px-4">
-      <form onSubmit={submit} className="w-full max-w-sm bg-white dark:bg-slate-800 p-8 rounded-lg shadow">
+      <form onSubmit={submit} className="w-full max-w-sm bg-white dark:bg-slate-800 p-8 rounded-3xl shadow">
         <h1 className="text-xl font-semibold mb-4 text-brand">Passwort vergessen</h1>
         {sent ? (
           <>

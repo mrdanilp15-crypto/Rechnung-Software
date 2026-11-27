@@ -5,7 +5,7 @@ import { EditPanel } from "../components/EditPanel";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { InfoBox } from "../components/InfoBox";
 import { useToast } from "../components/Toast";
-import { MobileCard, MobileField } from "../components/MobileCard";
+import { Icon } from "../components/Icon";
 import { ReorderDialog } from "../components/ReorderDialog";
 import { SkuField } from "../components/SkuField";
 import { RowActionsMenu } from "../components/RowActionsMenu";
@@ -242,17 +242,11 @@ export default function Materials() {
       {materials.some((m) => m.kind === "PART") && (
         <div className="flex gap-2 mb-3 text-sm" role="group" aria-label="Materialart filtern">
           {([["ALL", "Alle"], ["FILAMENT", "Druckmaterial"], ["PART", "Zukaufteile"]] as const).map(([k, label]) => (
-            <button key={k} type="button" onClick={() => setKindFilter(k)} aria-pressed={kindFilter === k} className={`px-3 py-1.5 rounded-full border ${kindFilter === k ? "bg-brand text-white border-brand" : "border-slate-300 dark:border-slate-600"}`}>{label}</button>
+            <button key={k} type="button" onClick={() => setKindFilter(k)} aria-pressed={kindFilter === k} className={`px-3.5 py-1.5 rounded-full text-xs font-medium ${kindFilter === k ? "bg-slate-900 text-white" : "bg-white text-slate-600 shadow"}`}>{label}</button>
           ))}
         </div>
       )}
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
-        <div className="hidden xl:grid items-center gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
-          <span>Name</span>
-          <span className="text-right">Bestand</span>
-          <span className="text-right">Preis/Einheit</span>
-          <span></span>
-        </div>
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow divide-y divide-slate-100 dark:divide-slate-700">
         {materials.filter((m) => kindFilter === "ALL" || (m.kind ?? "FILAMENT") === kindFilter).map((m) => {
           const low = !!m.minStock && m.minStock > 0 && m.stockQuantity <= m.minStock;
           const stockValue = (
@@ -263,8 +257,8 @@ export default function Materials() {
           );
           const actions = (
             <div className="flex gap-2 justify-end items-center">
-              <a href={`/q/material/${m.id}`} className="text-slate-500 hover:underline whitespace-nowrap" title="QR-Etikett drucken und einzelne Spulen verwalten">QR / Spulen</a>
-              <button onClick={() => startRestock(m)} className="text-brand hover:underline whitespace-nowrap">Nachbestellen</button>
+              <a href={`/q/material/${m.id}`} className="hidden md:inline-flex px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-medium whitespace-nowrap" title="QR-Etikett drucken und einzelne Spulen verwalten">QR / Spulen</a>
+              <button onClick={() => startRestock(m)} className="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-700 text-white text-xs font-medium whitespace-nowrap">Nachbestellen</button>
               <RowActionsMenu
                 actions={[
                   { label: "QR-Etikett und Spulen", onClick: () => { window.location.href = `/q/material/${m.id}`; } },
@@ -276,18 +270,13 @@ export default function Materials() {
           );
           return (
           <div key={m.id}>
-            {/* Desktop */}
-            <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 130px 140px auto" }}>
-              <span className="min-w-0"><span className="block font-medium truncate">{m.name}{m.kind === "PART" && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 font-normal">Zukaufteil</span>}{m.amsMeasured && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-normal" title={(m.amsSources ?? []).join(", ") + " - der Verbrauch wird aus dem AMS gemessen und automatisch abgebucht, nicht über Rechnungs-Rezepte"}>AMS-gemessen</span>}</span>{(m.sku || m.supplierId) && <span className="block text-xs text-slate-500 truncate">{[m.sku, suppliers.find((s) => s.id === m.supplierId)?.name].filter(Boolean).join(" · ")}</span>}</span>
-              <span className="text-right">{stockValue}</span>
-              <span className="text-right text-slate-500">{formatUnitPrice(m.costPerUnitCents)}/{m.unit}</span>
+            {/* Eine Zeile je Material (alle Bildschirme): Symbol, Name, Bestand, Preis, Aktionen */}
+            <div className="flex flex-col md:grid md:grid-cols-[1fr_130px_120px_auto] md:items-center gap-2 md:gap-4 px-4 py-3 text-sm">
+              <span className="min-w-0 flex items-center gap-3"><span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${low || m.stockQuantity < 0 ? "bg-rose-50 text-rose-600" : m.kind === "PART" ? "bg-violet-50 text-violet-600" : "bg-pink-50 text-pink-600"}`}><Icon name={m.kind === "PART" ? "cube" : "filament"} className="w-5 h-5" /></span><span className="min-w-0 flex-1"><span className="block font-medium truncate">{m.name}{m.kind === "PART" && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 font-normal">Zukaufteil</span>}{m.amsMeasured && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-normal" title={(m.amsSources ?? []).join(", ") + " - der Verbrauch wird aus dem AMS gemessen und automatisch abgebucht, nicht über Rechnungs-Rezepte"}>AMS-gemessen</span>}</span>{(m.sku || m.supplierId) && <span className="block text-xs text-slate-500 truncate">{[m.sku, suppliers.find((s) => s.id === m.supplierId)?.name].filter(Boolean).join(" · ")}</span>}</span></span>
+              <span className="pl-[3.25rem] md:pl-0 flex md:block justify-between gap-3 md:text-right"><span className="md:hidden text-slate-500">Bestand</span><span className="font-semibold">{stockValue}</span></span>
+              <span className="pl-[3.25rem] md:pl-0 flex md:block justify-between gap-3 md:text-right text-slate-500"><span className="md:hidden">Preis</span><span>{formatUnitPrice(m.costPerUnitCents)}/{m.unit}</span></span>
               {actions}
             </div>
-            {/* Mobile */}
-            <MobileCard title={m.name} subtitle={[m.kind === "PART" ? "Zukaufteil" : "", m.sku].filter(Boolean).join(" · ") || undefined} actions={actions}>
-              <MobileField label="Bestand" value={stockValue} />
-              <MobileField label="Preis/Einheit" value={`${formatUnitPrice(m.costPerUnitCents)}/${m.unit}`} />
-            </MobileCard>
             {restockingId === m.id && (
               <form onSubmit={(e) => handleRestock(e, m)} className="grid grid-cols-1 sm:grid-cols-4 gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-700">
                 <div>

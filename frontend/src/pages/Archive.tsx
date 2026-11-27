@@ -343,7 +343,7 @@ export default function Archive() {
       </InfoBox>
 
       {showUpload && (
-        <form onSubmit={submitUpload} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-5 space-y-4">
+        <form onSubmit={submitUpload} className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-5 space-y-4">
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
@@ -431,7 +431,7 @@ export default function Archive() {
       <datalist id="archive-tags">{facets?.tags.map((t) => <option key={t.tag} value={t.tag} />)}</datalist>
 
       {/* Suche und Filter */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-3 mb-4 space-y-3">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-3 mb-4 space-y-3">
         <input value={qInput} onChange={(e) => setQInput(e.target.value)} placeholder="Suchen: Titel, Aussteller, Notiz, Tag, Dateiname oder Text im PDF ..." className={inputClass} aria-label="Suche" />
         <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-sm">
           <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass} aria-label="Kategorie">
@@ -472,41 +472,26 @@ export default function Archive() {
       </div>
 
       {/* Liste */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
-        <div className="hidden xl:grid gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: "minmax(0,1fr) 190px 95px 100px 190px" }}>
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-4 py-2.5 text-xs font-medium text-slate-500"><span className="text-slate-400">Sortieren:</span>
           <button type="button" onClick={() => toggleSort("title")} className="text-left hover:text-slate-800 dark:hover:text-slate-200">Dokument{sortMark("title")}</button>
           <button type="button" onClick={() => toggleSort("vendor")} className="text-left hover:text-slate-800 dark:hover:text-slate-200">Kategorie / Aussteller{sortMark("vendor")}</button>
           <button type="button" onClick={() => toggleSort("date")} className="text-left hover:text-slate-800 dark:hover:text-slate-200">Datum{sortMark("date")}</button>
           <button type="button" onClick={() => toggleSort("amount")} className="text-right hover:text-slate-800 dark:hover:text-slate-200">Betrag{sortMark("amount")}</button>
-          <span />
         </div>
         {docs.map((d) => {
           const until = retainUntil(d.category, d.documentDate);
           return (
             <div key={d.id}>
-              <div className="hidden xl:grid items-start gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "minmax(0,1fr) 190px 95px 100px 190px" }}>
-                <div className="min-w-0">
-                  <div className="font-medium truncate"><span className="mr-1.5">{iconFor(d.mimeType)}</span><Highlight text={d.title} query={q} /></div>
-                  <div className="text-xs text-slate-500 truncate">{d.fileName} · {formatBytes(d.sizeBytes)}{d.expenseId ? " · aus Ausgabe" : ""}</div>
-                  {d.notes && <div className="text-xs text-slate-500 truncate" title={d.notes}>{d.notes}</div>}
-                  {tagChips(d)}
-                  {snippetLine(d)}
-                </div>
-                <div className="min-w-0">
-                  <button type="button" onClick={() => setCategory(d.category)} className="text-xs px-2 py-0.5 rounded bg-blue-50 dark:bg-slate-700 text-brand hover:underline" title={`Nur "${categoryLabel(d.category)}" anzeigen`}>{categoryLabel(d.category)}</button>
-                  {d.vendor && <div className="text-xs text-slate-600 dark:text-slate-300 truncate mt-0.5">{d.vendor}</div>}
-                  {until && <div className="text-xs text-slate-400" title="Ende der gesetzlichen Aufbewahrungsfrist">Aufbewahren bis {formatDate(until)}</div>}
-                </div>
-                <span>{formatDate(d.documentDate)}</span>
-                <span className="text-right">{d.amountCents == null ? <span className="text-slate-400">-</span> : money(d.amountCents)}</span>
-                {actionsFor(d)}
-              </div>
               <MobileCard
-                title={<><span className="mr-1">{iconFor(d.mimeType)}</span>{d.title}</>}
+                leading={<span className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg">{iconFor(d.mimeType)}</span>}
+                title={<Highlight text={d.title} query={q} />}
                 subtitle={[categoryLabel(d.category), d.vendor, formatDate(d.documentDate)].filter(Boolean).join(" · ")}
                 actions={actionsFor(d)}
               >
                 <div className="text-xs text-slate-500 mt-1">{d.fileName} · {formatBytes(d.sizeBytes)}{d.amountCents != null ? ` · ${money(d.amountCents)}` : ""}{d.expenseId ? " · aus Ausgabe" : ""}</div>
+                {d.notes && <div className="text-xs text-slate-500 truncate" title={d.notes}>{d.notes}</div>}
+                {until && <div className="text-xs text-slate-400" title="Ende der gesetzlichen Aufbewahrungsfrist">Aufbewahren bis {formatDate(until)}</div>}
                 {tagChips(d)}
                 {snippetLine(d)}
               </MobileCard>

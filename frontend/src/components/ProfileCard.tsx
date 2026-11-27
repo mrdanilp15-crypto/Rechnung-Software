@@ -7,7 +7,7 @@ export function ProfileCard() {
   const setUser = useAuthStore((s) => s.setUser);
   if (!user) return null;
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3 max-w-md mb-4">
+    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-3 max-w-md mb-4">
       <h2 className="font-medium">Profilbild</h2>
       <p className="text-sm text-slate-500">So erscheinst du bei Aufträgen, in der Produktion und in der Benutzerliste.</p>
       <AvatarPicker userId="me" targetId={user.id} name={user.name} avatar={user.avatar} onChanged={(avatar) => setUser({ ...user, avatar })} />

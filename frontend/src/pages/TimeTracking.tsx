@@ -163,7 +163,7 @@ export default function TimeTracking() {
         <p>Jeder erfasst seine eigene Zeit. Administratoren können unter "Zeit nachtragen" auch <strong>für andere</strong> Zeiten eintragen und deren Einträge ändern. Administratoren und Buchhaltung sehen alle Benutzer, laden den <strong>Stundenzettel</strong> als PDF (mit Unterschriftszeilen) und die <strong>CSV</strong> für den Steuerberater. Monate gelten nach deutscher Zeit. Die Zeiterfassung ist eine Hilfe für Nachweise und Kosten; die Lohnabrechnung selbst macht der Steuerberater oder eine Lohnsoftware.</p>
       </InfoBox>
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-4">
         {running ? (
           <div className="flex flex-wrap items-center gap-4">
             <div>
@@ -202,7 +202,7 @@ export default function TimeTracking() {
       </div>
 
       {showManual && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {meta?.canEditOthers && (
             <label className="block text-sm col-span-2 sm:col-span-4">Für wen?
               <select value={manual.forUser || meta.selfId || ""} onChange={(e) => setManual({ ...manual, forUser: e.target.value })} className={`${input} w-full mt-1`}>
@@ -224,7 +224,7 @@ export default function TimeTracking() {
 
       {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow">
         <div className="px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-100 dark:border-slate-700">
           <span className="font-medium">Summe {hm(total)} h</span>
           <span className="text-xs text-slate-500">{byActivity.map((a) => `${activityName[a.activity] ?? a.activity} ${hm(a.minutes)}`).join(" · ")}</span>
@@ -259,7 +259,7 @@ export default function TimeTracking() {
                       {e.endedAt && (e.userId === meta?.selfId || meta?.canEditOthers || !meta?.seesAll) && (
                         <span className="ml-auto flex gap-3 text-xs">
                           <button onClick={() => setEditing({ id: e.id, duration: hm(e.minutes ?? 0), activity: e.activity, note: e.note ?? "", orderId: e.order?.id ?? "" })} className="text-brand hover:underline">Ändern</button>
-                          <button onClick={() => remove(e)} className="text-red-600 hover:underline">Löschen</button>
+                          <button onClick={() => remove(e)} className="px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-medium">Löschen</button>
                         </span>
                       )}
                     </div>

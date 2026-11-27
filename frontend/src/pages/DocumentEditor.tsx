@@ -483,7 +483,7 @@ Abbrechen = weiter bearbeiten`)) navigate("/documents");
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-5 items-start">
         <div className="min-w-0">
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-4">
             <div className="text-xs font-medium text-slate-500 mb-2">1 · Kunde</div>
             <CustomerPicker customers={customers} value={customerId} onSelect={setCustomerId} onCreated={(c) => setCustomers((list) => [c, ...list])} />
             {isAbroad && (
@@ -512,7 +512,7 @@ Abbrechen = weiter bearbeiten`)) navigate("/documents");
           />
           {cfg.prices && <TotalsSummary items={items} isSmallBusiness={isSmallBusiness} abroadHint={isAbroad} />}
 
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-4">
             <div className="text-xs font-medium text-slate-500 mb-2">3 · Daten und Anmerkung</div>
             {hasAssignee && (
               <div className="mb-3 flex flex-wrap items-center gap-2">

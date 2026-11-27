@@ -128,7 +128,7 @@ export function TemplatesManager() {
     <div className="space-y-6">
       {msg && <p className={`text-sm ${msg.ok ? "text-green-600" : "text-red-600"}`}>{msg.text}</p>}
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-medium">E-Mail-Vorlagen</h2>
           <div className="flex gap-2 text-sm">
@@ -151,8 +151,8 @@ export function TemplatesManager() {
                 <span className="font-medium">{t.name}</span>
                 {t.isDefault && <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">Standard</span>}
                 <span className="text-xs text-slate-500 truncate min-w-0 flex-1">{t.subject}</span>
-                <button onClick={() => setForm({ id: t.id, kind: t.kind, name: t.name, subject: t.subject, body: t.body, isDefault: t.isDefault })} className="text-brand hover:underline">Bearbeiten</button>
-                <button onClick={() => removeTemplate(t)} className="text-red-600 hover:underline">Löschen</button>
+                <button onClick={() => setForm({ id: t.id, kind: t.kind, name: t.name, subject: t.subject, body: t.body, isDefault: t.isDefault })} className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-medium">Bearbeiten</button>
+                <button onClick={() => removeTemplate(t)} className="px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-medium">Löschen</button>
               </li>
             ))}
           </ul>
@@ -197,7 +197,7 @@ export function TemplatesManager() {
         )}
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-3">
         <h2 className="font-medium">Formulierungen zum Ausprobieren</h2>
         <p className="text-sm text-slate-500">
           Fertige E-Mail-Texte in verschiedenen Tonlagen - förmlich, freundlich, kurz, persönlich. Lies sie durch (hier mit Beispieldaten) und übernimm, was am besten klingt; danach kannst du sie oben ändern.
@@ -232,7 +232,7 @@ export function TemplatesManager() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Textbausteine</h2>
           <button onClick={() => setSnipForm({ id: "", name: "", text: "" })} className="px-3 py-1.5 rounded bg-brand text-white text-sm">Neuer Baustein</button>
@@ -246,8 +246,8 @@ export function TemplatesManager() {
               <li key={s.id} className="py-2 flex flex-wrap items-start gap-2">
                 <span className="font-medium shrink-0">{s.name}</span>
                 <span className="text-xs text-slate-500 flex-1 min-w-0 whitespace-pre-line line-clamp-2">{s.text}</span>
-                <button onClick={() => setSnipForm({ ...s })} className="text-brand hover:underline">Bearbeiten</button>
-                <button onClick={() => removeSnippet(s)} className="text-red-600 hover:underline">Löschen</button>
+                <button onClick={() => setSnipForm({ ...s })} className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-medium">Bearbeiten</button>
+                <button onClick={() => removeSnippet(s)} className="px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-medium">Löschen</button>
               </li>
             ))}
           </ul>

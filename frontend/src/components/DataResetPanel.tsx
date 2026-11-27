@@ -96,7 +96,7 @@ export function DataResetPanel() {
   }
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow border-2 border-red-300 dark:border-red-900 p-4 space-y-3">
+    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow border-2 border-red-300 dark:border-red-900 p-4 space-y-3">
       <h2 className="font-medium text-red-700 dark:text-red-400">Gefahrenbereich: Testdaten zurücksetzen</h2>
 
       {preview.locked ? (

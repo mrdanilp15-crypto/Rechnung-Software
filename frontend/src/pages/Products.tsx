@@ -7,7 +7,9 @@ import { EditPanel } from "../components/EditPanel";
 import { GrossPriceField } from "../components/AmountTaxFields";
 import { useSaveStatus } from "../hooks/useSaveStatus";
 import { useToast } from "../components/Toast";
-import { MobileCard, MobileField } from "../components/MobileCard";
+import { RowActionsMenu } from "../components/RowActionsMenu";
+import { SearchPill } from "../components/SearchPill";
+import { Icon } from "../components/Icon";
 import { SkuField } from "../components/SkuField";
 import { ProductStockDialog } from "../components/ProductStockDialog";
 import { ProductParts } from "../components/ProductParts";
@@ -699,33 +701,27 @@ export default function Products() {
         </EditPanel>
       )}
 
-      <input
-        placeholder={t("products.search")}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="w-full mb-4 px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
-      />
+      <SearchPill placeholder={t("products.search")} value={query} onChange={setQuery} />
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow divide-y divide-slate-100 dark:divide-slate-700">
         {filtered.map((p) => {
           const actions = (
-            <div className="flex gap-3 justify-end shrink-0">
-              <button onClick={() => startEdit(p)} className="text-brand hover:underline">
+            <div className="flex gap-1.5 justify-end items-center shrink-0">
+              <button onClick={() => startEdit(p)} className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-medium">
                 {t("common.edit")}
               </button>
-              {p.trackStock && <button onClick={() => setStockFor(p)} className="text-brand hover:underline" title="Zugang, Abgang oder Inventur buchen">Bestand</button>}
-              <a href={`/q/product/${p.id}`} className="text-slate-500 hover:underline">QR</a>
-              <button onClick={() => handleDelete(p)} className="text-red-600 hover:underline">
-                {t("common.delete")}
-              </button>
+              {p.trackStock && <button onClick={() => setStockFor(p)} className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-medium" title="Zugang, Abgang oder Inventur buchen">Bestand</button>}
+              <RowActionsMenu actions={[{ label: "QR-Code", onClick: () => { window.location.href = `/q/product/${p.id}`; } }, { label: t("common.delete"), onClick: () => handleDelete(p), danger: true }]} />
             </div>
           );
           return (
             <div key={p.id}>
-              {/* Desktop */}
-              <div className="hidden xl:grid items-center gap-3 px-4 py-3 text-sm" style={{ gridTemplateColumns: "1fr 140px 90px auto" }}>
-                <div className="min-w-0">
-                  <div className="font-medium truncate flex items-center gap-2">{p.imageDocumentId && <img src={`/api/archive/${p.imageDocumentId}/file`} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" loading="lazy" />}<span className="truncate">{p.name}</span></div>
+              {/* Eine Zeile je Produkt (alle Bildschirme): Bild oder Symbol, Name mit Kalkulation, Preis, Aktionen */}
+              <div className="flex flex-col md:grid md:grid-cols-[1fr_140px_80px_auto] md:items-center gap-2 md:gap-4 px-4 py-3 text-sm">
+                <div className="min-w-0 flex items-start gap-3">
+                  {p.imageDocumentId ? <img src={`/api/archive/${p.imageDocumentId}/file`} alt="" className="w-10 h-10 rounded-xl object-cover shrink-0" loading="lazy" /> : <span className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0"><Icon name="cube" className="w-5 h-5" /></span>}
+                  <div className="min-w-0 flex-1">
+                  <div className="font-medium truncate">{p.name}</div>
                   {p.trackStock && (
                     <div className={`text-xs ${(p.stockQuantity ?? 0) < 0 || (p.stockMin != null && (p.stockQuantity ?? 0) <= p.stockMin) ? "text-red-600" : "text-slate-500"}`}>
                       Lager: {p.stockQuantity ?? 0} {p.unit}{p.stockMin != null ? ` (Mindestbestand ${p.stockMin})` : ""}{(p.stockQuantity ?? 0) < 0 ? " - mehr verkauft als vorrätig" : ""}
@@ -779,25 +775,12 @@ export default function Products() {
                       Verbraucht: {p.materials.map((m) => `${m.quantityPerUnit}${m.material.unit} ${m.material.name}`).join(", ")}
                     </div>
                   )}
+                  </div>
                 </div>
-                <span className="text-right">{formatPrice(p.unitPriceCents)} / {p.unit}</span>
-                <span className="text-slate-500 text-right">{smallBusiness ? "" : `${(p.vatRateBps / 100).toFixed(0)}% USt.`}</span>
+                <span className="pl-[3.25rem] md:pl-0 md:text-right font-semibold">{formatPrice(p.unitPriceCents)} <span className="font-normal text-slate-500">/ {p.unit}</span></span>
+                <span className="hidden md:block text-slate-500 text-right text-xs">{smallBusiness ? "" : `${(p.vatRateBps / 100).toFixed(0)}% USt.`}</span>
                 {actions}
               </div>
-              {/* Mobile */}
-              <MobileCard
-                title={p.name}
-                subtitle={[p.sku, p.description].filter(Boolean).join(" · ") || undefined}
-                actions={actions}
-              >
-                <MobileField label="Preis" value={`${formatPrice(p.unitPriceCents)} / ${p.unit}`} />
-                {!smallBusiness && <MobileField label="USt." value={`${(p.vatRateBps / 100).toFixed(0)}%`} />}
-                {p.trackStock && <MobileField label="Lager" value={`${p.stockQuantity ?? 0} ${p.unit}`} />}
-                {p.parts && p.parts.length > 0 && <MobileField label="Bauteile" value={p.parts.map((x) => x.name + (x.quantityPerProduct !== 1 ? " ×" + x.quantityPerProduct : "")).join(", ")} />}
-                {p.materials.length > 0 && (
-                  <MobileField label="Verbraucht" value={p.materials.map((m) => `${m.quantityPerUnit}${m.material.unit} ${m.material.name}`).join(", ")} />
-                )}
-              </MobileCard>
             </div>
           );
         })}

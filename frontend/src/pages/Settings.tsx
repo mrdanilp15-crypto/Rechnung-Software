@@ -326,7 +326,7 @@ export default function Settings() {
       <HelpLine topic={SETTINGS_TAB_HELP[tab] ?? "settings"} />
 
       {tab === "company" && (
-        <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-4">
+        <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-4">
           <h2 className="font-medium">{t("settings.company")}</h2>
           <p className="text-xs text-slate-500 -mt-2">
             Steuernummer oder USt-IdNr. sind Pflichtangaben auf jeder Rechnung (§14 Abs. 4 Nr. 2 UStG) - mindestens eine der beiden bitte ausfüllen.
@@ -455,7 +455,7 @@ export default function Settings() {
       )}
 
       {tab === "pricing" && (
-        <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-4">
+        <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-4">
           <h2 className="font-medium">Kalkulation (Produktpreise)</h2>
           <p className="text-xs text-slate-500 -mt-2">Aus diesen Sätzen berechnet die Produktverwaltung die Selbstkosten und einen Preisvorschlag (Material aus dem Lager + Maschinen- und Arbeitszeit).</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -528,7 +528,7 @@ export default function Settings() {
 
       {tab === "password" && <ProfileCard />}
       {tab === "password" && (
-        <form onSubmit={handleChangePassword} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-4 max-w-md">
+        <form onSubmit={handleChangePassword} className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-4 max-w-md">
           <h2 className="font-medium">Passwort ändern</h2>
           <div>
             <label className="block text-sm mb-1">Aktuelles Passwort</label>
@@ -573,7 +573,7 @@ export default function Settings() {
       )}
 
       {tab === "password" && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-2 max-w-md mt-4">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-2 max-w-md mt-4">
           <h2 className="font-medium">Meine Daten (DSGVO)</h2>
           <p className="text-sm text-slate-500">
             Lädt eine Kopie aller zu deinem Benutzerkonto gespeicherten Daten herunter (Art. 15 DSGVO) - Kontodaten und dein eigenes Aktivitätsprotokoll, ohne Passwort oder 2FA-Geheimnis.
@@ -591,7 +591,7 @@ export default function Settings() {
       {tab === "schnittstellen" && user?.role === "ADMIN" && <IntegrationsPanel />}
 
       {tab === "dunning" && user?.role === "ADMIN" && (
-        <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-5">
+        <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-5">
           <h2 className="font-medium">Mahnwesen</h2>
           <p className="text-sm text-slate-500 -mt-3">
             Drei Stufen: Zahlungserinnerung (gebühren- und zinsfrei), 1. Mahnung und 2. (letzte) Mahnung. Ab Stufe 2 werden Verzugszinsen berechnet (Basiszinssatz + 5 Prozentpunkte bei Privatkunden,
@@ -639,7 +639,7 @@ export default function Settings() {
       {tab === "audit" && user?.role === "ADMIN" && <AuditLog />}
 
       {tab === "appearance" && user?.role === "ADMIN" && (
-        <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-6">
+        <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-6">
           <div>
             <h2 className="font-medium">Darstellung des Programms</h2>
             <p className="text-sm text-slate-500">Gilt für alle Benutzer und Geräte. Die Belege (PDF) haben ihre eigene Farbe unter "Logo &amp; Stempel" - hier geht es nur um die Oberfläche. Änderungen siehst du sofort; mit "Speichern" werden sie dauerhaft übernommen.</p>
@@ -685,7 +685,7 @@ export default function Settings() {
       )}
 
       {tab === "design" && user?.role === "ADMIN" && (
-        <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-5">
+        <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-5">
           <h2 className="font-medium">Beleg-Design</h2>
           <p className="text-sm text-slate-500 -mt-3">
             Gilt für alle PDFs (Rechnung, Angebot, Auftragsbestätigung, Lieferschein). Alle gesetzlichen Pflichtangaben stehen in jedem Layout. Die Farbe stellst du unter "Logo &amp; Stempel" ein.
@@ -763,7 +763,7 @@ export default function Settings() {
       )}
 
       {tab === "branding" && user?.role === "ADMIN" && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-5">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-5">
           <h2 className="font-medium">Logo, Stempel &amp; Unterschrift</h2>
           <p className="text-sm text-slate-500 -mt-3">
             Stempel und Unterschrift werden automatisch auf jedes erzeugte PDF (Rechnung, Angebot, Lieferschein, Auftragsbestätigung) eingefügt.
@@ -775,7 +775,7 @@ export default function Settings() {
       )}
 
       {tab === "email" && user?.role === "ADMIN" && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-3">
           <h2 className="font-medium">E-Mail-Versand</h2>
           <p className="text-sm text-slate-500">
             Eigenes Postfach hinterlegen, um Rechnungen und Zahlungserinnerungen direkt aus der Software zu versenden.
@@ -839,7 +839,7 @@ export default function Settings() {
       )}
 
       {tab === "security" && user?.role === "ADMIN" && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-3">
           <h2 className="font-medium">{t("settings.twoFactor")}</h2>
           {totpEnabled ? (
             <div className="space-y-3">
@@ -883,14 +883,14 @@ export default function Settings() {
 
       {tab === "data" && user?.role === "ADMIN" && (
         <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-3">
             <h2 className="font-medium">Backups</h2>
             <SaveButton status={backupSave.status} onClick={runBackupNow} type="button" savingLabel="Backup wird erstellt..." savedLabel="✓ Backup erstellt" className="bg-slate-200 dark:bg-slate-700 px-4 py-2 rounded text-sm">
               Backup jetzt erstellen
             </SaveButton>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 space-y-3">
             <h2 className="font-medium">Kunden importieren</h2>
             <p className="text-sm text-slate-500">CSV-Spalten: name, email, phone, street, postalCode, city, country</p>
             <input

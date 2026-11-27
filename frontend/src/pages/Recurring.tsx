@@ -72,7 +72,7 @@ export default function RecurringPage() {
       </p>
       <div className="space-y-3">
         {list.map((r) => (
-          <div key={r.id} className={`bg-white dark:bg-slate-800 rounded-lg shadow p-4 ${r.isActive ? "" : "opacity-60"}`}>
+          <div key={r.id} className={`bg-white dark:bg-slate-800 rounded-3xl shadow p-4 ${r.isActive ? "" : "opacity-60"}`}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="font-medium">{r.name}</div>
@@ -94,7 +94,7 @@ export default function RecurringPage() {
           </div>
         ))}
         {loaded && list.length === 0 && (
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-8 text-center text-slate-500 text-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-8 text-center text-slate-500 text-sm">
             Noch nichts eingerichtet. Öffne unter "Belege" das Menü (⋮) einer Rechnung und wähle "Wiederkehrend einrichten".
           </div>
         )}

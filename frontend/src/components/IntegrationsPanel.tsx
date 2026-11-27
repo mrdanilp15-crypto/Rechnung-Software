@@ -12,7 +12,7 @@ interface EventRow { name: string; label: string }
 interface HookRow { id: string; url: string; eventTypes: string; isActive: boolean; last: { success: boolean; responseCode: number | null; attemptedAt: string; eventType: string } | null }
 interface CalendarInfo { enabled: boolean; url?: string; webcalUrl?: string }
 
-const card = "bg-white dark:bg-slate-800 rounded-lg shadow p-6 space-y-3";
+const card = "bg-white dark:bg-slate-800 rounded-3xl shadow p-6 space-y-3";
 const field = "px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm";
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "noch nie");
 
@@ -159,7 +159,7 @@ function Webhooks() {
               <button type="button" disabled={busy === h.id} onClick={() => test(h)} className="text-brand hover:underline disabled:opacity-50">{busy === h.id ? "Sendet ..." : "Test senden"}</button>
               <button type="button" onClick={() => toggle(h)} className="text-brand hover:underline">{h.isActive ? "Pausieren" : "Wieder aktivieren"}</button>
               {!h.isActive && <span className="text-amber-600">pausiert</span>}
-              <button type="button" onClick={() => remove(h)} className="text-red-600 hover:underline ml-auto">Löschen</button>
+              <button type="button" onClick={() => remove(h)} className="px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-medium ml-auto">Löschen</button>
             </div>
           </li>
         ))}

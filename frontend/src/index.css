@@ -91,6 +91,13 @@ html:not(.dark) :is(button, a):is(.bg-brand, .bg-slate-200, .bg-red-600, .bg-gre
 h1 {
   letter-spacing: -0.02em;
 }
+/* Umrandete Zweitknöpfe (ältere Seiten) im selben Stil: weiße Pille statt grauem Rahmen */
+html:not(.dark) :is(button, a).border.border-slate-300:not(.rounded-2xl, .rounded-3xl) {
+  border-color: transparent;
+  background-color: #fff;
+  box-shadow: 0 0 0 1px rgb(var(--slate-200));
+  border-radius: 9999px;
+}
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(8px); }

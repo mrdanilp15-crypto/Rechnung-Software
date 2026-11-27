@@ -304,7 +304,7 @@ export default function Printers() {
         </EditPanel>
       )}
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow divide-y divide-slate-100 dark:divide-slate-700">
         {printers.map((p) => {
           const h = printerHourlyCost(p, electricity);
           return (
@@ -330,9 +330,9 @@ export default function Printers() {
                 )}
               </div>
               <div className="flex gap-3">
-                <a href={`/q/printer/${p.id}`} className="text-slate-500 hover:underline">QR</a>
-                <button onClick={() => startEdit(p)} className="text-brand hover:underline">Bearbeiten</button>
-                <button onClick={() => remove(p)} className="text-red-600 hover:underline">Entfernen</button>
+                <a href={`/q/printer/${p.id}`} className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-medium">QR</a>
+                <button onClick={() => startEdit(p)} className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-medium">Bearbeiten</button>
+                <button onClick={() => remove(p)} className="px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-medium">Entfernen</button>
               </div>
             </div>
           );

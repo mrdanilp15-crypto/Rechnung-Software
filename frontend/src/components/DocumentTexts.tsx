@@ -84,7 +84,7 @@ export function DocumentTexts({
   docType?: LibDocType;
 }) {
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 space-y-3">
+    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-4 space-y-3">
       {docType && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-slate-500">Unsicher, wie es klingen soll? Schau dir fertige Formulierungen an - förmlich, freundlich, kurz oder persönlich.</p>

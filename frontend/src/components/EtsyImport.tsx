@@ -72,7 +72,7 @@ export function EtsyImport({ onImported }: { onImported: () => void }) {
   const toggle = (id: string) => setSelected((cur) => { const next = new Set(cur); if (next.has(id)) next.delete(id); else next.add(id); return next; });
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 space-y-3">
+    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-4 space-y-3">
       <h2 className="font-medium text-sm">Bestellungen aus Etsy übernehmen</h2>
       <InfoBox title="So holst du die Datei aus Etsy">
         <p>In Etsy: <strong>Shop-Manager → Einstellungen → Optionen → Daten herunterladen</strong>. Wähle <strong>"Bestellte Artikel"</strong> (empfohlen, enthält die einzelnen Artikel) oder "Bestellungen", Zeitraum und Format CSV.</p>

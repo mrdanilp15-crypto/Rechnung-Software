@@ -1,3 +1,5 @@
+import { MobileCard, MobileField } from "./MobileCard";
+import { Icon } from "./Icon";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { InfoBox } from "./InfoBox";
@@ -175,31 +177,31 @@ export function AssetsPanel({ year, onChanged }: { year: number; onChanged?: () 
         </EditPanel>
       )}
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow divide-y divide-slate-100 dark:divide-slate-700">
-        <div className="hidden xl:grid gap-3 px-4 py-2 text-xs font-medium text-slate-500" style={{ gridTemplateColumns: "minmax(0,1fr) 95px 110px 110px 120px 170px" }}>
-          <span>Anlage</span><span>Gekauft</span><span className="text-right">Anschaffung</span><span className="text-right">AfA {year}</span><span className="text-right">Restwert 31.12.</span><span />
-        </div>
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow divide-y divide-slate-100 dark:divide-slate-700">
         {items.map((a) => (
-          <div key={a.id} className="px-4 py-3 text-sm xl:grid xl:items-start xl:gap-3" style={{ gridTemplateColumns: "minmax(0,1fr) 95px 110px 110px 120px 170px" }}>
-            <div className="min-w-0">
-              <div className="font-medium truncate">{a.name}</div>
-              <div className="text-xs text-slate-500">{a.method === "GWG" ? "GWG - Sofortabzug" : `linear über ${a.usefulLifeYears} Jahre`}{a.expenseId ? " · mit Ausgabe verknüpft" : ""}</div>
-              {a.schedule.length > 1 && <div className="text-xs text-slate-400 mt-0.5">Plan: {a.schedule.map((s) => `${s.year}: ${money(s.amountCents)}`).join(" · ")}</div>}
-              {a.notes && <div className="text-xs text-slate-500">{a.notes}</div>}
-            </div>
-            <span className="xl:block text-slate-600 dark:text-slate-300">{dateDe(a.purchaseDate)}</span>
-            <span className="xl:text-right">{money(a.costCents)}</span>
-            <span className="xl:text-right font-medium">{money(a.afaThisYear)}</span>
-            <span className="xl:text-right">{money(a.bookValueEndOfYear)}</span>
-            <span className="flex gap-3 xl:justify-end xl:pl-4 mt-1 xl:mt-0">
-              <button onClick={() => startEdit(a)} className="text-brand hover:underline">Bearbeiten</button>
-              <button onClick={() => remove(a)} className="text-red-600 hover:underline">Entfernen</button>
-            </span>
-          </div>
+          <MobileCard
+            key={a.id}
+            leading={<span className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><Icon name="printer" className="w-5 h-5" /></span>}
+            title={a.name}
+            subtitle={`${a.method === "GWG" ? "GWG - Sofortabzug" : `linear über ${a.usefulLifeYears} Jahre`}${a.expenseId ? " · mit Ausgabe verknüpft" : ""}`}
+            actions={
+              <span className="flex gap-1.5">
+                <button onClick={() => startEdit(a)} className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-medium">Bearbeiten</button>
+                <button onClick={() => remove(a)} className="px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-medium">Entfernen</button>
+              </span>
+            }
+          >
+            <MobileField label="Gekauft" value={dateDe(a.purchaseDate)} />
+            <MobileField label="Anschaffung" value={money(a.costCents)} />
+            <MobileField label={`AfA ${year}`} value={<span className="font-semibold">{money(a.afaThisYear)}</span>} />
+            <MobileField label="Restwert 31.12." value={money(a.bookValueEndOfYear)} />
+            {a.schedule.length > 1 && <div className="text-xs text-slate-400">Plan: {a.schedule.map((x) => `${x.year}: ${money(x.amountCents)}`).join(" · ")}</div>}
+            {a.notes && <div className="text-xs text-slate-500">{a.notes}</div>}
+          </MobileCard>
         ))}
         {items.length === 0 && <p className="px-4 py-8 text-center text-slate-500 text-sm">Noch keine Anlage erfasst. Typisch: Drucker, Trockenbox, Werkzeug, Computer.</p>}
         {items.length > 0 && (
-          <div className="px-4 py-3 text-sm flex justify-between font-medium bg-slate-50 dark:bg-slate-900/40 rounded-b-lg">
+          <div className="px-4 py-3 text-sm flex justify-between font-medium bg-slate-50 dark:bg-slate-900/40 rounded-b-3xl">
             <span>Abschreibung {year} gesamt (geht in die EÜR ein)</span>
             <span>{money(totalAfa)}</span>
           </div>

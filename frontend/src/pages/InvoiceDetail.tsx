@@ -6,7 +6,6 @@ import { AssigneeSelect } from "../components/AssigneeSelect";
 import { api } from "../api/client";
 import { PdfLink } from "../components/PdfLink";
 import { StatusChip } from "../components/StatusChip";
-import { MobileCard, MobileField } from "../components/MobileCard";
 import { useToast } from "../components/Toast";
 import { DunningPanel } from "../components/DunningPanel";
 import { TemplatePicker } from "../components/TemplatePicker";
@@ -261,7 +260,7 @@ export default function InvoiceDetail() {
       {actionError && <p className="text-red-600 text-sm mb-4">{actionError}</p>}
 
       {id && (
-        <details className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4">
+        <details className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-4">
           <summary className="cursor-pointer font-medium select-none">Vorgang (Angebot, Auftrag, Lieferschein, Rechnung)<HelpTip topic="chain" className="ml-2" /></summary>
           <div className="mt-3"><DocumentChain kind="INVOICE" id={id} /></div>
         </details>
@@ -270,7 +269,7 @@ export default function InvoiceDetail() {
       {showDunning && id && <DunningPanel invoiceId={id} onChanged={load} />}
 
       {reminderText && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 text-sm space-y-2">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-4 text-sm space-y-2">
           <p className="text-slate-500">Kein E-Mail-Versand eingerichtet - hier der Erinnerungstext zum manuellen Versenden:</p>
           <textarea readOnly value={reminderText} rows={5} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900" />
           <button onClick={() => setReminderText(null)} className="text-sm text-brand hover:underline">Schließen</button>
@@ -278,7 +277,7 @@ export default function InvoiceDetail() {
       )}
 
       {showEmailForm && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 space-y-3">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-4 space-y-3">
           <h2 className="font-medium text-sm">Rechnung per E-Mail senden<HelpTip topic="send-mail" className="ml-2" /></h2>
           {id && <TemplatePicker docType="INVOICE" docId={id} onPick={(s, m) => setEmailForm((f) => ({ ...f, subject: s, message: m }))} />}
           <input placeholder="Empfänger-E-Mail" value={emailForm.to} onChange={(e) => setEmailForm((f) => ({ ...f, to: e.target.value }))} className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
@@ -305,7 +304,7 @@ export default function InvoiceDetail() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 text-sm grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-4 text-sm grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1">
         <p><strong>E-Mail:</strong> {invoice.customer.email || <span className="text-slate-400">keine hinterlegt</span>}</p>
         <p>
           <strong>E-Mail-Status:</strong>{" "}
@@ -317,41 +316,22 @@ export default function InvoiceDetail() {
         <p><strong>Zahlungserinnerungen:</strong> {invoice.reminderCount > 0 ? invoice.reminderCount : "keine"}</p>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow">
-        {/* Desktop */}
-        <table className="hidden xl:table w-full text-sm">
-          <thead className="bg-slate-50 dark:bg-slate-700">
-            <tr>
-              <th className="text-left p-3">Beschreibung</th>
-              <th className="text-right p-3">Menge</th>
-              <th className="text-right p-3">Einzelpreis</th>
-              <th className="text-right p-3">Summe</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoice.items.map((item) => (
-              <tr key={item.id} className="border-t border-slate-100 dark:border-slate-700">
-                <td className="p-3">{item.description}</td>
-                <td className="p-3 text-right whitespace-nowrap">{item.quantity} {item.unit}</td>
-                <td className="p-3 text-right whitespace-nowrap">{format(item.unitPriceCents)}</td>
-                <td className="p-3 text-right whitespace-nowrap">{format(item.lineTotalCents)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {/* Mobile */}
-        <div className="xl:hidden divide-y divide-slate-100 dark:divide-slate-700">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow">
+        {/* Positionen als Zeilen (alle Bildschirme): Beschreibung, darunter Menge × Einzelpreis, rechts die Summe */}
+        <div className="divide-y divide-slate-100 dark:divide-slate-700">
           {invoice.items.map((item) => (
-            <MobileCard key={item.id} title={item.description}>
-              <MobileField label="Menge" value={`${item.quantity} ${item.unit}`} />
-              <MobileField label="Einzelpreis" value={format(item.unitPriceCents)} />
-              <MobileField label="Summe" value={format(item.lineTotalCents)} />
-            </MobileCard>
+            <div key={item.id} className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
+              <div className="min-w-0">
+                <p className="font-medium whitespace-pre-line">{item.description}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{item.quantity} {item.unit} × {format(item.unitPriceCents)}</p>
+              </div>
+              <p className="shrink-0 font-semibold">{format(item.lineTotalCents)}</p>
+            </div>
           ))}
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mt-4 max-w-xs ml-auto text-sm">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mt-4 max-w-xs ml-auto text-sm">
         {/* Kleinunternehmer: kein Netto/USt.-Ausweis, nur der Endbetrag */}
         {!invoice.isSmallBusiness && (
           <>

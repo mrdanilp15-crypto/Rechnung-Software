@@ -82,7 +82,7 @@ export function DunningPanel({ invoiceId, onChanged }: { invoiceId: string; onCh
   if (loading) return <p className="text-sm text-slate-500">Mahnwesen wird geladen ...</p>;
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 space-y-4 text-sm">
+    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-4 space-y-4 text-sm">
       <h2 className="font-medium">Zahlungserinnerung und Mahnungen<HelpTip topic="dunning" className="ml-2" /></h2>
 
       {history.length > 0 && (

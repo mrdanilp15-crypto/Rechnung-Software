@@ -53,7 +53,7 @@ export function ConnectionsPanel() {
   const hints = (checks ?? []).filter((c) => c.state === "warn").length;
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 space-y-4">
+    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-6 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-medium">Verbindungen &amp; Status<HelpTip topic="connections" className="ml-2" /></h2>

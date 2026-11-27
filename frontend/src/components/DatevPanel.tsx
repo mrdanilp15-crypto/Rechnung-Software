@@ -84,7 +84,7 @@ export function DatevPanel({ year }: { year: number }) {
   );
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mt-6 space-y-3">
+    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mt-6 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-medium">DATEV-Export für den Steuerberater</h2>
         <button onClick={() => setOpen((v) => !v)} className="text-sm text-brand hover:underline">{open ? "Einstellungen schließen" : "Einstellungen"}</button>

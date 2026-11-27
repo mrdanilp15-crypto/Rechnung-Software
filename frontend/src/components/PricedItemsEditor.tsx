@@ -188,7 +188,7 @@ export function PricedItemsEditor({
   const inputClass = "w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800";
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4">
+    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-4">
       <datalist id="pe-products">
         {products.map((p) => (
           <option key={p.id} value={p.name} />
@@ -298,7 +298,7 @@ export function PricedItemsEditor({
       {/* Mobile */}
       <div className="xl:hidden space-y-4">
         {items.map((item, idx) => (
-          <div key={item._key} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
+          <div key={item._key} className="bg-slate-50 dark:bg-slate-900/40 rounded-2xl p-3 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-xs font-medium text-slate-500">Position {idx + 1}</span>
               <button type="button" onClick={() => onChange(items.filter((it) => it._key !== item._key))} className="text-red-500 px-2">✕</button>
@@ -348,7 +348,7 @@ export function PricedItemsEditor({
         </>
       )}
 
-      <button type="button" onClick={() => onChange([...items, createEmptyLineItem()])} className="mt-3 text-sm text-brand hover:underline">
+      <button type="button" onClick={() => onChange([...items, createEmptyLineItem()])} className="mt-3 px-4 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-sm font-medium">
         + {t("invoices.addItem")}
       </button>
     </div>
@@ -364,7 +364,7 @@ export function TotalsSummary({ items, isSmallBusiness = false, abroadHint = fal
   const shownVat = isSmallBusiness ? 0 : vatTotal;
   const shownGross = netTotal + shownVat;
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-6 max-w-xs ml-auto text-sm">
+    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4 mb-6 max-w-xs ml-auto text-sm">
       {!isSmallBusiness && (
         <>
           <div className="flex justify-between py-1"><span>Netto</span><span>{formatEuro(netTotal)}</span></div>

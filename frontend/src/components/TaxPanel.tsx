@@ -45,7 +45,7 @@ export function TaxPanel({ year }: { year: number }) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4">
         <h2 className="font-medium mb-1">Steuerberater-Paket {year}</h2>
         <p className="text-sm text-slate-500 mb-3">
           Ein ZIP mit Einnahmen- und Ausgabenliste (CSV für Excel), Umsatzsteuer-Übersicht je Quartal, allen ausgestellten Rechnungen als PDF und den hochgeladenen Ausgabenbelegen -
@@ -56,7 +56,7 @@ export function TaxPanel({ year }: { year: number }) {
         </PdfLink>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h2 className="font-medium">Umsatzsteuer-Übersicht {year}</h2>
           <select value={period} onChange={(e) => setPeriod(e.target.value)} className="px-3 py-1.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm">
