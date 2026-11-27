@@ -205,7 +205,7 @@ export default function Dashboard() {
   const firstName = user?.name?.split(/\s+/)[0] ?? "";
   const summary = [
     onlinePrinters.length > 0 ? (printerErrors > 0 ? `${printerErrors} Drucker mit Fehler` : printingNow > 0 ? `${printingNow} Drucker ${printingNow === 1 ? "druckt" : "drucken"}` : "Deine Drucker sind bereit") : null,
-    waitingOrders > 0 ? `${waitingOrders} Auftr${waitingOrders === 1 ? "ag wartet" : "äge warten"} auf Bearbeitung` : activeOrders.length > 0 ? "Alle Aufträge sind in Arbeit" : "Keine offenen Aufträge",
+    waitingOrders > 0 ? `${waitingOrders} Auftr${waitingOrders === 1 ? "ag wartet" : "äge warten"} auf Bearbeitung` : activeOrders.length > 0 ? "Alle Aufträge sind in Arbeit" : "Nichts in Produktion",
   ].filter(Boolean).join(" · ");
 
   return (
@@ -240,7 +240,7 @@ export default function Dashboard() {
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6 [&>*:last-child]:col-span-2 md:[&>*:last-child]:col-span-1">
-            <Kpi icon="board" tone="brand" label="Aktive Aufträge" value={activeOrders.length} sub={newOrders > 0 ? `+${newOrders} seit gestern` : "keine neuen seit gestern"} subTone={newOrders > 0 ? "good" : "muted"} to="/production" />
+            <Kpi icon="board" tone="brand" label="In Produktion" value={activeOrders.length} sub={newOrders > 0 ? `+${newOrders} seit gestern` : "keine neuen seit gestern"} subTone={newOrders > 0 ? "good" : "muted"} to="/production" />
             <Kpi icon="printer" tone="green" label="Drucker online" value={livePrinters.length > 0 ? `${onlinePrinters.length} / ${livePrinters.length}` : "-"} sub={livePrinters.length > 0 ? `${Math.round((onlinePrinters.length / livePrinters.length) * 100)} % online` : "keine Live-Verbindung"} subTone={livePrinters.length > 0 && onlinePrinters.length < livePrinters.length ? "warn" : "muted"} to="/catalog?tab=printers" />
             <Kpi icon="money" tone="violet" label="Umsatz bezahlt (Monat)" value={eur(monthRevenue)} sub={revenueDelta === null ? `Vormonat ${eur(prevRevenue)}` : `${revenueDelta >= 0 ? "+" : ""}${revenueDelta} % zum Vormonat`} subTone={revenueDelta === null ? "muted" : revenueDelta >= 0 ? "good" : "bad"} to="/finance" />
             <Kpi icon="filament" tone="amber" label="Materialbestand" value={`${kgTotal.toLocaleString("de-DE", { maximumFractionDigits: 1 })} kg`} sub={materials.length === 0 ? "noch kein Material" : lowCount > 0 ? `${lowCount} Artikel knapp` : "alles ausreichend"} subTone={lowCount > 0 ? "bad" : "good"} to="/catalog?tab=materials" />

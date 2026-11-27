@@ -26,6 +26,15 @@ orderConfirmationsRouter.delete("/:id", async (req, res) => {
   const existing = await prisma.orderConfirmation.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId } });
   if (!existing) throw new HttpError(404, "Auftragsbestätigung nicht gefunden");
   if (existing.voidedAt) throw new HttpError(409, "Auftragsbestätigung ist bereits ungültig markiert.");
+  // Sonst zeigt eine gültige Rechnung auf einen Auftrag, den es nicht mehr gibt
+  const activeInvoice = await prisma.invoice.findFirst({
+    where: { companyId: existing.companyId, sourceOrderConfirmationId: existing.id, status: { not: "CANCELLED" }, isCancellationDocument: false },
+    select: { invoiceNumber: true, status: true },
+  });
+  if (activeInvoice) {
+    const hint = activeInvoice.status === "DRAFT" ? "Bitte zuerst den Rechnungsentwurf verwerfen." : `Bitte zuerst die Rechnung ${activeInvoice.invoiceNumber} stornieren.`;
+    throw new HttpError(409, `Zu diesem Auftrag gibt es noch eine gültige Rechnung. ${hint}`);
+  }
   await prisma.orderConfirmation.update({ where: { id: existing.id }, data: { voidedAt: new Date() } });
   await writeAuditLog({ req, companyId: req.auth!.companyId, userId: req.auth!.sub, action: "order_confirmation.void", entityType: "OrderConfirmation", entityId: existing.id });
   res.status(204).send();

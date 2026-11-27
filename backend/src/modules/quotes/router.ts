@@ -302,6 +302,11 @@ quotesRouter.post("/preview-pdf", previewRateLimiter, async (req, res) => {
 quotesRouter.post("/:id/convert-to-order-confirmation", async (req, res) => {
   const quote = await prisma.quote.findFirst({ where: { id: req.params.id, companyId: req.auth!.companyId }, include: { items: true } });
   if (!quote) throw new HttpError(404, "Angebot nicht gefunden");
+  const existingOrder = await prisma.orderConfirmation.findFirst({ where: { companyId: quote.companyId, sourceQuoteId: quote.id, voidedAt: null }, select: { confirmationNumber: true, status: true } });
+  if (existingOrder) {
+    const what = existingOrder.status === "DRAFT" ? "einen Auftragsentwurf" : `den Auftrag ${existingOrder.confirmationNumber}`;
+    throw new HttpError(409, `Zu diesem Angebot gibt es schon ${what}. Bitte dort weiterarbeiten.`);
+  }
   const company = await prisma.company.findUniqueOrThrow({ where: { id: quote.companyId } });
   const assigneeId = quote.assigneeId ?? (await defaultAssigneeId(req));
   const confirmation = await prisma.$transaction(async (tx) => {

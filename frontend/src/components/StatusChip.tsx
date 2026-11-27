@@ -18,10 +18,11 @@ export function statusInfo(status: string, opts: { kind?: string; isCancellation
     case "DRAFT": return { label: "Entwurf", tone: "amber" };
     case "SENT":
       // Rechnung: "Versendet" nur, wenn wirklich eine E-Mail raus ist - sonst "Offen" (ausgestellt, noch nicht bezahlt)
-      if (opts.kind === "INVOICE") return opts.emailed ? { label: "Versendet", tone: "blue" } : { label: "Offen", tone: "blue" };
-      if (!opts.kind) return { label: "Versendet", tone: "blue" };
-      // Angebot/Auftrag/Lieferschein: "Fertig" heißt nur fertiggestellt - "Versendet" erst, wenn tatsächlich eine E-Mail verschickt wurde
-      return opts.emailed ? { label: "Versendet", tone: "blue" } : { label: "Fertig", tone: "green" };
+      // "Versendet" ist für das Paket reserviert (Produktion); beim Beleg heißt es "Gemailt", damit beides nicht verwechselt wird
+      if (opts.kind === "INVOICE") return opts.emailed ? { label: "Gemailt", tone: "blue" } : { label: "Offen", tone: "blue" };
+      if (!opts.kind) return { label: "Gemailt", tone: "blue" };
+      // Angebot/Auftrag/Lieferschein: "Fertig" heißt nur fertiggestellt - "Gemailt" erst, wenn tatsächlich eine E-Mail verschickt wurde
+      return opts.emailed ? { label: "Gemailt", tone: "blue" } : { label: "Fertig", tone: "green" };
     case "PAID": return { label: "Bezahlt", tone: "green" };
     case "OVERDUE": return { label: "Überfällig", tone: "red" };
     // Betrifft nur diese Rechnung, nicht den zugrunde liegenden Auftrag - der bleibt bestehen und braucht ggf. eine neue Rechnung

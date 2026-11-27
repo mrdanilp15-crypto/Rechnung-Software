@@ -230,7 +230,8 @@ export default function Documents() {
 
   async function remove(row: DocRow) {
     const what = row.status === "DRAFT" ? "Entwurf verwerfen" : "als ungültig markieren";
-    if (!confirm(`${KIND_INFO[row.kind].label} ${row.number ?? "(Entwurf)"} wirklich ${what}?`)) return;
+    const note = row.status === "DRAFT" ? "" : "\n\nDas kann nicht rückgängig gemacht werden. Der Beleg verschwindet aus allen Listen und Erinnerungen.";
+    if (!confirm(`${KIND_INFO[row.kind].label} ${row.number ?? "(Entwurf)"} wirklich ${what}?${note}`)) return;
     try {
       await api.delete(`${KIND_INFO[row.kind].base}/${row.id}`);
       load();
@@ -266,10 +267,12 @@ export default function Documents() {
       list.push({ label: "Als angenommen markieren", onClick: () => setQuoteStatus(row, "ACCEPTED", "angenommen") });
       list.push({ label: "Als abgelehnt markieren", onClick: () => setQuoteStatus(row, "DECLINED", "abgelehnt") });
     }
-    if (row.kind === "QUOTE" && row.status !== "DRAFT" && row.status !== "DECLINED") {
-      list.push({ label: "→ Auftragsbestätigung", onClick: () => convert(row, "convert-to-order-confirmation", "/order-confirmations", "Auftragsbestätigung als Entwurf angelegt") });
+    // Angebot mit Auftrag: alles Weitere (Rechnung, Anzahlung) läuft über den Auftrag, sonst entstehen Doppel
+    const openQuote = row.kind === "QUOTE" && row.status !== "DRAFT" && row.status !== "DECLINED" && !row.hasOrder;
+    if (openQuote) {
+      list.push({ label: "→ Auftrag", onClick: () => convert(row, "convert-to-order-confirmation", "/order-confirmations", "Auftrag als Entwurf angelegt") });
     }
-    if ((row.kind === "QUOTE" && row.status !== "DRAFT" && row.status !== "DECLINED") || (row.kind === "ORDER_CONFIRMATION" && row.status !== "DRAFT")) {
+    if (openQuote || (row.kind === "ORDER_CONFIRMATION" && row.status !== "DRAFT")) {
       list.push({ label: "→ Anzahlungsrechnung", onClick: () => { setDpPercent("30"); setDpRow(row); } });
       list.push({ label: "→ Rechnung", onClick: () => convert(row, "convert-to-invoice", "/invoices", "Rechnung als Entwurf angelegt") });
       list.push({ label: "→ Rechnung gleich fertigstellen & senden", onClick: () => convertFinal(row) });
@@ -277,8 +280,8 @@ export default function Documents() {
     if (row.kind === "ORDER_CONFIRMATION" && row.status !== "DRAFT") {
       list.push({ label: "→ Lieferschein", onClick: () => convert(row, "convert-to-delivery-note", "/delivery-notes", "Lieferschein als Entwurf angelegt") });
     }
-    if (row.kind !== "QUOTE" && row.status !== "DRAFT") list.push({ label: "Versandetikett", onClick: () => setLabelRow(row) });
-    if (row.kind === "INVOICE" && !row.isCancellationDocument && row.invoiceKind !== "DOWN_PAYMENT") list.push({ label: "Wiederkehrend einrichten", onClick: () => setRecurringRow(row) });
+    if (row.kind !== "QUOTE" && row.status !== "DRAFT" && row.status !== "CANCELLED" && !row.isCancellationDocument) list.push({ label: "Versandetikett", onClick: () => setLabelRow(row) });
+    if (row.kind === "INVOICE" && row.status !== "CANCELLED" && !row.isCancellationDocument && row.invoiceKind !== "DOWN_PAYMENT") list.push({ label: "Wiederkehrend einrichten", onClick: () => setRecurringRow(row) });
     // nachträglich verknüpfen (z.B. wenn der Auftrag separat angelegt wurde) oder eine falsche Verknüpfung lösen
     if (row.kind === "QUOTE" && !row.hasOrder && ["SENT", "ACCEPTED", "EXPIRED"].includes(row.status) && orderCandidates(row).length > 0) {
       list.push({ label: "Mit vorhandenem Auftrag verknüpfen", onClick: () => setLinkDlg({ mode: "quote", row, candidates: orderCandidates(row) }) });
@@ -301,11 +304,11 @@ export default function Documents() {
     if (row.kind === "QUOTE" && (row.status === "SENT" || row.status === "EXPIRED")) {
       return {
         label: "Angenommen → Auftrag",
-        title: "Der Kunde hat zugesagt: Angebot als angenommen markieren und daraus die Auftragsbestätigung anlegen",
+        title: "Der Kunde hat zugesagt: Angebot als angenommen markieren und daraus den Auftrag anlegen",
         run: async () => {
           const accept = async () => {
             await api.patch(`/quotes/${row.id}/status`, { status: "ACCEPTED" });
-            void convert(row, "convert-to-order-confirmation", "/order-confirmations", "Angebot angenommen, Auftragsbestätigung als Entwurf angelegt", true);
+            void convert(row, "convert-to-order-confirmation", "/order-confirmations", "Angebot angenommen, Auftrag als Entwurf angelegt", true);
           };
           if (guardOrderCreate(row, () => void accept())) return;
           await accept();
@@ -313,7 +316,7 @@ export default function Documents() {
       };
     }
     if (row.kind === "QUOTE" && row.status === "ACCEPTED") {
-      return { label: "→ Auftrag anlegen", title: "Aus dem angenommenen Angebot die Auftragsbestätigung anlegen (alle Positionen werden übernommen)", run: () => convert(row, "convert-to-order-confirmation", "/order-confirmations", "Auftragsbestätigung als Entwurf angelegt") };
+      return { label: "→ Auftrag anlegen", title: "Aus dem angenommenen Angebot den Auftrag anlegen (alle Positionen werden übernommen)", run: () => convert(row, "convert-to-order-confirmation", "/order-confirmations", "Auftrag als Entwurf angelegt") };
     }
     if (row.kind === "ORDER_CONFIRMATION") {
       return { label: "→ Rechnung", title: "Aus dem Auftrag die Rechnung als Entwurf anlegen (Lieferschein und Anzahlung über das ⋮-Menü)", run: () => convert(row, "convert-to-invoice", "/invoices", "Rechnung als Entwurf angelegt") };
